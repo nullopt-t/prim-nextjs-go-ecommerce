@@ -217,6 +217,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.Exec(ctx, string(vendorSchemaBytes))
 	require.NoError(s.T(), err)
 
+	lifecycleSchemaBytes, err := os.ReadFile("../../migrations/000004_merchant_lifecycle.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.Exec(ctx, string(lifecycleSchemaBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -1456,12 +1461,14 @@ func (s *CheckoutTestSuite) TestApplyCoupon_Red_EmptyCode() {
 // orderItemRow is one persisted order line, including the vendor attribution
 // and the frozen vendor earning recorded at checkout time.
 type orderItemRow struct {
-	ID              uuid.UUID
-	VariantID       uuid.UUID
-	Quantity        int
-	PriceAtPurchase int64
-	VendorID        *uuid.UUID
-	VendorEarning   int64
+	ID                uuid.UUID
+	VariantID         uuid.UUID
+	Quantity          int
+	PriceAtPurchase   int64
+	VendorID          *uuid.UUID
+	VendorEarning     int64
+	CommissionRateBps int
+	CommissionAmount  int64
 }
 
 // seedVendorProfile inserts a vendor user plus a vendor profile row in the
@@ -1521,7 +1528,8 @@ func (s *CheckoutTestSuite) seedVendorVariant(price int64, stock int) uuid.UUID 
 func (s *CheckoutTestSuite) fetchOrderItems(orderID uuid.UUID) []orderItemRow {
 	ctx := context.Background()
 	rows, err := s.db.Query(ctx, `
-		SELECT id, variant_id, quantity, price_at_purchase, vendor_id, vendor_earning
+		SELECT id, variant_id, quantity, price_at_purchase, vendor_id, vendor_earning,
+			commission_rate_bps, commission_amount
 		FROM order_items
 		WHERE order_id = $1
 	`, orderID)
@@ -1532,7 +1540,10 @@ func (s *CheckoutTestSuite) fetchOrderItems(orderID uuid.UUID) []orderItemRow {
 	for rows.Next() {
 		var item orderItemRow
 		var vendorID *uuid.UUID
-		if err := rows.Scan(&item.ID, &item.VariantID, &item.Quantity, &item.PriceAtPurchase, &vendorID, &item.VendorEarning); err != nil {
+		if err := rows.Scan(
+			&item.ID, &item.VariantID, &item.Quantity, &item.PriceAtPurchase,
+			&vendorID, &item.VendorEarning, &item.CommissionRateBps, &item.CommissionAmount,
+		); err != nil {
 			s.Require().NoError(err)
 		}
 		item.VendorID = vendorID
@@ -1579,6 +1590,8 @@ func (s *CheckoutTestSuite) TestCheckout_Success_VendorOwnedLine_FreezeVendorEar
 	// Line total 5998 with a 10% platform commission (1000 bps) freezes 5399
 	// minor units for the vendor; platform lines keep their full earning.
 	s.Equal(int64(5399), item.VendorEarning)
+	s.Equal(1000, item.CommissionRateBps)
+	s.Equal(int64(599), item.CommissionAmount)
 
 	// COD payment confirms the purchase immediately: stock moves from on-hand
 	// to sold and no reservation is left outstanding.

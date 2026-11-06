@@ -194,6 +194,9 @@ export interface AdminVendor {
   bannerUrl?: string;
   commissionRateBps: number;
   status: "pending" | "active" | "suspended" | "rejected" | string;
+  statusReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

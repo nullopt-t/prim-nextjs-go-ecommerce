@@ -30,6 +30,7 @@ type CreateVendorInput struct {
 // UpdateVendorFields carries optional profile mutations.
 type UpdateVendorFields struct {
 	StoreName       *string
+	Slug            *string
 	Description     *string
 	LogoObjectID    *uuid.UUID
 	BannerObjectID  *uuid.UUID
@@ -55,6 +56,9 @@ func scanVendor(row pgx.Row) (*model.Vendor, error) {
 		&v.BannerObjectID,
 		&v.CommissionRateBps,
 		&v.Status,
+		&v.StatusReason,
+		&v.ReviewedBy,
+		&v.ReviewedAt,
 		&v.BankAccountInfo,
 		&v.CreatedAt,
 		&v.UpdatedAt,
@@ -76,6 +80,9 @@ const vendorColumns = `
 	banner_object_id,
 	commission_rate_bps,
 	status,
+	COALESCE(status_reason, ''),
+	reviewed_by,
+	reviewed_at,
 	bank_account_info,
 	created_at,
 	updated_at,
@@ -115,7 +122,8 @@ func (r *VendorRepository) Create(ctx context.Context, in *CreateVendorInput) (*
 	).Scan(
 		&v.ID, &v.UserID, &v.StoreName, &v.Slug, &v.Description,
 		&v.LogoObjectID, &v.BannerObjectID, &v.CommissionRateBps,
-		&v.Status, &v.BankAccountInfo, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt,
+		&v.Status, &v.StatusReason, &v.ReviewedBy, &v.ReviewedAt,
+		&v.BankAccountInfo, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create vendor: %w", err)
@@ -176,7 +184,7 @@ func (r *VendorRepository) ListAll(ctx context.Context, status *model.VendorStat
 		SELECT `+vendorColumns+` FROM vendors `+where+`
 		ORDER BY created_at DESC, id DESC
 		LIMIT $`+fmt.Sprint(limitIdx)+` OFFSET $`+fmt.Sprint(offsetIdx),
-		append(args, q.PageSize, q.Offset)...,
+		append(args, q.Offset, q.PageSize)...,
 	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list vendors: %w", err)
@@ -237,30 +245,43 @@ func (r *VendorRepository) Update(ctx context.Context, vendorID uuid.UUID, field
 	row := executor.QueryRow(ctx, `
 		UPDATE vendors SET
 			store_name         = COALESCE($2, store_name),
-			description        = COALESCE($3, description),
-			logo_object_id     = COALESCE($4, logo_object_id),
-			banner_object_id   = COALESCE($5, banner_object_id),
-			bank_account_info  = COALESCE($6, bank_account_info),
+			slug               = COALESCE($3, slug),
+			description        = COALESCE($4, description),
+			logo_object_id     = COALESCE($5, logo_object_id),
+			banner_object_id   = COALESCE($6, banner_object_id),
+			bank_account_info  = COALESCE($7, bank_account_info),
 			updated_at         = now()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING `+vendorColumns,
-		vendorID, fields.StoreName, fields.Description, fields.LogoObjectID,
+		vendorID, fields.StoreName, fields.Slug, fields.Description, fields.LogoObjectID,
 		fields.BannerObjectID, bankJSON,
 	)
 	return scanVendor(row)
 }
 
-// SetStatus transitions the lifecycle state (admin action).
-func (r *VendorRepository) SetStatus(ctx context.Context, vendorID uuid.UUID, status model.VendorStatus) error {
+// SetStatus transitions the lifecycle state and records the reviewer
+// metadata for admin actions.
+func (r *VendorRepository) SetStatus(
+	ctx context.Context,
+	vendorID uuid.UUID,
+	status model.VendorStatus,
+	reason *string,
+	reviewedBy *uuid.UUID,
+) error {
 	executor, err := database.Executor(ctx)
 	if err != nil {
 		return err
 	}
 
 	cmd, err := executor.Exec(ctx, `
-		UPDATE vendors SET status = $2, updated_at = now()
+		UPDATE vendors SET
+			status = $2,
+			status_reason = $3,
+			reviewed_by = $4,
+			reviewed_at = now(),
+			updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
-	`, vendorID, status)
+	`, vendorID, status, reason, reviewedBy)
 	if err != nil {
 		return fmt.Errorf("set vendor status: %w", err)
 	}
@@ -268,6 +289,48 @@ func (r *VendorRepository) SetStatus(ctx context.Context, vendorID uuid.UUID, st
 		return pgx.ErrNoRows
 	}
 	return nil
+}
+
+// MarkResubmitted returns a rejected application to the review queue and
+// clears the prior admin decision metadata.
+func (r *VendorRepository) MarkResubmitted(ctx context.Context, vendorID uuid.UUID) error {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return err
+	}
+
+	cmd, err := executor.Exec(ctx, `
+		UPDATE vendors SET
+			status = 'pending',
+			status_reason = NULL,
+			reviewed_by = NULL,
+			reviewed_at = NULL,
+			updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL AND status = 'rejected'
+	`, vendorID)
+	if err != nil {
+		return fmt.Errorf("mark vendor resubmitted: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
+}
+
+// SlugExists reports whether any vendor row, including soft-deleted ones,
+// owns the candidate slug. The unique index is the final authority; this is
+// the live availability lookup used by the onboarding UI.
+func (r *VendorRepository) SlugExists(ctx context.Context, slug string) (bool, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	var exists bool
+	if err := executor.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM vendors WHERE slug = $1)`, slug).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check vendor slug: %w", err)
+	}
+	return exists, nil
 }
 
 // SetCommissionRate assigns the per-vendor commission override (admin action).
@@ -330,6 +393,7 @@ func scanPayout(row pgx.Row) (*model.VendorPayout, error) {
 		&p.ReferenceNumber,
 		&p.Notes,
 		&p.SnapshotAvailableBalance,
+		&p.IdempotencyKey,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 		&p.ProcessedAt,
@@ -341,8 +405,9 @@ func scanPayout(row pgx.Row) (*model.VendorPayout, error) {
 }
 
 // CreatePayout inserts a payout request after the caller has validated the
-// balance under the vendor row lock.
-func (r *VendorRepository) CreatePayout(ctx context.Context, vendorID uuid.UUID, amount int64, snapshotBalance int64) (*model.VendorPayout, error) {
+// balance under the vendor row lock. idempotencyKey deduplicates retries when
+// supplied.
+func (r *VendorRepository) CreatePayout(ctx context.Context, vendorID uuid.UUID, amount int64, snapshotBalance int64, idempotencyKey *string) (*model.VendorPayout, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
 		return nil, err
@@ -351,16 +416,35 @@ func (r *VendorRepository) CreatePayout(ctx context.Context, vendorID uuid.UUID,
 	row := executor.QueryRow(ctx, `
 		INSERT INTO vendor_payouts (
 			id, vendor_id, amount, currency, status,
-			snapshot_available_balance, created_at, updated_at
+			snapshot_available_balance, idempotency_key, created_at, updated_at
 		)
-		VALUES ($1, $2, $3, 'EGP', $4, $5, now(), now())
+		VALUES ($1, $2, $3, 'EGP', $4, $5, $6, now(), now())
 		RETURNING
 			id, vendor_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
-			created_at, updated_at, processed_at
+			idempotency_key, created_at, updated_at, processed_at
 	`,
-		uuid.New(), vendorID, amount, model.PayoutStatusRequested, snapshotBalance,
+		uuid.New(), vendorID, amount, model.PayoutStatusRequested, snapshotBalance, idempotencyKey,
 	)
+	return scanPayout(row)
+}
+
+// GetPayoutByIdempotencyKey returns a previously accepted request for the
+// same vendor/key pair, if one exists.
+func (r *VendorRepository) GetPayoutByIdempotencyKey(ctx context.Context, vendorID uuid.UUID, key string) (*model.VendorPayout, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	row := executor.QueryRow(ctx, `
+		SELECT
+			id, vendor_id, amount, currency, status,
+			reference_number, COALESCE(notes, ''), snapshot_available_balance,
+			idempotency_key, created_at, updated_at, processed_at
+		FROM vendor_payouts
+		WHERE vendor_id = $1 AND idempotency_key = $2
+	`, vendorID, key)
 	return scanPayout(row)
 }
 
@@ -376,7 +460,7 @@ func (r *VendorRepository) ListPayoutsByVendor(ctx context.Context, vendorID uui
 		SELECT
 			id, vendor_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
-			created_at, updated_at, processed_at
+			idempotency_key, created_at, updated_at, processed_at
 		FROM vendor_payouts
 		WHERE vendor_id = $1
 		ORDER BY created_at DESC
@@ -446,7 +530,7 @@ func (r *VendorRepository) GetPayoutByID(ctx context.Context, payoutID uuid.UUID
 		SELECT
 			id, vendor_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
-			created_at, updated_at, processed_at
+			idempotency_key, created_at, updated_at, processed_at
 		FROM vendor_payouts
 		WHERE id = $1
 	`, payoutID)
@@ -464,7 +548,7 @@ func (r *VendorRepository) ListPayouts(ctx context.Context) ([]*model.VendorPayo
 		SELECT
 			id, vendor_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
-			created_at, updated_at, processed_at
+			idempotency_key, created_at, updated_at, processed_at
 		FROM vendor_payouts
 		ORDER BY created_at DESC, id DESC
 	`)

@@ -245,8 +245,15 @@ export const adminService = {
     return api.get<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}`);
   },
 
-  updateVendorStatus: async (id: string, status: string): Promise<ApiResponse<AdminVendor>> => {
-    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/status`, { status });
+  updateVendorStatus: async (
+    id: string,
+    status: string,
+    reason?: string,
+  ): Promise<ApiResponse<AdminVendor>> => {
+    return api.patch<ApiResponse<AdminVendor>>(`/api/v1/admin/vendors/${id}/status`, {
+      status,
+      ...(reason ? { reason } : {}),
+    });
   },
 
   updateVendorCommission: async (id: string, rateBps: number): Promise<ApiResponse<AdminVendor>> => {

@@ -18,6 +18,9 @@ export interface Vendor {
   bannerUrl?: string;
   commissionRateBps: number;
   status: VendorStatus;
+  statusReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   bankAccountInfo?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -57,8 +60,15 @@ export interface RegisterVendorPayload {
   bannerObjectId?: string;
 }
 
+export interface SlugAvailability {
+  available: boolean;
+  slug: string;
+  reason?: string;
+}
+
 export interface UpdateVendorPayload {
   storeName?: string;
+  slug?: string;
   description?: string;
   logoObjectId?: string;
   bannerObjectId?: string;
@@ -193,6 +203,8 @@ export interface VendorOrderItem {
   priceAtPurchase: number;
   lineTotal: number;
   vendorEarning: number;
+  commissionRateBps: number;
+  commissionAmount: number;
   title?: string;
 }
 

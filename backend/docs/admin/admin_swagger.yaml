@@ -109,6 +109,10 @@ definitions:
     type: object
   AdminChangeVendorStatusRequest:
     properties:
+      reason:
+        description: Merchant-visible reason; required for rejection and suspension.
+        maxLength: 2000
+        type: string
       status:
         allOf:
         - $ref: '#/definitions/VendorStatus'
@@ -1709,6 +1713,12 @@ definitions:
       logoUrl:
         description: Public logo URL, when set.
         type: string
+      reviewedAt:
+        description: When the latest lifecycle decision was made (RFC3339).
+        type: string
+      reviewedBy:
+        description: Administrator who made the latest lifecycle decision.
+        type: string
       slug:
         description: URL-safe unique store identifier.
         example: amrs-gadgets
@@ -1722,6 +1732,9 @@ definitions:
         - active
         - suspended
         - rejected
+      statusReason:
+        description: Merchant-visible reason for the latest rejection or suspension.
+        type: string
       storeName:
         description: Customer-facing store display name.
         example: Amr's Gadgets
@@ -4680,7 +4693,8 @@ paths:
       consumes:
       - application/json
       description: Applies a guarded lifecycle transition (pending->active/rejected,
-        active<->suspended).
+        active<->suspended) and records reviewer metadata. Rejection and suspension
+        require a merchant-facing reason.
       parameters:
       - description: Vendor UUID
         format: uuid

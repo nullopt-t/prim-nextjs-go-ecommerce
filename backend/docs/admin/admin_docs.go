@@ -4457,7 +4457,7 @@ const docTemplateadmin = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Applies a guarded lifecycle transition (pending-\u003eactive/rejected, active\u003c-\u003esuspended).",
+                "description": "Applies a guarded lifecycle transition (pending-\u003eactive/rejected, active\u003c-\u003esuspended) and records reviewer metadata. Rejection and suspension require a merchant-facing reason.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4662,6 +4662,11 @@ const docTemplateadmin = `{
                 "status"
             ],
             "properties": {
+                "reason": {
+                    "description": "Merchant-visible reason; required for rejection and suspension.",
+                    "type": "string",
+                    "maxLength": 2000
+                },
                 "status": {
                     "description": "New vendor lifecycle state.",
                     "enum": [
@@ -6828,6 +6833,14 @@ const docTemplateadmin = `{
                     "description": "Public logo URL, when set.",
                     "type": "string"
                 },
+                "reviewedAt": {
+                    "description": "When the latest lifecycle decision was made (RFC3339).",
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "description": "Administrator who made the latest lifecycle decision.",
+                    "type": "string"
+                },
                 "slug": {
                     "description": "URL-safe unique store identifier.",
                     "type": "string",
@@ -6846,6 +6859,10 @@ const docTemplateadmin = `{
                             "$ref": "#/definitions/VendorStatus"
                         }
                     ]
+                },
+                "statusReason": {
+                    "description": "Merchant-visible reason for the latest rejection or suspension.",
+                    "type": "string"
                 },
                 "storeName": {
                     "description": "Customer-facing store display name.",

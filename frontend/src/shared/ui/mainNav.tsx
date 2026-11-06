@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { id: "nav-home", path: "/", label: "header.home" },
   { id: "nav-products", path: "/products", label: "header.products" },
   { id: "nav-categories", path: "/categories", label: "header.categories" },
+  { id: "nav-sell", path: "/sell", label: "header.sell" },
 ] as const;
 
 function useIsActive() {

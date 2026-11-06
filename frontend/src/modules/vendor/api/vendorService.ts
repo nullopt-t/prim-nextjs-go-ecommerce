@@ -6,6 +6,7 @@ import type {
   CreateVendorVariantPayload,
   RegisterVendorPayload,
   RequestPayoutPayload,
+  SlugAvailability,
   UpdateVendorPayload,
   UpdateVendorProductPayload,
   UpdateVendorVariantPayload,
@@ -35,6 +36,10 @@ function productQuery(params?: VendorProductListParams): string {
 
 export const vendorService = {
   getProfile: () => api.get<ApiResponse<Vendor>>("/api/v1/vendor/profile"),
+  checkSlugAvailability: (slug: string) =>
+    api.get<ApiResponse<SlugAvailability>>(
+      `/api/v1/vendor/slug-availability?slug=${encodeURIComponent(slug)}`,
+    ),
   register: (payload: RegisterVendorPayload) =>
     api.post<ApiResponse<Vendor>, RegisterVendorPayload>("/api/v1/vendor/register", payload),
   updateProfile: (payload: UpdateVendorPayload) =>
@@ -56,8 +61,10 @@ export const vendorService = {
 
   getPayouts: () =>
     api.get<ApiResponse<VendorPayout[]>>("/api/v1/vendor/payouts"),
-  requestPayout: (payload: RequestPayoutPayload) =>
-    api.post<ApiResponse<VendorPayout>, RequestPayoutPayload>("/api/v1/vendor/payouts", payload),
+  requestPayout: (payload: RequestPayoutPayload, idempotencyKey: string) =>
+    api.post<ApiResponse<VendorPayout>, RequestPayoutPayload>("/api/v1/vendor/payouts", payload, {
+      headers: { "Idempotency-Key": idempotencyKey },
+    }),
 
   getProducts: (params?: VendorProductListParams) =>
     api.get<ApiPaginatedResponse<VendorProduct>>(`/api/v1/vendor/products${productQuery(params)}`),
@@ -95,6 +102,7 @@ export type {
   CreateVendorVariantPayload,
   RegisterVendorPayload,
   RequestPayoutPayload,
+  SlugAvailability,
   UpdateVendorPayload,
   UpdateVendorProductPayload,
   UpdateVendorVariantPayload,

@@ -31,6 +31,7 @@ export const GROUP_MESSAGE_PATHS = {
 	vendor: ["vendor"],
 	auth: ["auth"],
 	portal: ["portal"],
+	marketing: ["marketing"],
 } as const;
 
 export type MessageGroup = keyof typeof GROUP_MESSAGE_PATHS;

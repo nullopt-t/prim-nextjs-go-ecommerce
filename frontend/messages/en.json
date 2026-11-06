@@ -1272,7 +1272,16 @@
         "statusFailed": "The vendor status could not be updated.",
         "statusUpdated": "Vendor status updated."
       },
-      "count": "{count} vendors"
+      "count": "{count} vendors",
+      "reason": {
+        "label": "Reason for {action}",
+        "placeholder": "Explain what the merchant must fix. This is shown to the merchant.",
+        "required": "A reason is required when rejecting or suspending a store.",
+        "confirm": "{action} store",
+        "cancel": "Cancel",
+        "current": "Current review reason",
+        "reviewedAt": "Reviewed {date}"
+      }
     }
   },
   "auth": {
@@ -1565,7 +1574,8 @@
       "support": "Support",
       "trackOrders": "Track Orders",
       "vendorPortal": "Vendor Portal",
-      "wishlist": "Wishlist"
+      "wishlist": "Wishlist",
+      "sellOnPrim": "Sell on PRIM"
     },
     "header": {
       "account": "Account",
@@ -1605,7 +1615,8 @@
       "signOut": "Sign Out",
       "theme": "Theme",
       "welcomeToPrim": "Welcome to PRIM",
-      "wishlist": "Wishlist"
+      "wishlist": "Wishlist",
+      "sell": "Sell on PRIM"
     }
   },
   "components": {
@@ -2522,7 +2533,16 @@
       "submit": "Submit for Review",
       "submitFailed": "The store application could not be submitted.",
       "success": "Store application submitted. Our team will review it shortly.",
-      "title": "Open Your Store"
+      "title": "Open Your Store",
+      "reapplyTitle": "Update your application",
+      "reapplySubtitle": "Fix the items below and resubmit. Your store returns to review as soon as you submit.",
+      "reapplyReason": "Why the application was rejected",
+      "reapplySubmit": "Resubmit for review",
+      "reapplied": "Application resubmitted. Our team will review it again.",
+      "slugChecking": "Checking availability...",
+      "slugAvailable": "This store URL is available.",
+      "slugTaken": "That store URL is already taken.",
+      "slugCheckFailed": "Availability could not be checked."
     },
     "products": {
       "addTitle": "Add Vendor Product",
@@ -2663,6 +2683,34 @@
         "title": "Variant"
       },
       "title": "Variants & stock"
+    },
+    "statusPages": {
+      "vendorHub": "Vendor Hub",
+      "signOut": "Sign out",
+      "contactSupport": "Contact support",
+      "storefront": "Back to storefront",
+      "reasonLabel": "Reason from the review team",
+      "reasonFallback": "No reason was provided. Contact merchant support for details.",
+      "kind": {
+        "pending": "Pending review",
+        "suspended": "Suspended",
+        "rejected": "Rejected"
+      },
+      "pending": {
+        "title": "Your store is under review",
+        "description": "Our merchant team is checking your application. You can start listing products as soon as it is approved."
+      },
+      "suspended": {
+        "title": "Your store is suspended",
+        "description": "Operational access is paused while we resolve the issue below. Existing orders and payout history remain available to our team."
+      },
+      "rejected": {
+        "title": "Your application needs changes",
+        "description": "We could not approve the store as submitted. Review the reason, update your details, and resubmit.",
+        "note": "Re-applications usually take one business day to review.",
+        "updateApplication": "Update application"
+      },
+      "applicationId": "Application ID"
     }
   },
   "wishlist": {
@@ -2695,5 +2743,148 @@
       "signInRequired": "Please sign in to save items to your wishlist"
     },
     "cancel": "Cancel"
+  },
+  "marketing": {
+    "meta": {
+      "title": "Sell on PRIM",
+      "description": "Reach more shoppers, manage your catalog, and get paid for every delivered order."
+    },
+    "nav": {
+      "storefront": "Storefront",
+      "signIn": "Merchant sign in",
+      "startSelling": "Start selling"
+    },
+    "footer": {
+      "copyright": "© {year} PRIM. All rights reserved.",
+      "contact": "Contact",
+      "merchantSupport": "Merchant support"
+    },
+    "hero": {
+      "eyebrow": "Merchant program",
+      "title": "Your products. A bigger storefront.",
+      "description": "Join PRIM's marketplace, list your catalog in minutes, and track orders, earnings, and payouts from one merchant workspace.",
+      "cta": "Open your store",
+      "secondaryCta": "Merchant sign in",
+      "points": {
+        "free": "Free to apply",
+        "approval": "Reviewed in one business day",
+        "dashboard": "Orders and payouts in one place"
+      }
+    },
+    "preview": {
+      "title": "Merchant snapshot",
+      "subtitle": "A live view of your store",
+      "status": "Active",
+      "rows": {
+        "sales": {
+          "label": "Gross sales",
+          "value": "EGP 128,400"
+        },
+        "commission": {
+          "label": "Platform commission",
+          "value": "− EGP 12,840"
+        },
+        "net": {
+          "label": "Net earnings",
+          "value": "EGP 115,560"
+        },
+        "nextPayout": {
+          "label": "Next payout",
+          "value": "EGP 42,300"
+        }
+      },
+      "note": "Illustrative figures at a 10% commission rate. Your rate is agreed during onboarding."
+    },
+    "benefits": {
+      "title": "Built for growing sellers",
+      "description": "Everything you need to run a storefront, without running a separate operations stack.",
+      "items": {
+        "reach": {
+          "title": "Reach ready shoppers",
+          "description": "Your catalog appears in marketplace search, categories, and product recommendations."
+        },
+        "commission": {
+          "title": "Clear, flat commission",
+          "description": "One agreed rate per order. No listing fees, subscriptions, or hidden charges."
+        },
+        "payouts": {
+          "title": "Track every pound",
+          "description": "See gross sales, commission, net earnings, and the exact balance available to withdraw."
+        },
+        "operations": {
+          "title": "Operate with confidence",
+          "description": "Manage variants and stock, follow orders, and see payout status in real time."
+        }
+      }
+    },
+    "steps": {
+      "title": "From application to first sale",
+      "description": "A short review keeps the marketplace trustworthy for shoppers and sellers alike.",
+      "items": {
+        "apply": {
+          "title": "Apply",
+          "description": "Create your account and submit your store name, URL, and description."
+        },
+        "review": {
+          "title": "Get reviewed",
+          "description": "Our merchant team checks your application and either approves it or tells you what to fix."
+        },
+        "list": {
+          "title": "List products",
+          "description": "Add products, variants, prices, and stock from your merchant dashboard."
+        },
+        "getPaid": {
+          "title": "Get paid",
+          "description": "Earnings settle after delivery. Request a payout when your balance is ready."
+        }
+      }
+    },
+    "faq": {
+      "title": "Questions, answered",
+      "items": {
+        "approval": {
+          "question": "How long does approval take?",
+          "answer": "Most applications are reviewed within one business day. If we need changes, we send a reason and you can update and resubmit the same application."
+        },
+        "fees": {
+          "question": "What does it cost to sell?",
+          "answer": "There is no fee to apply. The platform charges the commission rate agreed for your store on each delivered order."
+        },
+        "payouts": {
+          "question": "When can I withdraw earnings?",
+          "answer": "Earnings become available after the order is delivered. You can request a payout from the merchant dashboard once you have an available balance."
+        },
+        "suspended": {
+          "question": "What happens if my store is suspended?",
+          "answer": "Operational access pauses while the issue is resolved. Your order and payout history is retained, and our merchant team can help you restore access."
+        }
+      }
+    },
+    "closing": {
+      "title": "Ready to open your store?",
+      "description": "Submit your application today and start building your catalog while our team reviews it.",
+      "cta": "Start your application",
+      "note": "You can sign in with your existing PRIM shopper account."
+    },
+    "terms": {
+      "items": {
+        "commission": {
+          "value": "10%",
+          "label": "Standard commission per delivered order"
+        },
+        "listing": {
+          "value": "EGP 0",
+          "label": "Upfront listing and subscription fees"
+        },
+        "settlement": {
+          "value": "On delivery",
+          "label": "Bank transfer after the order is delivered"
+        },
+        "enterprise": {
+          "value": "Custom",
+          "label": "Enterprise terms available on request"
+        }
+      }
+    }
   }
 }

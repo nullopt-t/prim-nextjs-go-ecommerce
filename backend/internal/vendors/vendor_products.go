@@ -49,10 +49,10 @@ type VendorProductSummary struct {
 	UpdatedAt    string                  `json:"updatedAt"`
 }
 
-// requireActiveVendor resolves the caller's profile and enforces that the
-// merchant may currently sell. It must run inside the caller's transaction so
-// the check and the mutation observe the same state.
-func (s *Service) requireActiveVendor(ctx context.Context, userID uuid.UUID) (*model.Vendor, error) {
+// requireVendorWithStatus resolves the caller's profile and enforces the
+// lifecycle matrix. It must run inside the caller's executor/transaction so
+// the check and the operation observe the same state.
+func (s *Service) requireVendorWithStatus(ctx context.Context, userID uuid.UUID, allowed ...model.VendorStatus) (*model.Vendor, error) {
 	vendor, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -61,12 +61,20 @@ func (s *Service) requireActiveVendor(ctx context.Context, userID uuid.UUID) (*m
 		return nil, s.handleError(err, "Failed to load vendor")
 	}
 
-	if vendor.Status != model.VendorStatusActive {
-		return nil, apierr.ForbiddenError("Vendor is not authorized for this action").
-			WithCode(errcode.CodeVendorNotAuthorizedForAction)
+	for _, status := range allowed {
+		if vendor.Status == status {
+			return vendor, nil
+		}
 	}
 
-	return vendor, nil
+	return nil, apierr.ForbiddenError("Vendor is not authorized for this action").
+		WithCode(errcode.CodeVendorNotAuthorizedForAction)
+}
+
+// requireActiveVendor resolves the caller's profile and enforces that the
+// merchant may currently sell or operate the console.
+func (s *Service) requireActiveVendor(ctx context.Context, userID uuid.UUID) (*model.Vendor, error) {
+	return s.requireVendorWithStatus(ctx, userID, model.VendorStatusActive)
 }
 
 // requireOwnedProduct resolves a product that belongs to the vendor. A
@@ -211,12 +219,9 @@ func (s *Service) ListOwnProducts(
 
 	var result *pagination.PagedResult[VendorProductSummary]
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
-		vendor, err := s.repo.GetByUserID(ctx, userID)
+		vendor, err := s.requireActiveVendor(ctx, userID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Vendor not found").WithCode(errcode.CodeVendorNotFound)
-			}
-			return s.handleError(err, "Failed to load vendor")
+			return err
 		}
 
 		q.VendorUUIDs = []uuid.UUID{vendor.ID}

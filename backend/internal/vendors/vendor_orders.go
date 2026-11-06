@@ -23,12 +23,9 @@ func (s *Service) ListOwnOrders(
 ) (*pagination.PagedValueResult[model.Order], error) {
 	var result *pagination.PagedValueResult[model.Order]
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
-		vendor, err := s.repo.GetByUserID(ctx, userID)
+		vendor, err := s.requireVendorWithStatus(ctx, userID, model.VendorStatusActive, model.VendorStatusSuspended)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Vendor not found").WithCode(errcode.CodeVendorNotFound)
-			}
-			return s.handleError(err, "Failed to load vendor")
+			return err
 		}
 
 		orders, total, err := s.orders.ListVendorOrders(ctx, vendor.ID, status, q)
@@ -50,12 +47,9 @@ func (s *Service) ListOwnOrders(
 func (s *Service) GetOwnOrder(ctx context.Context, userID, orderID uuid.UUID) (*model.Order, error) {
 	var order *model.Order
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
-		vendor, err := s.repo.GetByUserID(ctx, userID)
+		vendor, err := s.requireVendorWithStatus(ctx, userID, model.VendorStatusActive, model.VendorStatusSuspended)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Vendor not found").WithCode(errcode.CodeVendorNotFound)
-			}
-			return s.handleError(err, "Failed to load vendor")
+			return err
 		}
 
 		order, err = s.orders.GetVendorOrder(ctx, vendor.ID, orderID)

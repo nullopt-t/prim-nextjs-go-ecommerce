@@ -2,12 +2,8 @@ package vendors
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
-	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
 // lowStockThreshold is the salable-quantity ceiling at which a variant is
@@ -44,12 +40,9 @@ type Dashboard struct {
 func (s *Service) GetDashboard(ctx context.Context, userID uuid.UUID) (*Dashboard, error) {
 	var dashboard *Dashboard
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
-		vendor, err := s.repo.GetByUserID(ctx, userID)
+		vendor, err := s.requireActiveVendor(ctx, userID)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Vendor not found").WithCode(errcode.CodeVendorNotFound)
-			}
-			return s.handleError(err, "Failed to load vendor")
+			return err
 		}
 
 		sales, err := s.settlement.GetVendorSalesStats(ctx, vendor.ID)

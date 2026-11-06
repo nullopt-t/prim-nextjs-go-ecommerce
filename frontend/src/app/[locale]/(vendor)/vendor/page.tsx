@@ -1,7 +1,7 @@
 "use client";
 
-import { VendorDashboard } from "@/modules/vendor";
+import { VendorResolver } from "@/modules/vendor";
 
-export default function VendorDashboardPage() {
-  return <VendorDashboard />;
+export default function VendorEntryPage() {
+  return <VendorResolver />;
 }

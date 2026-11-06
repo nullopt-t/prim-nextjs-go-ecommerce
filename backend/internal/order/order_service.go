@@ -37,6 +37,10 @@ type CreateOrderItemInput struct {
 	VendorID *uuid.UUID
 	// VendorEarning is the vendor share (item total minus commission, minor units), frozen at checkout.
 	VendorEarning int64
+	// CommissionRateBps is the platform commission rate applied to this line, frozen at checkout.
+	CommissionRateBps int
+	// CommissionAmount is the platform commission in minor units, frozen at checkout.
+	CommissionAmount int64
 }
 
 // CreateOrderInput encapsulates all parameters required to generate a brand new customer order.
@@ -222,14 +226,16 @@ func (s *OrderService) PlaceOrder(
 		totalAmount += itemTotal
 
 		item := model.OrderItem{
-			ID:              uuid.New(),
-			OrderID:         orderID,
-			VariantID:       itemInput.VariantID,
-			Quantity:        itemInput.Quantity,
-			PriceAtPurchase: itemInput.PriceAtPurchase,
-			ProductSnapshot: itemInput.ProductSnapshot,
-			VendorID:        itemInput.VendorID,
-			VendorEarning:   itemInput.VendorEarning,
+			ID:                uuid.New(),
+			OrderID:           orderID,
+			VariantID:         itemInput.VariantID,
+			Quantity:          itemInput.Quantity,
+			PriceAtPurchase:   itemInput.PriceAtPurchase,
+			ProductSnapshot:   itemInput.ProductSnapshot,
+			VendorID:          itemInput.VendorID,
+			VendorEarning:     itemInput.VendorEarning,
+			CommissionRateBps: itemInput.CommissionRateBps,
+			CommissionAmount:  itemInput.CommissionAmount,
 		}
 		orderItems = append(orderItems, item)
 	}

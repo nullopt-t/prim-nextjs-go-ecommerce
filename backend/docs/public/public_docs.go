@@ -3269,7 +3269,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Returns the merchant's money position (settled, pending, outstanding) and catalog health counts.",
+                "description": "Returns the merchant's money position (settled, pending, outstanding) and catalog health counts. Active vendors only; other lifecycle states receive 403.",
                 "produces": [
                     "application/json"
                 ],
@@ -3464,7 +3464,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Returns the caller's payout ledger including rejected records (full audit trail).",
+                "description": "Returns the caller's payout ledger including rejected records (full audit trail). Available to active and suspended vendors.",
                 "produces": [
                     "application/json"
                 ],
@@ -3514,7 +3514,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Registers a payout request against settled earnings, validating the available balance under the vendor row lock.",
+                "description": "Registers a payout request against settled earnings, validating the available balance under the vendor row lock. Active vendors only. Reusing an Idempotency-Key with the same amount replays the original request; a different amount returns 409.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3534,6 +3534,12 @@ const docTemplatepublic = `{
                         "schema": {
                             "$ref": "#/definitions/RequestPayoutRequest"
                         }
+                    },
+                    {
+                        "type": "string",
+                        "description": "Client retry key (max 100 chars)",
+                        "name": "Idempotency-Key",
+                        "in": "header"
                     }
                 ],
                 "responses": {
@@ -3571,7 +3577,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side.",
+                "description": "Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side and the vendor must be active.",
                 "produces": [
                     "application/json"
                 ],
@@ -4121,7 +4127,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Edits the vendor profile. Only store/slug-independent fields; commission and status are admin-controlled.",
+                "description": "Edits the merchant profile for pending, active, or rejected vendors. Rejected edits return the application to pending; suspended vendors are blocked. The slug is immutable once the vendor is active. Commission and status remain admin-controlled.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4178,7 +4184,7 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Creates a pending vendor application for the authenticated user. One profile per account.",
+                "description": "Creates a pending vendor application for any authenticated account. A rejected profile may resubmit, which updates the application and returns it to pending review.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4223,6 +4229,58 @@ const docTemplatepublic = `{
                         "description": "Already registered or slug taken",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/vendor/slug-availability": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Validates slug syntax and reserved words, then checks the authoritative uniqueness set. A merchant's own current slug is reported available for re-application.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Check store slug availability",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Candidate store slug",
+                        "name": "slug",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SlugAvailability"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
                         }
                     }
                 }
@@ -6527,6 +6585,20 @@ const docTemplatepublic = `{
                 "SessionTypeAuthenticated"
             ]
         },
+        "SlugAvailability": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
         "Sort": {
             "type": "object",
             "properties": {
@@ -6713,6 +6785,11 @@ const docTemplatepublic = `{
                 "logoObjectId": {
                     "type": "string"
                 },
+                "slug": {
+                    "type": "string",
+                    "maxLength": 63,
+                    "example": "amrs-gadgets"
+                },
                 "storeName": {
                     "type": "string",
                     "maxLength": 150,
@@ -6740,12 +6817,9 @@ const docTemplatepublic = `{
         },
         "UpdateQuantityRequest": {
             "type": "object",
-            "required": [
-                "quantity"
-            ],
             "properties": {
                 "quantity": {
-                    "description": "New total quantity desired for this cart item (must be between 1 and 999)",
+                    "description": "New total quantity desired for this cart item (must be greater than 0 and at most 999)",
                     "type": "integer",
                     "maximum": 999,
                     "example": 3
@@ -7115,6 +7189,14 @@ const docTemplatepublic = `{
         "VendorOrderItemResponse": {
             "type": "object",
             "properties": {
+                "commissionAmount": {
+                    "description": "Frozen platform commission amount for this line, in minor units.",
+                    "type": "integer"
+                },
+                "commissionRateBps": {
+                    "description": "Frozen commission rate applied to this line.",
+                    "type": "integer"
+                },
                 "id": {
                     "description": "Line item id.",
                     "type": "string"
@@ -7319,6 +7401,14 @@ const docTemplatepublic = `{
                     "description": "Public logo URL, when set.",
                     "type": "string"
                 },
+                "reviewedAt": {
+                    "description": "When the latest lifecycle decision was made (RFC3339).",
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "description": "Administrator who made the latest lifecycle decision.",
+                    "type": "string"
+                },
                 "slug": {
                     "description": "URL-safe unique store identifier.",
                     "type": "string",
@@ -7337,6 +7427,10 @@ const docTemplatepublic = `{
                             "$ref": "#/definitions/VendorStatus"
                         }
                     ]
+                },
+                "statusReason": {
+                    "description": "Merchant-visible reason for the latest rejection or suspension.",
+                    "type": "string"
                 },
                 "storeName": {
                     "description": "Customer-facing store display name.",

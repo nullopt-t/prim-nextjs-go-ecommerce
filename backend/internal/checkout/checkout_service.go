@@ -567,13 +567,16 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 			return nil, err
 		}
 
+		vendorEarning, commissionAmount := computeVendorSplit(itemTotal, vendorID, commissionBps)
 		result.items = append(result.items, order.CreateOrderItemInput{
-			VariantID:       item.VariantID,
-			Quantity:        item.Quantity,
-			PriceAtPurchase: unitPrice,
-			ProductSnapshot: buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL, vendorName),
-			VendorID:        vendorID,
-			VendorEarning:   computeVendorEarning(itemTotal, vendorID, commissionBps),
+			VariantID:         item.VariantID,
+			Quantity:          item.Quantity,
+			PriceAtPurchase:   unitPrice,
+			ProductSnapshot:   buildProductSnapshot(item, variant, product, unitPrice, thumbnailURL, vendorName),
+			VendorID:          vendorID,
+			VendorEarning:     vendorEarning,
+			CommissionRateBps: commissionBpsForLine(vendorID, commissionBps),
+			CommissionAmount:  commissionAmount,
 		})
 	}
 
@@ -618,19 +621,33 @@ func (s *CheckoutService) resolveVendorTerms(
 	return productVendorID, vendor.StoreName, vendor.CommissionRateBps, nil
 }
 
-// computeVendorEarning freezes the vendor share of a line item: total minus
-// the platform commission (basis points). Platform lines earn zero by
-// definition; the vendor id distinguishes the two cases.
+// computeVendorSplit freezes both sides of the platform commission: the
+// vendor share and the commission amount. Platform lines have no vendor and
+// therefore zero commission/earning.
+func computeVendorSplit(itemTotal int64, vendorID *uuid.UUID, commissionBps int) (earning, commission int64) {
+	if vendorID == nil {
+		return 0, 0
+	}
+	commission = itemTotal * int64(commissionBps) / 10000
+	earning = itemTotal - commission
+	if earning < 0 {
+		return 0, commission
+	}
+	return earning, commission
+}
+
+// computeVendorEarning is retained as the focused unit-test entry point for
+// the vendor share.
 func computeVendorEarning(itemTotal int64, vendorID *uuid.UUID, commissionBps int) int64 {
+	earning, _ := computeVendorSplit(itemTotal, vendorID, commissionBps)
+	return earning
+}
+
+func commissionBpsForLine(vendorID *uuid.UUID, commissionBps int) int {
 	if vendorID == nil {
 		return 0
 	}
-	commission := itemTotal * int64(commissionBps) / 10000
-	earning := itemTotal - commission
-	if earning < 0 {
-		return 0
-	}
-	return earning
+	return commissionBps
 }
 
 // resolveThumbnailURL turns the variant's (or product's fallback) thumbnail

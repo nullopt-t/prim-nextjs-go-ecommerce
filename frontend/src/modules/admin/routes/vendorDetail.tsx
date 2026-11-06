@@ -31,6 +31,8 @@ export function AdminVendorDetail({ vendorId }: { vendorId: string }) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [commissionInput, setCommissionInput] = useState("");
+  const [reasonTarget, setReasonTarget] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -55,12 +57,18 @@ export function AdminVendorDetail({ vendorId }: { vendorId: string }) {
     void load();
   }, [load]);
 
-  const handleTransition = async (to: string) => {
+  const handleTransition = async (to: string, reviewReason = "") => {
     if (!vendor) return;
+    if ((to === "rejected" || to === "suspended") && !reviewReason.trim()) {
+      notify.error(t("vendors.reason.required"));
+      return;
+    }
     try {
-      const updated = await adminService.updateVendorStatus(vendor.id, to);
+      const updated = await adminService.updateVendorStatus(vendor.id, to, reviewReason.trim());
       notify.success(t("vendors.toast.statusUpdated"));
       if (updated.data) setVendor(updated.data);
+      setReasonTarget(null);
+      setReason("");
       await load();
     } catch (err) {
       notify.error(apiErrorMessage(err, t("vendors.toast.statusFailed")));
@@ -126,7 +134,10 @@ export function AdminVendorDetail({ vendorId }: { vendorId: string }) {
           {t("vendors.actions.approve")}
         </button>
         <button
-          onClick={() => void handleTransition("rejected")}
+          onClick={() => {
+            setReasonTarget("rejected");
+            setReason("");
+          }}
           className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
           {t("vendors.actions.reject")}
@@ -134,7 +145,10 @@ export function AdminVendorDetail({ vendorId }: { vendorId: string }) {
       </>
     ) : vendor.status === "active" ? (
       <button
-        onClick={() => void handleTransition("suspended")}
+        onClick={() => {
+          setReasonTarget("suspended");
+          setReason("");
+        }}
         className="rounded px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
       >
         {t("vendors.actions.suspend")}
@@ -216,6 +230,72 @@ export function AdminVendorDetail({ vendorId }: { vendorId: string }) {
       <section className="space-y-4 rounded-lg border border-border bg-background p-4">
         <h2 className="text-sm font-semibold text-foreground">{t("vendors.statusTitle")}</h2>
         <div className="flex flex-wrap items-center gap-1">{statusAction}</div>
+
+        {vendor.statusReason ? (
+          <div className="rounded-md border border-border bg-muted/30 p-3">
+            <div className="text-xs font-medium text-foreground">
+              {t("vendors.reason.current")}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{vendor.statusReason}</p>
+            {vendor.reviewedAt ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("vendors.reason.reviewedAt", {
+                  date: new Date(vendor.reviewedAt).toLocaleDateString(locale),
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {reasonTarget ? (
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <label
+              className="text-xs font-medium text-foreground"
+              htmlFor="vendor-status-reason"
+            >
+              {t("vendors.reason.label", {
+                action: t(
+                  reasonTarget === "rejected"
+                    ? "vendors.actions.reject"
+                    : "vendors.actions.suspend",
+                ),
+              })}
+            </label>
+            <textarea
+              id="vendor-status-reason"
+              rows={3}
+              maxLength={1000}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder={t("vendors.reason.placeholder")}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => void handleTransition(reasonTarget, reason)}
+                disabled={!reason.trim()}
+                className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              >
+                {t("vendors.reason.confirm", {
+                  action: t(
+                    reasonTarget === "rejected"
+                      ? "vendors.actions.reject"
+                      : "vendors.actions.suspend",
+                  ),
+                })}
+              </button>
+              <button
+                onClick={() => {
+                  setReasonTarget(null);
+                  setReason("");
+                }}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary"
+              >
+                {t("vendors.reason.cancel")}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-background">

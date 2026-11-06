@@ -1,4 +1,10 @@
 export { VendorLayout } from "./routes/vendorLayout";
+export { VendorProvider, useVendorContext } from "./routes/vendorContext";
+export { VendorResolver } from "./routes/vendorResolver";
+export { VendorRegister } from "./routes/vendorRegister";
+export { VendorSegmentGuard } from "./routes/vendorSegmentGuard";
+export { VendorStatusShell } from "./routes/vendorStatusShell";
+export { VendorConsoleGate } from "./routes/vendorConsoleGate";
 export { VendorDashboard } from "./routes/vendorDashboard";
 export { VendorProducts } from "./routes/vendorProducts";
 export { VendorInventory } from "./routes/vendorInventory";

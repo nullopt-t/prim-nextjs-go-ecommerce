@@ -71,6 +71,7 @@ func (s *OrderLifecycleSuite) SetupSuite() {
 	for _, migration := range []string{
 		"../../migrations/000001_init_sechema.up.sql",
 		"../../migrations/000003_vendor_domain.up.sql",
+		"../../migrations/000004_merchant_lifecycle.up.sql",
 	} {
 		schema, readErr := os.ReadFile(migration)
 		require.NoError(s.T(), readErr)

@@ -53,3 +53,19 @@ func TestComputeVendorEarning(t *testing.T) {
 		})
 	}
 }
+
+func TestComputeVendorSplitPreservesLineTotal(t *testing.T) {
+	vendorID := uuid.New()
+	earning, commission := computeVendorSplit(5_998, &vendorID, 1000)
+	if earning != 5_399 || commission != 599 {
+		t.Fatalf("computeVendorSplit() = (%d, %d), want (5399, 599)", earning, commission)
+	}
+	if earning+commission != 5_998 {
+		t.Fatalf("split does not preserve line total: %d + %d", earning, commission)
+	}
+
+	earning, commission = computeVendorSplit(5_998, nil, 1000)
+	if earning != 0 || commission != 0 {
+		t.Fatalf("platform line split = (%d, %d), want (0, 0)", earning, commission)
+	}
+}

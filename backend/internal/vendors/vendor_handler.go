@@ -51,6 +51,12 @@ type VendorResponse struct {
 	CommissionRateBps int `json:"commissionRateBps" example:"1000"`
 	// Lifecycle status.
 	Status model.VendorStatus `json:"status" enums:"pending,active,suspended,rejected"`
+	// Merchant-visible reason for the latest rejection or suspension.
+	StatusReason string `json:"statusReason,omitempty"`
+	// Administrator who made the latest lifecycle decision.
+	ReviewedBy *uuid.UUID `json:"reviewedBy,omitempty"`
+	// When the latest lifecycle decision was made (RFC3339).
+	ReviewedAt string `json:"reviewedAt,omitempty"`
 	// Created timestamp (RFC3339).
 	CreatedAt string `json:"createdAt" example:"2026-11-02T10:00:00Z"`
 	// Updated timestamp (RFC3339).
@@ -82,7 +88,7 @@ type PayoutResponse struct {
 }
 
 func toVendorResponse(v *model.Vendor) VendorResponse {
-	return VendorResponse{
+	res := VendorResponse{
 		ID:                v.ID,
 		UserID:            v.UserID,
 		StoreName:         v.StoreName,
@@ -92,9 +98,15 @@ func toVendorResponse(v *model.Vendor) VendorResponse {
 		BannerURL:         v.BannerURL,
 		CommissionRateBps: v.CommissionRateBps,
 		Status:            v.Status,
+		StatusReason:      v.StatusReason,
+		ReviewedBy:        v.ReviewedBy,
 		CreatedAt:         v.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:         v.UpdatedAt.Format(time.RFC3339),
 	}
+	if v.ReviewedAt != nil {
+		res.ReviewedAt = v.ReviewedAt.Format(time.RFC3339)
+	}
+	return res
 }
 
 func toPayoutResponse(p *model.VendorPayout) PayoutResponse {
@@ -130,7 +142,7 @@ type RegisterVendorRequest struct {
 
 // RegisterVendor godoc
 // @Summary      Register as vendor
-// @Description  Creates a pending vendor application for the authenticated user. One profile per account.
+// @Description  Creates a pending vendor application for any authenticated account. A rejected profile may resubmit, which updates the application and returns it to pending review.
 // @Tags         Vendor
 // @Accept       json
 // @Produce      json
@@ -194,9 +206,36 @@ func (h *Handler) GetMyVendor(c *gin.Context) {
 	c.JSON(http.StatusOK, api.DataResponse{Data: toVendorResponse(vendor)})
 }
 
+// CheckSlugAvailability godoc
+// @Summary      Check store slug availability
+// @Description  Validates slug syntax and reserved words, then checks the authoritative uniqueness set. A merchant's own current slug is reported available for re-application.
+// @Tags         Vendor
+// @Produce      json
+// @Param        slug query string true "Candidate store slug"
+// @Success      200 {object} api.DataResponse{data=SlugAvailability}
+// @Failure      401 {object} api.UnauthorizedErrorResponse
+// @Router       /vendor/slug-availability [get]
+// @Security     SessionAuth
+func (h *Handler) CheckSlugAvailability(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	availability, err := h.service.CheckSlugAvailability(c.Request.Context(), userID, c.Query("slug"))
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: availability})
+}
+
 // UpdateMyVendorRequest is the profile edit payload; nil fields are unchanged.
 type UpdateMyVendorRequest struct {
 	StoreName       string         `json:"storeName" binding:"omitempty,min=2,max=150" example:"Amr's Gadgets"`
+	Slug            string         `json:"slug" binding:"omitempty,max=63" example:"amrs-gadgets"`
 	Description     string         `json:"description" binding:"max=2000" example:"Electronics and accessories"`
 	LogoObjectID    string         `json:"logoObjectId" binding:"omitempty,uuid"`
 	BannerObjectID  string         `json:"bannerObjectId" binding:"omitempty,uuid"`
@@ -205,7 +244,7 @@ type UpdateMyVendorRequest struct {
 
 // UpdateMyVendor godoc
 // @Summary      Update my vendor profile
-// @Description  Edits the vendor profile. Only store/slug-independent fields; commission and status are admin-controlled.
+// @Description  Edits the merchant profile for pending, active, or rejected vendors. Rejected edits return the application to pending; suspended vendors are blocked. The slug is immutable once the vendor is active. Commission and status remain admin-controlled.
 // @Tags         Vendor
 // @Accept       json
 // @Produce      json
@@ -233,6 +272,9 @@ func (h *Handler) UpdateMyVendor(c *gin.Context) {
 	}
 	if req.StoreName != "" {
 		in.StoreName = &req.StoreName
+	}
+	if req.Slug != "" {
+		in.Slug = &req.Slug
 	}
 	if req.Description != "" {
 		in.Description = &req.Description
@@ -281,11 +323,13 @@ func parseOptionalUUID(s string) *uuid.UUID {
 type AdminChangeVendorStatusRequest struct {
 	// New vendor lifecycle state.
 	Status model.VendorStatus `json:"status" binding:"required,oneof=pending active suspended rejected" enums:"pending,active,suspended,rejected"`
+	// Merchant-visible reason; required for rejection and suspension.
+	Reason string `json:"reason" binding:"omitempty,max=2000"`
 }
 
 // AdminChangeVendorStatus godoc
 // @Summary      Change vendor status (admin)
-// @Description  Applies a guarded lifecycle transition (pending->active/rejected, active<->suspended).
+// @Description  Applies a guarded lifecycle transition (pending->active/rejected, active<->suspended) and records reviewer metadata. Rejection and suspension require a merchant-facing reason.
 // @Tags         Admin Vendors
 // @Accept       json
 // @Produce      json
@@ -308,7 +352,13 @@ func (h *Handler) AdminChangeVendorStatus(c *gin.Context) {
 		return
 	}
 
-	vendor, err := h.service.AdminChangeVendorStatus(c.Request.Context(), vendorID, req.Status)
+	reviewedBy, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	vendor, err := h.service.AdminChangeVendorStatus(c.Request.Context(), vendorID, req.Status, req.Reason, reviewedBy)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -440,11 +490,12 @@ type RequestPayoutRequest struct {
 
 // RequestPayout godoc
 // @Summary      Request a payout
-// @Description  Registers a payout request against settled earnings, validating the available balance under the vendor row lock.
+// @Description  Registers a payout request against settled earnings, validating the available balance under the vendor row lock. Active vendors only. Reusing an Idempotency-Key with the same amount replays the original request; a different amount returns 409.
 // @Tags         Vendor
 // @Accept       json
 // @Produce      json
 // @Param        request body RequestPayoutRequest true "Payout request"
+// @Param        Idempotency-Key header string false "Client retry key (max 100 chars)"
 // @Success      201 {object} PayoutResponse
 // @Failure      400 {object} api.BadReqResponse "Validation failed or insufficient balance"
 // @Failure      403 {object} api.ForbiddenErrorResponse "Vendor not active"
@@ -463,7 +514,7 @@ func (h *Handler) RequestPayout(c *gin.Context) {
 		return
 	}
 
-	payout, err := h.service.RequestPayout(c.Request.Context(), userID, req.Amount)
+	payout, err := h.service.RequestPayout(c.Request.Context(), userID, req.Amount, c.GetHeader("Idempotency-Key"))
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -474,7 +525,7 @@ func (h *Handler) RequestPayout(c *gin.Context) {
 
 // ListMyPayouts godoc
 // @Summary      List my payouts
-// @Description  Returns the caller's payout ledger including rejected records (full audit trail).
+// @Description  Returns the caller's payout ledger including rejected records (full audit trail). Available to active and suspended vendors.
 // @Tags         Vendor
 // @Produce      json
 // @Success      200 {object} api.DataResponse{data=[]PayoutResponse}
@@ -590,7 +641,7 @@ func toPayoutList(payouts []*model.VendorPayout) []PayoutResponse {
 
 // GetDashboard godoc
 // @Summary      Vendor dashboard
-// @Description  Returns the merchant's money position (settled, pending, outstanding) and catalog health counts.
+// @Description  Returns the merchant's money position (settled, pending, outstanding) and catalog health counts. Active vendors only; other lifecycle states receive 403.
 // @Tags         Vendor
 // @Produce      json
 // @Success      200 {object} api.DataResponse{data=Dashboard}
@@ -691,7 +742,7 @@ func toVendorProductResponse(p *model.Product) VendorProductResponse {
 
 // ListMyProducts godoc
 // @Summary      List my products
-// @Description  Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side.
+// @Description  Returns the authenticated vendor's catalog, drafts included. Ownership is enforced server-side and the vendor must be active.
 // @Tags         Vendor
 // @Produce      json
 // @Param        page      query int    false "Page number (1-based)"

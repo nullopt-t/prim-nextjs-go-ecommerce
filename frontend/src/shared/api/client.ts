@@ -1,3 +1,26 @@
+import type { ApiFieldError } from "@/shared/api/types";
+
+export const VENDOR_NOT_AUTHORIZED_EVENT = "prim:vendor-not-authorized";
+
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  details?: ApiFieldError[];
+
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    details?: ApiFieldError[],
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
 export const getBaseUrl = () => {
   // One env variable for the API base URL: NEXT_PUBLIC_API_URL. It is available
   // on both the server and the browser, so client and server API calls use the
@@ -56,8 +79,24 @@ export async function request<T = unknown>(
   }
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || errorData.message || `HTTP Error ${response.status}`);
+    const errorData = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+      code?: string;
+      details?: ApiFieldError[];
+    };
+    if (
+      errorData.code === "VENDOR_NOT_AUTHORIZED_FOR_ACTION" &&
+      typeof window !== "undefined"
+    ) {
+      window.dispatchEvent(new Event(VENDOR_NOT_AUTHORIZED_EVENT));
+    }
+    throw new ApiError(
+      errorData.error || errorData.message || `HTTP Error ${response.status}`,
+      response.status,
+      errorData.code,
+      errorData.details,
+    );
   }
 
   if (response.status === 204) return null as T;
@@ -111,8 +150,18 @@ export const api = {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || `HTTP Error ${response.status}`);
+      const errorData = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        code?: string;
+        details?: ApiFieldError[];
+      };
+      throw new ApiError(
+        errorData.error || errorData.message || `HTTP Error ${response.status}`,
+        response.status,
+        errorData.code,
+        errorData.details,
+      );
     }
 
     const blob = await response.blob();
@@ -139,8 +188,18 @@ export const api = {
       ...options,
     }).then(async (res) => {
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.message || `HTTP Error ${res.status}`);
+        const errorData = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+          code?: string;
+          details?: ApiFieldError[];
+        };
+        throw new ApiError(
+          errorData.error || errorData.message || `HTTP Error ${res.status}`,
+          res.status,
+          errorData.code,
+          errorData.details,
+        );
       }
       return res.json() as Promise<T>;
     });

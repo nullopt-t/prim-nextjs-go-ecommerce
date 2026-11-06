@@ -28,4 +28,8 @@ const (
 	// CodePayoutInvalidStateTransition indicates a payout status change that
 	// violates the lifecycle (e.g. already paid, or double processing).
 	CodePayoutInvalidStateTransition = "PAYOUT_INVALID_STATE_TRANSITION"
+
+	// CodePayoutIdempotencyConflict indicates an Idempotency-Key was reused for
+	// a different withdrawal amount.
+	CodePayoutIdempotencyConflict = "PAYOUT_IDEMPOTENCY_CONFLICT"
 )

@@ -26,19 +26,16 @@ func NewRouter(handler *Handler, sessionStore middleware.SessionStore) *Router {
 }
 
 // MapRoutes registers:
-//   - /vendor/*  → vendor portal (vendor + admin roles for management;
-//     profile reads for any authenticated vendor)
+//   - /vendor/*  → authenticated merchant portal. Capability is derived from
+//     the caller's vendors row and lifecycle status, never from users.role.
 //   - /admin/vendors/* → administrator surface
 func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
-	// Vendor portal: authenticated users only; role owns portal access.
 	portal := vgroup.Group("/vendor")
-	portal.Use(
-		middleware.Authenticate(r.sessionStore),
-		middleware.Authorize(model.VendorRole, model.AdminRole, model.SuperRole),
-	)
+	portal.Use(middleware.Authenticate(r.sessionStore))
 	{
 		portal.GET("/dashboard", r.handler.GetDashboard)
 		portal.POST("/register", r.handler.RegisterVendor)
+		portal.GET("/slug-availability", r.handler.CheckSlugAvailability)
 		portal.GET("/profile", r.handler.GetMyVendor)
 		portal.PATCH("/profile", r.handler.UpdateMyVendor)
 		portal.POST("/payouts", r.handler.RequestPayout)

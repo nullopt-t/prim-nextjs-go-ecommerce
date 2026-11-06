@@ -17,6 +17,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
+	"golang.org/x/text/unicode/norm"
 )
 
 // SettlementReader is the vendor domain's read-only window into order data
@@ -216,40 +217,132 @@ type RegisterVendorInput struct {
 	BannerObjectID *uuid.UUID
 }
 
-// slugPattern mirrors the DB CHECK constraint on vendors.slug.
-var slugPattern = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+// Slug policy shared by registration, profile edits, and the live
+// availability endpoint. The DB CHECK constraint mirrors the length/charset.
+const (
+	MinSlugLength = 3
+	MaxSlugLength = 63
+)
+
+var (
+	slugPattern   = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+	reservedSlugs = map[string]struct{}{
+		"admin": {}, "api": {}, "auth": {}, "vendor": {}, "sell": {},
+		"store": {}, "stores": {}, "products": {}, "categories": {}, "brands": {},
+		"cart": {}, "checkout": {}, "account": {}, "user": {}, "orders": {},
+		"payments": {}, "settings": {}, "support": {}, "help": {}, "about": {},
+		"terms": {}, "privacy": {}, "login": {}, "register": {}, "search": {},
+		"wishlist": {}, "en": {}, "ar": {},
+	}
+)
+
+// NormalizeSlug applies the canonical NFKC + trim + lowercase policy.
+func NormalizeSlug(raw string) string {
+	return strings.ToLower(strings.TrimSpace(norm.NFKC.String(raw)))
+}
+
+// validateSlug returns the normalized slug and a user-facing rejection reason.
+// An empty reason means the slug is valid.
+func validateSlug(raw string) (string, string) {
+	slug := NormalizeSlug(raw)
+	if slug == "" {
+		return slug, "Slug is required"
+	}
+	if len(slug) < MinSlugLength || len(slug) > MaxSlugLength {
+		return slug, "Slug must be between 3 and 63 characters"
+	}
+	if !slugPattern.MatchString(slug) {
+		return slug, "Slug must contain only lowercase letters, numbers, and single hyphens"
+	}
+	if _, reserved := reservedSlugs[slug]; reserved {
+		return slug, "This slug is a reserved platform keyword"
+	}
+	return slug, ""
+}
+
+func validationError(field, constraint, message string) *apierr.APIError {
+	return apierr.BadRequestError(message).
+		WithCode(apierr.CodeValidationFailed).
+		WithFields(api.FieldError{Field: field, Constraint: constraint, Message: message})
+}
+
+func slugTakenError() *apierr.APIError {
+	return apierr.ConflictError("This store slug is already taken").
+		WithCode(errcode.CodeVendorSlugTaken).
+		WithFields(api.FieldError{
+			Field: "slug", Constraint: "unique", Message: "this store slug is already taken",
+		})
+}
+
+// SlugAvailability is the live availability response for onboarding.
+type SlugAvailability struct {
+	Available bool   `json:"available"`
+	Slug      string `json:"slug"`
+	Reason    string `json:"reason,omitempty"`
+}
+
+// CheckSlugAvailability validates syntax/reserved words and checks the
+// authoritative uniqueness set. A merchant's own current slug is available
+// so a rejected application can be resubmitted unchanged.
+func (s *Service) CheckSlugAvailability(ctx context.Context, userID uuid.UUID, raw string) (*SlugAvailability, error) {
+	slug, reason := validateSlug(raw)
+	if reason != "" {
+		return &SlugAvailability{Available: false, Slug: slug, Reason: reason}, nil
+	}
+
+	result := &SlugAvailability{Available: true, Slug: slug}
+	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
+		vendor, err := s.repo.GetBySlug(ctx, slug)
+		if err == nil {
+			if vendor.UserID != userID {
+				result.Available = false
+				result.Reason = "This store slug is already taken"
+			}
+			return nil
+		}
+		if !errors.Is(database.MapError(err), database.ErrNotFound) {
+			return s.handleError(err, "Failed to check vendor slug")
+		}
+
+		exists, err := s.repo.SlugExists(ctx, slug)
+		if err != nil {
+			return s.handleError(err, "Failed to check vendor slug")
+		}
+		if exists {
+			result.Available = false
+			result.Reason = "This store slug is already taken"
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 
 // RegisterVendor creates a pending vendor application for an existing user.
-// Rules:
-//   - one profile per user, enforced by the unique user_id index
-//   - slug uniqueness is backed by the unique index (races map to 409)
-//   - commission starts at the platform default configured in settings
+// A rejected application is resubmitted (and returned to pending) instead of
+// being rejected as a duplicate.
 func (s *Service) RegisterVendor(ctx context.Context, userID uuid.UUID, in RegisterVendorInput) (*model.Vendor, error) {
-	// 1. Validate shape and refer to the canonical account.
-	if strings.TrimSpace(in.StoreName) == "" {
-		return nil, apierr.BadRequestError("Store name is required").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{Field: "storeName", Constraint: "required", Message: "store name is required"})
+	storeName := strings.TrimSpace(in.StoreName)
+	if len(storeName) < 2 {
+		return nil, validationError("storeName", "min", "Store name must be at least 2 characters")
 	}
-	if len(strings.TrimSpace(in.StoreName)) > 150 {
-		return nil, apierr.BadRequestError("Store name must be at most 150 characters").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{Field: "storeName", Constraint: "max", Message: "store name must be at most 150 characters"})
+	if len(storeName) > 150 {
+		return nil, validationError("storeName", "max", "Store name must be at most 150 characters")
 	}
-
-	slug := strings.ToLower(strings.TrimSpace(in.Slug))
-	if slug == "" {
-		return nil, apierr.BadRequestError("Slug is required").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{Field: "slug", Constraint: "required", Message: "slug is required"})
-	}
-	if !slugPattern.MatchString(slug) || len(slug) > 150 {
-		return nil, apierr.BadRequestError("Slug must be lowercase letters, numbers, and hyphens").
-			WithCode(apierr.CodeValidationFailed).
-			WithFields(api.FieldError{Field: "slug", Constraint: "slug", Message: "slug must be lowercase letters, numbers, and hyphens"})
+	description := strings.TrimSpace(in.Description)
+	if len(description) > 2000 {
+		return nil, validationError("description", "max", "Description must be at most 2000 characters")
 	}
 
-	var created *model.Vendor
+	slug, reason := validateSlug(in.Slug)
+	if reason != "" {
+		return nil, validationError("slug", "slug", reason)
+	}
+
+	var saved *model.Vendor
+	slugConflict := false
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		if _, err := s.userReader.GetByID(ctx, userID); err != nil {
 			if errors.Is(database.MapError(err), database.ErrNotFound) {
@@ -258,31 +351,86 @@ func (s *Service) RegisterVendor(ctx context.Context, userID uuid.UUID, in Regis
 			return s.handleError(err, "Failed to resolve user")
 		}
 
-		if _, err := s.repo.GetByUserID(ctx, userID); err == nil {
-			return apierr.ConflictError("This account already has a vendor profile").
-				WithCode(errcode.CodeVendorAlreadyRegistered)
-		} else if !errors.Is(database.MapError(err), database.ErrNotFound) {
+		existing, err := s.repo.GetByUserID(ctx, userID)
+		if err == nil {
+			if existing.Status != model.VendorStatusRejected {
+				return apierr.ConflictError("This account already has a vendor profile").
+					WithCode(errcode.CodeVendorAlreadyRegistered)
+			}
+
+			updated, updateErr := s.repo.Update(ctx, existing.ID, UpdateVendorFields{
+				StoreName:      &storeName,
+				Slug:           &slug,
+				Description:    &description,
+				LogoObjectID:   in.LogoObjectID,
+				BannerObjectID: in.BannerObjectID,
+			})
+			if updateErr != nil {
+				if errors.Is(database.MapError(updateErr), database.ErrConflict) {
+					return slugTakenError()
+				}
+				return updateErr
+			}
+			if updateErr := s.repo.MarkResubmitted(ctx, updated.ID); updateErr != nil {
+				return updateErr
+			}
+			saved, err = s.repo.GetByID(ctx, updated.ID)
+			return err
+		}
+		if !errors.Is(database.MapError(err), database.ErrNotFound) {
 			return s.handleError(err, "Failed to check existing vendor profile")
 		}
 
-		var createErr error
-		created, createErr = s.repo.Create(ctx, &CreateVendorInput{
+		slugTaken, err := s.repo.SlugExists(ctx, slug)
+		if err != nil {
+			return err
+		}
+		if slugTaken {
+			return slugTakenError()
+		}
+
+		created, createErr := s.repo.Create(ctx, &CreateVendorInput{
 			UserID:            userID,
-			StoreName:         strings.TrimSpace(in.StoreName),
+			StoreName:         storeName,
 			Slug:              slug,
-			Description:       strings.TrimSpace(in.Description),
+			Description:       description,
 			LogoObjectID:      in.LogoObjectID,
 			BannerObjectID:    in.BannerObjectID,
 			CommissionRateBps: s.settings.VendorCommissionBps(),
 		})
-		return createErr
+		if createErr != nil {
+			if errors.Is(database.MapError(createErr), database.ErrConflict) {
+				// The transaction is aborted after a unique violation, so the
+				// constraint lookup must happen after rollback below.
+				slugConflict = true
+			}
+			return createErr
+		}
+		saved = created
+		return nil
 	})
 	if err != nil {
+		if slugConflict {
+			var taken bool
+			lookupErr := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
+				var e error
+				taken, e = s.repo.SlugExists(ctx, slug)
+				return e
+			})
+			if lookupErr != nil {
+				return nil, s.handleError(lookupErr, "Failed to check vendor slug")
+			}
+			if taken {
+				return nil, slugTakenError()
+			}
+			return nil, apierr.ConflictError("This account already has a vendor profile").
+				WithCode(errcode.CodeVendorAlreadyRegistered)
+		}
 		return nil, s.handleError(err, "Failed to register vendor")
 	}
 
-	s.attachAssetURLs(ctx, created)
-	return created, nil
+	s.attachAssetURLs(ctx, saved)
+	return saved, nil
 }
 
 // GetMyVendor returns the caller's vendor profile.
@@ -310,15 +458,41 @@ func (s *Service) GetVendorByUser(ctx context.Context, userID uuid.UUID) (*model
 // UpdateVendorInput is the vendor-editable profile payload.
 type UpdateVendorInput struct {
 	StoreName       *string
+	Slug            *string
 	Description     *string
 	LogoObjectID    *uuid.UUID
 	BannerObjectID  *uuid.UUID
 	BankAccountInfo map[string]any
 }
 
-// UpdateMyProfile edits the caller's own profile. Suspended/rejected vendors
-// may not edit.
+// UpdateMyProfile edits the caller's own profile. Pending, active, and
+// rejected applications may edit; a rejected edit re-enters review. Suspended
+// vendors are frozen. Slugs are immutable once active.
 func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in UpdateVendorInput) (*model.Vendor, error) {
+	if in.StoreName != nil {
+		name := strings.TrimSpace(*in.StoreName)
+		if len(name) < 2 || len(name) > 150 {
+			return nil, validationError("storeName", "length", "Store name must be between 2 and 150 characters")
+		}
+		in.StoreName = &name
+	}
+	if in.Description != nil {
+		description := strings.TrimSpace(*in.Description)
+		if len(description) > 2000 {
+			return nil, validationError("description", "max", "Description must be at most 2000 characters")
+		}
+		in.Description = &description
+	}
+
+	var normalizedSlug *string
+	if in.Slug != nil {
+		slug, reason := validateSlug(*in.Slug)
+		if reason != "" {
+			return nil, validationError("slug", "slug", reason)
+		}
+		normalizedSlug = &slug
+	}
+
 	var updated *model.Vendor
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		existing, err := s.repo.GetByUserID(ctx, userID)
@@ -329,14 +503,38 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 			return s.handleError(err, "Failed to load vendor")
 		}
 
-		if existing.Status != model.VendorStatusActive && existing.Status != model.VendorStatusPending {
+		switch existing.Status {
+		case model.VendorStatusPending, model.VendorStatusActive, model.VendorStatusRejected:
+		default:
 			return apierr.ForbiddenError("Vendor is not authorized for this action").
 				WithCode(errcode.CodeVendorNotAuthorizedForAction)
 		}
 
-		fields := UpdateVendorFields(in)
+		if existing.Status == model.VendorStatusActive && normalizedSlug != nil && *normalizedSlug != existing.Slug {
+			return validationError("slug", "immutable", "Store slug cannot be changed after approval")
+		}
 
-		updated, err = s.repo.Update(ctx, existing.ID, fields)
+		updated, err = s.repo.Update(ctx, existing.ID, UpdateVendorFields{
+			StoreName:       in.StoreName,
+			Slug:            normalizedSlug,
+			Description:     in.Description,
+			LogoObjectID:    in.LogoObjectID,
+			BannerObjectID:  in.BannerObjectID,
+			BankAccountInfo: in.BankAccountInfo,
+		})
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrConflict) {
+				return slugTakenError()
+			}
+			return err
+		}
+
+		if existing.Status == model.VendorStatusRejected {
+			if err := s.repo.MarkResubmitted(ctx, updated.ID); err != nil {
+				return err
+			}
+			updated, err = s.repo.GetByID(ctx, updated.ID)
+		}
 		return err
 	})
 	if err != nil {
@@ -357,6 +555,8 @@ func isValidVendorTransition(from, to model.VendorStatus) bool {
 	case from == model.VendorStatusActive && to == model.VendorStatusSuspended:
 		return true
 	case from == model.VendorStatusSuspended && to == model.VendorStatusActive:
+		return true
+	case from == model.VendorStatusRejected && to == model.VendorStatusPending:
 		return true
 	default:
 		return false
@@ -410,8 +610,24 @@ func (s *Service) AdminGetVendorByID(ctx context.Context, vendorID uuid.UUID) (*
 	return vendor, nil
 }
 
-// AdminChangeVendorStatus applies a lifecycle transition guarded by the state machine.
-func (s *Service) AdminChangeVendorStatus(ctx context.Context, vendorID uuid.UUID, to model.VendorStatus) (*model.Vendor, error) {
+// AdminChangeVendorStatus applies a lifecycle transition guarded by the state
+// machine and records the reviewing administrator plus a merchant-visible
+// reason for rejection/suspension.
+func (s *Service) AdminChangeVendorStatus(
+	ctx context.Context,
+	vendorID uuid.UUID,
+	to model.VendorStatus,
+	reason string,
+	reviewedBy uuid.UUID,
+) (*model.Vendor, error) {
+	reason = strings.TrimSpace(reason)
+	if len(reason) > 2000 {
+		return nil, validationError("reason", "max", "Status reason must be at most 2000 characters")
+	}
+	if (to == model.VendorStatusRejected || to == model.VendorStatusSuspended) && reason == "" {
+		return nil, validationError("reason", "required", "A reason is required for rejection or suspension")
+	}
+
 	var updated *model.Vendor
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		existing, err := s.repo.GetByID(ctx, vendorID)
@@ -427,7 +643,11 @@ func (s *Service) AdminChangeVendorStatus(ctx context.Context, vendorID uuid.UUI
 				WithCode(errcode.CodeVendorNotAuthorizedForAction)
 		}
 
-		if err := s.repo.SetStatus(ctx, vendorID, to); err != nil {
+		var reasonPtr *string
+		if to == model.VendorStatusRejected || to == model.VendorStatusSuspended {
+			reasonPtr = &reason
+		}
+		if err := s.repo.SetStatus(ctx, vendorID, to, reasonPtr, &reviewedBy); err != nil {
 			return err
 		}
 
@@ -483,10 +703,14 @@ func PayoutOutstandingStatuses() []model.PayoutStatus {
 // earnings minus outstanding (non-rejected) payouts cover the amount. The
 // vendor row is locked FOR UPDATE under the transaction so two concurrent
 // requests cannot both claim the same balance; the audit snapshot is stored.
-func (s *Service) RequestPayout(ctx context.Context, userID uuid.UUID, amount int64) (*model.VendorPayout, error) {
+func (s *Service) RequestPayout(ctx context.Context, userID uuid.UUID, amount int64, idempotencyKey string) (*model.VendorPayout, error) {
 	if amount <= 0 {
 		return nil, apierr.BadRequestError("Payout amount must be positive").
 			WithCode(errcode.CodePayoutInvalidAmount)
+	}
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	if len(idempotencyKey) > 100 {
+		return nil, validationError("Idempotency-Key", "max", "Idempotency key must be at most 100 characters")
 	}
 
 	var payout *model.VendorPayout
@@ -510,6 +734,21 @@ func (s *Service) RequestPayout(ctx context.Context, userID uuid.UUID, amount in
 			return s.handleError(err, "Failed to lock vendor")
 		}
 
+		if idempotencyKey != "" {
+			replayed, lookupErr := s.repo.GetPayoutByIdempotencyKey(ctx, existing.ID, idempotencyKey)
+			if lookupErr == nil {
+				if replayed.Amount != amount {
+					return apierr.ConflictError("Idempotency key was already used for a different amount").
+						WithCode(errcode.CodePayoutIdempotencyConflict)
+				}
+				payout = replayed
+				return nil
+			}
+			if !errors.Is(database.MapError(lookupErr), database.ErrNotFound) {
+				return s.handleError(lookupErr, "Failed to check payout idempotency key")
+			}
+		}
+
 		settled, err := s.settlement.GetVendorSettledEarnings(ctx, existing.ID)
 		if err != nil {
 			return s.handleError(err, "Failed to compute settled earnings")
@@ -525,7 +764,24 @@ func (s *Service) RequestPayout(ctx context.Context, userID uuid.UUID, amount in
 				WithCode(errcode.CodePayoutInsufficientBalance)
 		}
 
-		payout, err = s.repo.CreatePayout(ctx, existing.ID, amount, available)
+		var keyPtr *string
+		if idempotencyKey != "" {
+			keyPtr = &idempotencyKey
+		}
+		payout, err = s.repo.CreatePayout(ctx, existing.ID, amount, available, keyPtr)
+		if err != nil && keyPtr != nil && errors.Is(database.MapError(err), database.ErrConflict) {
+			// A concurrent retry may have won the insert. Return that request
+			// when it represents the same withdrawal intent.
+			replayed, lookupErr := s.repo.GetPayoutByIdempotencyKey(ctx, existing.ID, idempotencyKey)
+			if lookupErr == nil {
+				if replayed.Amount != amount {
+					return apierr.ConflictError("Idempotency key was already used for a different amount").
+						WithCode(errcode.CodePayoutIdempotencyConflict)
+				}
+				payout = replayed
+				return nil
+			}
+		}
 		return err
 	})
 	if err != nil {
@@ -540,12 +796,9 @@ func (s *Service) RequestPayout(ctx context.Context, userID uuid.UUID, amount in
 func (s *Service) ListMyPayouts(ctx context.Context, userID uuid.UUID) ([]*model.VendorPayout, error) {
 	var payouts []*model.VendorPayout
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
-		existing, err := s.repo.GetByUserID(ctx, userID)
+		existing, err := s.requireVendorWithStatus(ctx, userID, model.VendorStatusActive, model.VendorStatusSuspended)
 		if err != nil {
-			if errors.Is(database.MapError(err), database.ErrNotFound) {
-				return apierr.NotFoundError("Vendor not found").WithCode(errcode.CodeVendorNotFound)
-			}
-			return s.handleError(err, "Failed to load vendor")
+			return err
 		}
 
 		payouts, err = s.repo.ListPayoutsByVendor(ctx, existing.ID)
@@ -616,6 +869,19 @@ func (s *Service) AdminTransitionPayout(
 		if !isValidPayoutTransition(existing.Status, to) {
 			return apierr.ConflictError("Payout state transition is not permitted").
 				WithCode(errcode.CodePayoutInvalidStateTransition)
+		}
+
+		// Suspended/rejected stores may not receive money. Rejection remains
+		// legal so the funds can be released back to the balance.
+		if to == model.PayoutStatusApproved || to == model.PayoutStatusProcessing || to == model.PayoutStatusPaid {
+			vendor, err := s.repo.GetByIDForUpdate(ctx, existing.VendorID)
+			if err != nil {
+				return s.handleError(err, "Failed to load vendor")
+			}
+			if vendor.Status != model.VendorStatusActive {
+				return apierr.ConflictError("Payouts cannot be processed while vendor is not active").
+					WithCode(errcode.CodeVendorNotAuthorizedForAction)
+			}
 		}
 
 		if err := s.repo.UpdatePayoutStatus(ctx, payoutID, existing.Status, to, referenceNumber, notes); err != nil {

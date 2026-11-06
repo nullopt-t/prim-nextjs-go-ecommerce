@@ -25,6 +25,7 @@ export function VendorPayouts() {
 	const [loadError, setLoadError] = useState<Error | null>(null);
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [payoutAmount, setPayoutAmount] = useState("");
+	const [payoutRequestKey, setPayoutRequestKey] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 
 	const loadPayouts = async () => {
@@ -68,10 +69,13 @@ export function VendorPayouts() {
 			return;
 		}
 
+		const requestKey = payoutRequestKey ?? crypto.randomUUID();
+		setPayoutRequestKey(requestKey);
 		setSubmitting(true);
 		try {
-			await vendorService.requestPayout({ amount: amountMinor });
+			await vendorService.requestPayout({ amount: amountMinor }, requestKey);
 			notify.success(t("toasts.payoutSubmitted", { amount: (amountMinor / 100).toFixed(2) }));
+			setPayoutRequestKey(null);
 			setIsModalOpen(false);
 			await loadPayouts();
 		} catch (error) {
@@ -129,7 +133,10 @@ export function VendorPayouts() {
 				title={t("payouts.title")}
 				actions={
 					<button
-						onClick={() => setIsModalOpen(true)}
+						onClick={() => {
+							setPayoutRequestKey(null);
+							setIsModalOpen(true);
+						}}
 						className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
 					>
 						{t("actions.requestPayout")}
@@ -277,7 +284,10 @@ export function VendorPayouts() {
 								max={dashboard.availableBalance / 100}
 								required
 								value={payoutAmount}
-								onChange={(event) => setPayoutAmount(event.target.value)}
+								onChange={(event) => {
+									setPayoutAmount(event.target.value);
+									setPayoutRequestKey(null);
+								}}
 								className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground"
 							/>
 							<p className="text-xs text-muted-foreground">

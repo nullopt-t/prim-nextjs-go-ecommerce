@@ -60,6 +60,12 @@ type Vendor struct {
 	CommissionRateBps int `db:"commission_rate_bps" json:"commissionRateBps"`
 	// Status is the vendor lifecycle state.
 	Status VendorStatus `db:"status" json:"status"`
+	// StatusReason is the merchant-visible explanation for the latest rejection or suspension.
+	StatusReason string `db:"status_reason" json:"statusReason,omitempty"`
+	// ReviewedBy is the administrator who last applied a lifecycle decision.
+	ReviewedBy *uuid.UUID `db:"reviewed_by" json:"reviewedBy,omitempty"`
+	// ReviewedAt is when the latest lifecycle decision was made.
+	ReviewedAt *time.Time `db:"reviewed_at" json:"reviewedAt,omitempty"`
 	// BankAccountInfo is an opaque payout-details blob; schema-free until a real payout provider is integrated.
 	BankAccountInfo map[string]any `db:"bank_account_info" json:"bankAccountInfo,omitempty"`
 
@@ -92,6 +98,8 @@ type VendorPayout struct {
 	Notes string `db:"notes" json:"notes,omitempty"`
 	// SnapshotAvailableBalance is a copy of the validated available balance at request time.
 	SnapshotAvailableBalance int64 `db:"snapshot_available_balance" json:"snapshotAvailableBalance"`
+	// IdempotencyKey deduplicates client retries for the same withdrawal intent.
+	IdempotencyKey *string `db:"idempotency_key" json:"-"`
 
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`

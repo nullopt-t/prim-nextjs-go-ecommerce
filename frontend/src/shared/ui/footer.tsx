@@ -76,6 +76,11 @@ export function Footer() {
           path: "/user/orders",
         },
         {
+          id: "comp_sell",
+          nameKey: "footer.sellOnPrim",
+          path: "/sell",
+        },
+        {
           id: "comp_vendor",
           nameKey: "footer.vendorPortal",
           path: "/vendor",

@@ -44,6 +44,10 @@ type OrderItem struct {
 	VendorID *uuid.UUID
 	// VendorEarning is the vendor share in minor units: item total minus platform commission, frozen at checkout.
 	VendorEarning int64
+	// CommissionRateBps is the platform commission rate applied to this line, frozen at checkout.
+	CommissionRateBps int
+	// CommissionAmount is the platform commission in minor units, frozen at checkout.
+	CommissionAmount int64
 }
 
 // Address represents a physical postal mailing address used for billing or shipping.

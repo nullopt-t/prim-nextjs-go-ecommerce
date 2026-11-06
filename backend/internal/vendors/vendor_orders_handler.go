@@ -30,6 +30,10 @@ type VendorOrderItemResponse struct {
 	LineTotal int64 `json:"lineTotal"`
 	// Frozen vendor earning for this line, in minor units.
 	VendorEarning int64 `json:"vendorEarning"`
+	// Frozen commission rate applied to this line.
+	CommissionRateBps int `json:"commissionRateBps"`
+	// Frozen platform commission amount for this line, in minor units.
+	CommissionAmount int64 `json:"commissionAmount"`
 	// Product/variant title from the checkout snapshot, when present.
 	Title string `json:"title,omitempty"`
 }
@@ -80,13 +84,15 @@ func toVendorOrderResponse(o *model.Order) VendorOrderResponse {
 		res.Subtotal += lineTotal
 		res.Earnings += item.VendorEarning
 		res.Items = append(res.Items, VendorOrderItemResponse{
-			ID:              item.ID,
-			VariantID:       item.VariantID,
-			Quantity:        item.Quantity,
-			PriceAtPurchase: item.PriceAtPurchase,
-			LineTotal:       lineTotal,
-			VendorEarning:   item.VendorEarning,
-			Title:           snapshotTitle(item.ProductSnapshot),
+			ID:                item.ID,
+			VariantID:         item.VariantID,
+			Quantity:          item.Quantity,
+			PriceAtPurchase:   item.PriceAtPurchase,
+			LineTotal:         lineTotal,
+			VendorEarning:     item.VendorEarning,
+			CommissionRateBps: item.CommissionRateBps,
+			CommissionAmount:  item.CommissionAmount,
+			Title:             snapshotTitle(item.ProductSnapshot),
 		})
 	}
 	return res

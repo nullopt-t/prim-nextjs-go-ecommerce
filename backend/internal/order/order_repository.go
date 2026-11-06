@@ -91,8 +91,11 @@ func (r *Repository) AddOrderItem(
 		return err
 	}
 	query := `
-		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO order_items (
+			id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
+			vendor_id, vendor_earning, commission_rate_bps, commission_amount
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 	_, err = tx.Exec(
 		ctx,
@@ -105,6 +108,8 @@ func (r *Repository) AddOrderItem(
 		item.ProductSnapshot,
 		item.VendorID,
 		item.VendorEarning,
+		item.CommissionRateBps,
+		item.CommissionAmount,
 	)
 	if err != nil {
 		return fmt.Errorf("add order item: %w", err)
@@ -515,7 +520,8 @@ func (r *Repository) GetOrderItems(
 		return nil, err
 	}
 	query := `
-		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning
+		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
+			vendor_id, vendor_earning, commission_rate_bps, commission_amount
 		FROM order_items
 		WHERE order_id = $1
 	`
@@ -537,6 +543,8 @@ func (r *Repository) GetOrderItems(
 			&item.ProductSnapshot,
 			&item.VendorID,
 			&item.VendorEarning,
+			&item.CommissionRateBps,
+			&item.CommissionAmount,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
 		}
@@ -561,7 +569,8 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 		return nil, err
 	}
 	query := `
-		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, vendor_id, vendor_earning
+		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
+			vendor_id, vendor_earning, commission_rate_bps, commission_amount
 		FROM order_items
 		WHERE order_id = ANY($1)
 	`
@@ -582,6 +591,8 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 			&item.ProductSnapshot,
 			&item.VendorID,
 			&item.VendorEarning,
+			&item.CommissionRateBps,
+			&item.CommissionAmount,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
 		}

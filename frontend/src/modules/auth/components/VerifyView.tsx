@@ -8,6 +8,7 @@ import { useCart } from "@/modules/cart/model/useCart";
 import { GuestCartPreview } from "./ui/GuestCartPreview";
 import { validateOtpCode } from "../utils/validation";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
+import { safeRedirectPath } from "@/shared/lib/redirect";
 import { useTranslations } from "next-intl";
 
 export function VerifyView() {
@@ -61,9 +62,8 @@ export function VerifyView() {
           sessionStorage.removeItem("merge_cart");
         }
         const searchParams = new URLSearchParams(window.location.search);
-        const redirectParam = searchParams.get("redirect");
-        const destination = redirectParam ? decodeURIComponent(redirectParam) : "/";
-        router.push(destination as any);
+        const destination = safeRedirectPath(searchParams.get("redirect"));
+        router.replace(destination);
       } else {
         notify.error(apiErrorMessage(res, t("verify.invalidCode")));
       }
