@@ -20,13 +20,24 @@ import (
 // Handler exposes vendor portal and admin endpoints over HTTP.
 type Handler struct {
 	service *Service
+	media   MediaUploader
 }
 
-func NewHandler(service *Service) *Handler {
+// MediaUploader is the narrow slice of the object domain the vendor portal
+// needs: merchant thumbnail uploads. The object service owns storage and
+// content-type validation; the vendor handler only gates on vendor status.
+type MediaUploader interface {
+	UploadMedia(c *gin.Context)
+}
+
+func NewHandler(service *Service, media MediaUploader) *Handler {
 	if service == nil {
 		panic("vendor: service is required")
 	}
-	return &Handler{service: service}
+	if media == nil {
+		panic("vendor: media uploader is required")
+	}
+	return &Handler{service: service, media: media}
 }
 
 // ---- Responses ----------------------------------------------------------
@@ -178,6 +189,32 @@ func (h *Handler) RegisterVendor(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.DataResponse{Data: toVendorResponse(vendor)})
+}
+
+// UploadMedia godoc
+// @Summary      Upload a merchant product image
+// @Description  Uploads a raster image to the catalog bucket and returns the storage object id, which callers pass as thumbnailObjectId when creating variants. Only registered vendors may upload.
+// @Tags         Vendor
+// @Accept       multipart/form-data
+// @Param        file formData string true "Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)"
+// @Success      201 {object} api.DataResponse{data=object.MediaItem}
+// @Failure      401 {object} api.ErrorResponse "Authentication required"
+// @Failure      404 {object} api.ErrorResponse "Vendor not found"
+// @Router       /vendor/media [post]
+// @Security     SessionAuth
+func (h *Handler) UploadMedia(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	if _, err := h.service.GetVendorByUser(c.Request.Context(), userID); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	h.media.UploadMedia(c)
 }
 
 // GetMyVendor godoc

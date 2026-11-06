@@ -386,7 +386,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		txRunner,
 		app.logger,
 	)
-	vendorHandler := vendors.NewHandler(vendorService)
+	vendorHandler := vendors.NewHandler(vendorService, objectHandler)
 	vendorRouter := vendors.NewRouter(vendorHandler, sessionStore)
 	vendorRouter.MapRoutes(v1)
 	// checkout

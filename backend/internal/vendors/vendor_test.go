@@ -590,7 +590,7 @@ func (s *VendorServiceSuite) TestCustomerCanRegisterThroughHTTPRoutes() {
 
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
-	vendors.NewRouter(vendors.NewHandler(s.service), staticSessionStore{
+	vendors.NewRouter(vendors.NewHandler(s.service, stubMediaUploader{}), staticSessionStore{
 		session: &model.UserSession{
 			ID:       "router-session",
 			UserID:   uid,
@@ -887,6 +887,12 @@ type staticSessionStore struct {
 func (s staticSessionStore) GetSessionByID(context.Context, string) (*model.UserSession, error) {
 	return s.session, nil
 }
+
+// stubMediaUploader satisfies vendors.MediaUploader for router tests that do
+// not exercise uploads.
+type stubMediaUploader struct{}
+
+func (stubMediaUploader) UploadMedia(*gin.Context) {}
 
 func (s *VendorServiceSuite) assertAPIError(err error) *apierr.APIError {
 	s.Require().Error(err)

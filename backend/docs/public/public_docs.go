@@ -3598,6 +3598,64 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/vendor/media": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Uploads a raster image to the catalog bucket and returns the storage object id, which callers pass as thumbnailObjectId when creating variants. Only registered vendors may upload.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "Vendor"
+                ],
+                "summary": "Upload a merchant product image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/MediaItem"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Vendor not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/vendor/orders": {
             "get": {
                 "security": [
@@ -5893,6 +5951,35 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "MediaItem": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "type": "string"
+                },
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "objectKey": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "MessageResponse": {
             "type": "object",
             "properties": {
@@ -7440,6 +7527,17 @@ const docTemplatepublic = `{
                 "description": {
                     "description": "Full product description.",
                     "type": "string"
+                },
+                "highlights": {
+                    "description": "Key bullet points shown on the storefront.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Active Noise Cancellation",
+                        "30h battery"
+                    ]
                 },
                 "productType": {
                     "description": "Product classification: simple or variable.",

@@ -487,6 +487,25 @@ definitions:
       status:
         type: string
     type: object
+  MediaItem:
+    properties:
+      bucket:
+        type: string
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      fileSize:
+        type: integer
+      id:
+        type: string
+      objectKey:
+        type: string
+      status:
+        type: string
+      url:
+        type: string
+    type: object
   MessageResponse:
     properties:
       message:
@@ -1622,6 +1641,14 @@ definitions:
       description:
         description: Full product description.
         type: string
+      highlights:
+        description: Key bullet points shown on the storefront.
+        example:
+        - Active Noise Cancellation
+        - 30h battery
+        items:
+          type: string
+        type: array
       productType:
         description: 'Product classification: simple or variable.'
         enum:
@@ -4518,6 +4545,42 @@ paths:
       security:
       - SessionAuth: []
       summary: Vendor dashboard
+      tags:
+      - Vendor
+  /vendor/media:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a raster image to the catalog bucket and returns the storage
+        object id, which callers pass as thumbnailObjectId when creating variants.
+        Only registered vendors may upload.
+      parameters:
+      - description: Image file (JPEG, PNG, GIF, WebP or AVIF, up to 10 MB)
+        in: formData
+        name: file
+        required: true
+        type: string
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/MediaItem'
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Vendor not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Upload a merchant product image
       tags:
       - Vendor
   /vendor/orders:
