@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { Link, useRouter } from "@/shared/i18n/navigation";
 import { sellerService } from "@/modules/seller/api/sellerService";
-import type { SellerProduct } from "@/modules/seller/types";
+import type { SellerProduct, SellerCustomAttribute } from "@/modules/seller/types";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Brand, Category, CategoryAttribute } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -113,6 +113,10 @@ export function SellerProductWizard() {
 	const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
+	const [customAttrKey, setCustomAttrKey] = useState("");
+	const [customAttrLabel, setCustomAttrLabel] = useState("");
+	const [customAttrValues, setCustomAttrValues] = useState("");
+	const [creatingAttribute, setCreatingAttribute] = useState(false);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
 	const [savedCombinations, setSavedCombinations] = useState<Record<string, string>[]>([]);
 	const [swatchImages, setSwatchImages] = useState<Record<string, string>>({});
@@ -283,11 +287,21 @@ export function SellerProductWizard() {
 		}
 		setAttributesLoading(true);
 		setAttributesError(null);
-		void catalogService
-			.getCategoryAttributes(formData.categoryId)
-			.then((response) => {
+		void Promise.all([
+			catalogService.getCategoryAttributes(formData.categoryId),
+			sellerService.getAttributes(formData.categoryId).catch(() => ({ data: [] as SellerCustomAttribute[] })),
+		])
+			.then(([response, sellerResponse]) => {
 				if (cancelled) return;
-				setCategoryAttributes(response.data ?? []);
+				const sellerAttributes = (sellerResponse.data ?? []).map((attribute) => ({
+					key: attribute.key,
+					label: attribute.label,
+					valueType: attribute.valueType || "enum",
+					allowedValues: Array.isArray(attribute.allowedValues) ? attribute.allowedValues : undefined,
+					isFilterable: attribute.isFilterable,
+					sortOrder: attribute.sortOrder ?? 0,
+				}));
+				setCategoryAttributes([...(response.data ?? []), ...sellerAttributes]);
 			})
 			.catch((error: unknown) => {
 				if (cancelled) return;
@@ -391,6 +405,47 @@ export function SellerProductWizard() {
 
 	const goNext = () => {
 		if (validateStep(step) && step < 3) setStep((step + 1) as WizardStep);
+	};
+
+	const createCustomAttribute = async () => {
+		if (!formData.categoryId || creatingAttribute) return;
+		const key = customAttrKey.trim().toLowerCase();
+		const label = customAttrLabel.trim();
+		const allowedValues = customAttrValues
+			.split(",")
+			.map((value) => value.trim())
+			.filter(Boolean);
+		if (!key || !label || allowedValues.length === 0) return;
+		setCreatingAttribute(true);
+		try {
+			const created = await sellerService.createAttribute({
+				categoryId: formData.categoryId,
+				key,
+				label,
+				valueType: "enum",
+				allowedValues,
+			});
+			setCustomAttrKey("");
+			setCustomAttrLabel("");
+			setCustomAttrValues("");
+			const attribute = created.data;
+			setCategoryAttributes((current) => [
+				...current,
+				{
+					key: attribute.key,
+					label: attribute.label,
+					valueType: attribute.valueType || "enum",
+					allowedValues: Array.isArray(attribute.allowedValues) ? attribute.allowedValues : allowedValues,
+					isFilterable: attribute.isFilterable,
+					sortOrder: attribute.sortOrder ?? 0,
+				},
+			]);
+			notify.success(t("wizard.customAttributes.created"));
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("products.saveFailed")));
+		} finally {
+			setCreatingAttribute(false);
+		}
 	};
 
 	const syncSavedAxes = (next: Record<string, string>[]) => {
@@ -803,6 +858,43 @@ export function SellerProductWizard() {
 								)}
 								{!attributesLoading && !attributesError && !categoryAttributes.length && (
 									<p className="rounded-md bg-secondary/50 p-3 text-xs text-muted-foreground">{t("wizard.axes.noneDescription")}</p>
+								)}
+
+								{!attributesLoading && !attributesError && formData.categoryId && (
+									<div className="rounded-lg border border-dashed border-border p-3">
+										<p className="text-xs font-semibold text-foreground">{t("wizard.customAttributes.title")}</p>
+										<p className="mt-0.5 text-xs text-muted-foreground">{t("wizard.customAttributes.subtitle")}</p>
+										<div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+											<input
+												value={customAttrKey}
+												onChange={(e) => setCustomAttrKey(e.target.value)}
+												placeholder={t("wizard.customAttributes.keyPlaceholder")}
+												dir="ltr"
+												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+											/>
+											<input
+												value={customAttrLabel}
+												onChange={(e) => setCustomAttrLabel(e.target.value)}
+												placeholder={t("wizard.customAttributes.labelPlaceholder")}
+												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+											/>
+											<input
+												value={customAttrValues}
+												onChange={(e) => setCustomAttrValues(e.target.value)}
+												placeholder={t("wizard.customAttributes.valuesPlaceholder")}
+												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+											/>
+										</div>
+										<button
+											type="button"
+											disabled={creatingAttribute || !customAttrKey.trim() || !customAttrLabel.trim() || !customAttrValues.trim()}
+											onClick={() => void createCustomAttribute()}
+											className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
+										>
+											<Plus className="size-3.5" />
+											{t("wizard.customAttributes.create")}
+										</button>
+									</div>
 								)}
 
 								{variationRows.map((row, rowIndex) => {

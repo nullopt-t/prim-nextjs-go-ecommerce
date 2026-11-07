@@ -14,6 +14,8 @@ import type {
   Seller,
   SellerDashboard,
   SellerMediaUpload,
+  SellerCustomAttribute,
+  CreateSellerAttributePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,
@@ -113,6 +115,13 @@ export const sellerService = {
     return api.upload<ApiResponse<SellerMediaUpload>>("/api/v1/seller/media", formData);
   },
   getPromotions: () => api.get<{ data: SellerPromotion[] }>("/api/v1/seller/promotions"),
+  getAttributes: (categoryId: string) =>
+    api.get<{ data: SellerCustomAttribute[] }>(`/api/v1/seller/attributes?categoryId=${encodeURIComponent(categoryId)}`),
+  createAttribute: (payload: CreateSellerAttributePayload) =>
+    api.post<ApiResponse<SellerCustomAttribute>, CreateSellerAttributePayload>("/api/v1/seller/attributes", payload),
+  updateAttribute: (id: string, payload: { label?: string; allowedValues?: string[] }) =>
+    api.patch<ApiMessageResponse, { label?: string; allowedValues?: string[] }>(`/api/v1/seller/attributes/${id}`, payload),
+  deleteAttribute: (id: string) => api.delete<ApiMessageResponse>(`/api/v1/seller/attributes/${id}`),
   createPromotion: (payload: CreateSellerPromotionPayload) =>
     api.post<ApiResponse<SellerPromotion>, CreateSellerPromotionPayload>("/api/v1/seller/promotions", payload),
   setPromotionStatus: (id: string, status: "active" | "disabled" | "archived") =>
@@ -133,6 +142,8 @@ export type {
   Seller,
   SellerDashboard,
   SellerMediaUpload,
+  SellerCustomAttribute,
+  CreateSellerAttributePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,

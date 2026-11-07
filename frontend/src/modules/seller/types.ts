@@ -178,6 +178,25 @@ export interface SellerMediaUpload {
   url: string;
 }
 
+export interface SellerCustomAttribute {
+  id: string;
+  categoryId?: string;
+  key: string;
+  label: string;
+  valueType: string;
+  allowedValues?: string[] | string;
+  isFilterable: boolean;
+  sortOrder: number;
+}
+
+export interface CreateSellerAttributePayload {
+  categoryId: string;
+  key: string;
+  label: string;
+  valueType?: string;
+  allowedValues?: string[];
+}
+
 export interface SellerPromotion {
   id: string;
   code: string;
