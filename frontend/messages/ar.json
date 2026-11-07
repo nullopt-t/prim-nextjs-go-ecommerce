@@ -2619,6 +2619,8 @@
     "subtitle": "اجمع منتجاتك الحالية في حزمة بسعر خاص بها. تُباع الحزمة كمنتج واحد.",
     "createTitle": "إنشاء حزمة",
     "bundleTitle": "عنوان الحزمة",
+    "description": "الوصف",
+    "descriptionPlaceholder": "اوصف الحزمة واستخدام كل عنصر…",
     "bundlePrice": "سعر الحزمة",
     "currency": "العملة",
     "thumbnail": "الصورة الغلاف (اختياري)",

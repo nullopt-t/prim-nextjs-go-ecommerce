@@ -26,6 +26,7 @@ export function SellerBundles() {
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
 	const [title, setTitle] = useState("");
+	const [description, setDescription] = useState("");
 	const [price, setPrice] = useState("");
 	const [currency, setCurrency] = useState("EGP");
 	const [thumbnailUrl, setThumbnailUrl] = useState("");
@@ -82,6 +83,7 @@ export function SellerBundles() {
 	const startEdit = (bundle: SellerBundle) => {
 		setEditingId(bundle.id);
 		setTitle(bundle.productTitle);
+		setDescription("");
 		setPrice(String(bundle.bundlePrice / 100));
 		setCurrency(bundle.currency);
 		setThumbnailUrl("");
@@ -98,6 +100,7 @@ export function SellerBundles() {
 	const cancelEdit = () => {
 		setEditingId(null);
 		setTitle("");
+		setDescription("");
 		setPrice("");
 		setThumbnailUrl("");
 		setItems([{ productId: "", variantId: "", quantity: "1" }]);
@@ -127,6 +130,7 @@ export function SellerBundles() {
 			} else {
 				await sellerService.createBundle({
 					title: title.trim(),
+					description: description.trim() || undefined,
 					bundlePrice: priceMinor,
 					currency: currency.trim().toUpperCase() || "EGP",
 					thumbnailUrl: thumbnailUrl || undefined,
@@ -241,6 +245,16 @@ export function SellerBundles() {
 				</div>
 
 
+				<div className="space-y-1">
+					<label className="text-xs font-medium text-foreground">{t("bundles.description")}</label>
+					<textarea
+						value={description}
+						onChange={(e) => setDescription(e.target.value)}
+						rows={3}
+						placeholder={t("bundles.descriptionPlaceholder")}
+						className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+					/>
+				</div>
 				<div className="space-y-3">
 					<div className="flex items-center justify-between">
 						<p className="text-xs font-semibold text-foreground">{t("bundles.itemsTitle")}</p>

@@ -2619,6 +2619,8 @@
     "subtitle": "Combine your existing products into a kit with its own price. The bundle sells as a single product.",
     "createTitle": "Create a bundle",
     "bundleTitle": "Bundle title",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the kit and what each item is for…",
     "bundlePrice": "Bundle price",
     "currency": "Currency",
     "thumbnail": "Cover image (optional)",
