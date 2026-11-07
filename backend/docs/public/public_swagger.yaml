@@ -148,6 +148,19 @@ definitions:
         example: 28
         type: integer
     type: object
+  BundleItem:
+    properties:
+      id:
+        type: string
+      productId:
+        type: string
+      quantity:
+        type: integer
+      title:
+        type: string
+      variantId:
+        type: string
+    type: object
   CartItemResponse:
     properties:
       attributes:
@@ -1340,6 +1353,77 @@ definitions:
         description: Updated display label.
         maxLength: 200
         type: string
+    type: object
+  SellerBundle:
+    properties:
+      bundlePrice:
+        type: integer
+      createdAt:
+        type: string
+      currency:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/BundleItem'
+        type: array
+      productId:
+        type: string
+      productSlug:
+        type: string
+      productTitle:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  SellerBundleItemRequest:
+    properties:
+      productId:
+        description: Component product UUID.
+        type: string
+      quantity:
+        description: Units in the kit.
+        minimum: 1
+        type: integer
+      variantId:
+        description: Optional component variant UUID; defaults to the product's default
+          line.
+        type: string
+    required:
+    - productId
+    - quantity
+    type: object
+  SellerBundleRequest:
+    properties:
+      bundlePrice:
+        description: Bundle price in minor units, charged per kit.
+        type: integer
+      currency:
+        description: ISO currency code; defaults to EGP.
+        type: string
+      description:
+        description: Optional description.
+        type: string
+      items:
+        description: Kit composition; at least one item.
+        items:
+          $ref: '#/definitions/SellerBundleItemRequest'
+        minItems: 1
+        type: array
+      thumbnailUrl:
+        description: Optional public cover image URL.
+        type: string
+      title:
+        description: Bundle display title.
+        maxLength: 200
+        type: string
+    required:
+    - bundlePrice
+    - items
+    - title
     type: object
   SellerCreateProductRequest:
     properties:
@@ -4028,6 +4112,100 @@ paths:
       security:
       - SessionAuth: []
       summary: Edit a custom attribute
+      tags:
+      - Seller
+  /seller/bundles:
+    get:
+      description: Returns product bundles owned by the authenticated seller with
+        their composition.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerBundle'
+                  type: array
+              type: object
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my bundles
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Bundles existing catalog items into a kit product priced at the
+        bundle price.
+      parameters:
+      - description: Bundle payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerBundleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerBundle'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Create a bundle
+      tags:
+      - Seller
+  /seller/bundles/{id}:
+    delete:
+      description: Removes the bundle composition and its backing product.
+      parameters:
+      - description: Bundle UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Bundle not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a bundle
       tags:
       - Seller
   /seller/dashboard:

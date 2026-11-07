@@ -382,6 +382,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		variantService,
 		couponService,
 		attributeRepo,
+		sellers.NewBundleStore(txRunner),
 		inventoryService,
 		sellers.NewStaticCommissionDefaults(),
 		app.storageProvider,

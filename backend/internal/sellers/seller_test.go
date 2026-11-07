@@ -157,6 +157,61 @@ func (f *fakeSellerAttributeStore) DeleteSellerAttribute(_ context.Context, sell
 	return nil
 }
 
+// fakeBundleStore is an in-memory BundleStore double.
+type fakeBundleStore struct {
+	mu      sync.Mutex
+	bundles map[uuid.UUID]*sellers.SellerBundle
+}
+
+func newFakeBundleStore() *fakeBundleStore {
+	return &fakeBundleStore{bundles: map[uuid.UUID]*sellers.SellerBundle{}}
+}
+
+func (f *fakeBundleStore) CreateBundle(_ context.Context, sellerID uuid.UUID, bundlePrice int64, currency string, productID uuid.UUID, items []sellers.BundleItem) (*sellers.SellerBundle, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	bundle := &sellers.SellerBundle{
+		ID:          uuid.New(),
+		ProductID:   productID,
+		BundlePrice: bundlePrice,
+		Currency:    currency,
+		Items:       items,
+	}
+	f.bundles[bundle.ID] = bundle
+	return bundle, nil
+}
+
+func (f *fakeBundleStore) ListBundles(_ context.Context, sellerID uuid.UUID) ([]sellers.SellerBundle, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var list []sellers.SellerBundle
+	for _, bundle := range f.bundles {
+		list = append(list, *bundle)
+	}
+	return list, nil
+}
+
+func (f *fakeBundleStore) DeleteBundle(_ context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	bundle, ok := f.bundles[bundleID]
+	if !ok {
+		return uuid.Nil, database.ErrNotFound
+	}
+	delete(f.bundles, bundleID)
+	return bundle.ProductID, nil
+}
+
+func (f *fakeBundleStore) GetBundleProductID(_ context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	bundle, ok := f.bundles[bundleID]
+	if !ok {
+		return uuid.Nil, database.ErrNotFound
+	}
+	return bundle.ProductID, nil
+}
+
 type SellerServiceSuite struct {
 	suite.Suite
 
@@ -171,6 +226,7 @@ type SellerServiceSuite struct {
 	variants   *fakeVariantCatalog
 	coupons    *fakeCouponCatalog
 	attrs      *fakeSellerAttributeStore
+	bundles    *fakeBundleStore
 	stock      *fakeStockAdjuster
 	runner     database.Runner
 }
@@ -472,6 +528,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	s.variants = newFakeVariantCatalog()
 	s.coupons = newFakeCouponCatalog()
 	s.attrs = newFakeSellerAttributeStore()
+	s.bundles = newFakeBundleStore()
 	s.stock = &fakeStockAdjuster{}
 
 	s.service = sellers.NewService(
@@ -484,6 +541,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 		s.variants,
 		s.coupons,
 		s.attrs,
+		s.bundles,
 		s.stock,
 		sellers.NewStaticCommissionDefaults(),
 		storage.NoopProvider{},
