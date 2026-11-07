@@ -13,93 +13,26 @@ import { PageHeader } from "@/shared/ui/pageHeader";
 import { ProductGallery } from "@/modules/catalog/components/ui/ProductGallery";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
 import { colorHexFor, isColorAttribute } from "@/modules/seller/lib/colorSwatch";
+import type {
+	ProductForm,
+	VariationRow,
+	VariantOverride,
+	WizardStep,
+} from "./wizard/wizardTypes";
+import {
+	EMPTY_FORM,
+	slugify,
+	parseMajorPrice,
+	draftKeyFor,
+	uniqueKeys,
+	formatCombination,
+	combinationKey,
+} from "./wizard/wizardTypes";
+import { usePersistDraft } from "./wizard/useWizardDraft";
+import { CustomAttributeBuilder } from "./wizard/CustomAttributeBuilder";
+import { VariantPricing } from "./wizard/VariantPricing";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
-
-interface ProductForm {
-	title: string;
-	slug: string;
-	brandId: string;
-	categoryId: string;
-	description: string;
-	highlights: string;
-	productType: "simple" | "variable";
-	variationAxes: string;
-	sku: string;
-	price: string;
-	crossesOutPrice: string;
-	currency: string;
-	initialStock: string;
-}
-
-const EMPTY_FORM: ProductForm = {
-	title: "",
-	slug: "",
-	brandId: "",
-	categoryId: "",
-	description: "",
-	highlights: "",
-	productType: "simple",
-	variationAxes: "",
-	sku: "",
-	price: "",
-	crossesOutPrice: "",
-	currency: "EGP",
-	initialStock: "0",
-};
-
-type WizardStep = 0 | 1 | 2 | 3;
-
-function slugify(value: string) {
-	return value
-		.trim()
-		.toLowerCase()
-		.normalize("NFKD")
-		.replace(/[^\w\s-]/g, "")
-		.replace(/[\s_-]+/g, "-")
-		.replace(/^-+|-+$/g, "");
-}
-
-function parseMajorPrice(value: string): number | undefined {
-	const parsed = Number(value);
-	if (value.trim() === "" || !Number.isFinite(parsed) || parsed <= 0) return undefined;
-	return Math.round(parsed * 100);
-}
-
-function draftKeyFor(productId?: string) {
-	return productId ? `prim:seller-product-draft:${productId}` : "prim:seller-product-draft:new";
-}
-
-// One composer row while building a single combination: an attribute plus
-// the one value it takes in that combination. Saved combinations are built
-// one at a time instead of expanding every value into a cartesian product.
-interface VariationRow {
-	key: string;
-	value: string;
-}
-
-function uniqueKeys(combinations: Record<string, string>[]): string[] {
-	return [...new Set(combinations.flatMap((combination) => Object.keys(combination)))];
-}
-
-function formatCombination(combination: Record<string, string>): string {
-	return Object.values(combination).join(", ");
-}
-
-function combinationKey(combination: Record<string, string>): string {
-	return Object.keys(combination)
-		.sort()
-		.map((key) => `${key}=${combination[key]}`)
-		.join("|");
-}
-
-interface VariantOverride {
-	price?: string;
-	crossesOutPrice?: string;
-	sku?: string;
-	stock?: string;
-	thumbnailUrl?: string;
-}
 
 export function SellerProductWizard() {
 	const t = useTranslations("seller");
@@ -113,10 +46,6 @@ export function SellerProductWizard() {
 	const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
 	const [attributesLoading, setAttributesLoading] = useState(false);
 	const [attributesError, setAttributesError] = useState<string | null>(null);
-	const [customAttrKey, setCustomAttrKey] = useState("");
-	const [customAttrLabel, setCustomAttrLabel] = useState("");
-	const [customAttrValues, setCustomAttrValues] = useState("");
-	const [creatingAttribute, setCreatingAttribute] = useState(false);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
 	const [savedCombinations, setSavedCombinations] = useState<Record<string, string>[]>([]);
 	const [swatchImages, setSwatchImages] = useState<Record<string, string>>({});
@@ -316,12 +245,12 @@ export function SellerProductWizard() {
 		};
 	}, [formData.categoryId, t]);
 
-	// Persist the staged draft so back/forward navigation and refresh keep state.
-	useEffect(() => {
-		if (!hydrated) return;
-		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides, savedCombinations, swatchImages }));
-		setLastSavedAt(Date.now());
-	}, [draftKey, formData, variantOverrides, savedCombinations, swatchImages, hydrated]);
+	usePersistDraft(
+		draftKey,
+		{ formData, variantOverrides, savedCombinations, swatchImages },
+		hydrated,
+		setLastSavedAt,
+	);
 
 	const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
 		setFormData((current) => ({ ...current, [key]: value }));
@@ -405,47 +334,6 @@ export function SellerProductWizard() {
 
 	const goNext = () => {
 		if (validateStep(step) && step < 3) setStep((step + 1) as WizardStep);
-	};
-
-	const createCustomAttribute = async () => {
-		if (!formData.categoryId || creatingAttribute) return;
-		const key = customAttrKey.trim().toLowerCase();
-		const label = customAttrLabel.trim();
-		const allowedValues = customAttrValues
-			.split(",")
-			.map((value) => value.trim())
-			.filter(Boolean);
-		if (!key || !label || allowedValues.length === 0) return;
-		setCreatingAttribute(true);
-		try {
-			const created = await sellerService.createAttribute({
-				categoryId: formData.categoryId,
-				key,
-				label,
-				valueType: "enum",
-				allowedValues,
-			});
-			setCustomAttrKey("");
-			setCustomAttrLabel("");
-			setCustomAttrValues("");
-			const attribute = created.data;
-			setCategoryAttributes((current) => [
-				...current,
-				{
-					key: attribute.key,
-					label: attribute.label,
-					valueType: attribute.valueType || "enum",
-					allowedValues: Array.isArray(attribute.allowedValues) ? attribute.allowedValues : allowedValues,
-					isFilterable: attribute.isFilterable,
-					sortOrder: attribute.sortOrder ?? 0,
-				},
-			]);
-			notify.success(t("wizard.customAttributes.created"));
-		} catch (error) {
-			notify.error(apiErrorMessage(error, t("products.saveFailed")));
-		} finally {
-			setCreatingAttribute(false);
-		}
 	};
 
 	const syncSavedAxes = (next: Record<string, string>[]) => {
@@ -861,42 +749,12 @@ export function SellerProductWizard() {
 								)}
 
 								{!attributesLoading && !attributesError && formData.categoryId && (
-									<div className="rounded-lg border border-dashed border-border p-3">
-										<p className="text-xs font-semibold text-foreground">{t("wizard.customAttributes.title")}</p>
-										<p className="mt-0.5 text-xs text-muted-foreground">{t("wizard.customAttributes.subtitle")}</p>
-										<div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-											<input
-												value={customAttrKey}
-												onChange={(e) => setCustomAttrKey(e.target.value)}
-												placeholder={t("wizard.customAttributes.keyPlaceholder")}
-												dir="ltr"
-												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-											/>
-											<input
-												value={customAttrLabel}
-												onChange={(e) => setCustomAttrLabel(e.target.value)}
-												placeholder={t("wizard.customAttributes.labelPlaceholder")}
-												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-											/>
-											<input
-												value={customAttrValues}
-												onChange={(e) => setCustomAttrValues(e.target.value)}
-												placeholder={t("wizard.customAttributes.valuesPlaceholder")}
-												className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-											/>
-										</div>
-										<button
-											type="button"
-											disabled={creatingAttribute || !customAttrKey.trim() || !customAttrLabel.trim() || !customAttrValues.trim()}
-											onClick={() => void createCustomAttribute()}
-											className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground disabled:opacity-50"
-										>
-											<Plus className="size-3.5" />
-											{t("wizard.customAttributes.create")}
-										</button>
-									</div>
+									<CustomAttributeBuilder
+										categoryId={formData.categoryId}
+										onCreated={(attribute) => setCategoryAttributes((current) => [...current, attribute])}
+									/>
 								)}
-
+								
 								{variationRows.map((row, rowIndex) => {
 									const selectedAttribute = categoryAttributes.find((attribute) => attribute.key === row.key);
 									const usedKeys = variationRows.map((item) => item.key).filter(Boolean);
@@ -1165,117 +1023,17 @@ export function SellerProductWizard() {
 						<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
 						</>)}
 					{mode === "create" && formData.productType === "variable" && (
-						<>
-							<div className="max-w-40 space-y-1">
-								<label htmlFor="wizard-currency" className="text-sm font-medium text-foreground">{t("products.form.currency")}</label>
-								<input
-									id="wizard-currency"
-									value={formData.currency}
-									onChange={(e) => setField("currency", e.target.value.toUpperCase())}
-									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-								/>
-								{fieldError("currency")}
-							</div>
-							{combinations.length > 0 && (
-							<div className="space-y-3 rounded-md border border-border p-4">
-								<div>
-									<h3 className="text-sm font-semibold text-foreground">{t("wizard.variants.title")}</h3>
-									<p className="text-xs text-muted-foreground">{t("wizard.variants.subtitle")}</p>
-								</div>
-								{combinations.map((combination) => {
-									const key = combinationKey(combination);
-									const override = variantOverrides[key] ?? {};
-									const setOverride = (patch: VariantOverride) =>
-										setVariantOverrides((current) => ({ ...current, [key]: { ...(current[key] ?? {}), ...patch } }));
-									return (
-										<div key={key} className="rounded-lg border border-border p-3">
-											<p className="text-sm font-medium text-foreground">{formatCombination(combination)}</p>
-											<div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
-												<div className="space-y-1">
-													<label className="text-xs font-medium text-muted-foreground">{t("products.form.sellingPrice")}</label>
-													<input
-														type="number"
-														min="0.01"
-														step="0.01"
-														value={override.price ?? ""}
-														onChange={(e) => setOverride({ price: e.target.value })}
-														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-													/>
-												</div>
-												<div className="space-y-1">
-													<label className="text-xs font-medium text-muted-foreground">{t("products.form.compareAtPrice")}</label>
-													<input
-														type="number"
-														min="0"
-														step="0.01"
-														value={override.crossesOutPrice ?? ""}
-														onChange={(e) => setOverride({ crossesOutPrice: e.target.value })}
-														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-													/>
-												</div>
-												<div className="space-y-1">
-													<label className="text-xs font-medium text-muted-foreground">{t("products.form.skuCode")}</label>
-													<input
-														value={override.sku ?? ""}
-														onChange={(e) => setOverride({ sku: e.target.value })}
-														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-													/>
-												</div>
-												<div className="space-y-1">
-													<label className="text-xs font-medium text-muted-foreground">{t("products.form.initialStock")}</label>
-													<input
-														type="number"
-														min="0"
-														value={override.stock ?? ""}
-														onChange={(e) => setOverride({ stock: e.target.value })}
-														className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-													/>
-												</div>
-											</div>
-											<div className="mt-3 flex items-center gap-3">
-												{override.thumbnailUrl ? (
-													<img src={override.thumbnailUrl} alt={formatCombination(combination)} className="size-14 rounded-md border border-border object-cover" />
-												) : (
-													<div className="flex size-14 items-center justify-center rounded-md border border-dashed border-border text-xs text-muted-foreground">
-														{t("wizard.variants.thumbnail")}
-													</div>
-												)}
-												<div className="flex flex-wrap items-center gap-2">
-													<label className="inline-flex cursor-pointer items-center rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary">
-														{uploadingThumbnailKey === key ? <Loader2 className="size-3.5 animate-spin" /> : null}
-														{t("wizard.variants.chooseThumbnail")}
-														<input
-															type="file"
-															accept="image/*"
-															disabled={uploadingThumbnailKey === key}
-															className="sr-only"
-															onChange={(e) => {
-																void uploadVariantThumbnail(key, e.target.files?.[0]);
-																e.target.value = "";
-															}}
-														/>
-													</label>
-													{override.thumbnailUrl && (
-														<button
-															type="button"
-															onClick={() => setOverride({ thumbnailUrl: undefined })}
-															className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
-														>
-															{t("wizard.variants.removeThumbnail")}
-														</button>
-													)}
-												</div>
-											</div>
-										</div>
-									);
-								})}
-								{fieldError("price")}
-								{fieldError("crossesOutPrice")}
-								{fieldError("initialStock")}
-							</div>
-								)}
-							</>
-						)}
+						<VariantPricing
+							currency={formData.currency}
+							onCurrencyChange={(value) => setField("currency", value)}
+							currencyError={fieldError("currency")}
+							combinations={combinations}
+							variantOverrides={variantOverrides}
+							setVariantOverrides={setVariantOverrides}
+							uploadingThumbnailKey={uploadingThumbnailKey}
+							onUploadThumbnail={uploadVariantThumbnail}
+						/>
+					)}
 					</div>
 				)}
 
