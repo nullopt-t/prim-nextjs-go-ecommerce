@@ -36,6 +36,18 @@ type SellerBundleRequest struct {
 	Items []SellerBundleItemRequest `json:"items" binding:"required,min=1"`
 }
 
+// SellerBundleUpdateRequest is the bundle edit payload; omitted fields are unchanged.
+type SellerBundleUpdateRequest struct {
+	// Updated title.
+	Title *string `json:"title,omitempty" binding:"omitempty,max=200"`
+	// Updated kit price in minor units.
+	BundlePrice *int64 `json:"bundlePrice,omitempty" binding:"omitempty,gt=0"`
+	// Updated currency.
+	Currency *string `json:"currency,omitempty"`
+	// Replacement composition; omit to keep current items.
+	Items []SellerBundleItemRequest `json:"items,omitempty"`
+}
+
 // ListSellerBundles godoc
 // @Summary      List my bundles
 // @Description  Returns product bundles owned by the authenticated seller with their composition.
@@ -122,6 +134,73 @@ func (h *Handler) CreateSellerBundle(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, api.DataResponse{Data: created})
+}
+
+// UpdateSellerBundle godoc
+// @Summary      Edit a bundle
+// @Description  Updates a bundle's title, price, and/or kit composition.
+// @Tags         Seller
+// @Accept       json
+// @Produce      json
+// @Param        id      path string                      true "Bundle UUID" format(uuid)
+// @Param        request body SellerBundleUpdateRequest true "Bundle edit payload"
+// @Success      200 {object} api.MessageResponse
+// @Failure      400 {object} api.BadReqResponse "Validation failed"
+// @Failure      403 {object} api.ForbiddenErrorResponse "Seller not active"
+// @Failure      404 {object} api.NotFoundErrorResponse "Bundle not found"
+// @Router       /seller/bundles/{id} [patch]
+// @Security     SessionAuth
+func (h *Handler) UpdateSellerBundle(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	bundleID, ok := bindSellerID(c)
+	if !ok {
+		return
+	}
+
+	var req SellerBundleUpdateRequest
+	if !bindSellerJSON(c, &req) {
+		return
+	}
+
+	items := make([]BundleItemInput, 0, len(req.Items))
+	for _, item := range req.Items {
+		productID, err := uuid.Parse(item.ProductID)
+		if err != nil {
+			_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+				Field: "items", Constraint: "uuid", Message: "productId must be a UUID",
+			}))
+			return
+		}
+		var variantID *uuid.UUID
+		if item.VariantID != nil {
+			parsed, err := uuid.Parse(*item.VariantID)
+			if err != nil {
+				_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+					Field: "items", Constraint: "uuid", Message: "variantId must be a UUID",
+				}))
+				return
+			}
+			variantID = &parsed
+		}
+		items = append(items, BundleItemInput{ProductID: productID, VariantID: variantID, Quantity: item.Quantity})
+	}
+
+	if err := h.service.UpdateBundle(c.Request.Context(), userID, bundleID, UpdateBundleInput{
+		Title:       req.Title,
+		BundlePrice: req.BundlePrice,
+		Currency:    req.Currency,
+		Items:       items,
+	}); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{Message: "Bundle updated"})
 }
 
 // DeleteSellerBundle godoc

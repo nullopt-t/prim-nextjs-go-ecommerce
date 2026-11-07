@@ -1425,6 +1425,24 @@ definitions:
     - items
     - title
     type: object
+  SellerBundleUpdateRequest:
+    properties:
+      bundlePrice:
+        description: Updated kit price in minor units.
+        type: integer
+      currency:
+        description: Updated currency.
+        type: string
+      items:
+        description: Replacement composition; omit to keep current items.
+        items:
+          $ref: '#/definitions/SellerBundleItemRequest'
+        type: array
+      title:
+        description: Updated title.
+        maxLength: 200
+        type: string
+    type: object
   SellerCreateProductRequest:
     properties:
       brandId:
@@ -4206,6 +4224,47 @@ paths:
       security:
       - SessionAuth: []
       summary: Delete a bundle
+      tags:
+      - Seller
+    patch:
+      consumes:
+      - application/json
+      description: Updates a bundle's title, price, and/or kit composition.
+      parameters:
+      - description: Bundle UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bundle edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerBundleUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Bundle not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Edit a bundle
       tags:
       - Seller
   /seller/dashboard:

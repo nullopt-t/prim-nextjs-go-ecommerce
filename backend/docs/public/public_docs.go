@@ -2649,6 +2649,69 @@ const docTemplatepublic = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Updates a bundle's title, price, and/or kit composition.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Edit a bundle",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Bundle UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Bundle edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerBundleUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Bundle not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/seller/dashboard": {
@@ -7814,6 +7877,31 @@ const docTemplatepublic = `{
                 },
                 "title": {
                     "description": "Bundle display title.",
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "SellerBundleUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "bundlePrice": {
+                    "description": "Updated kit price in minor units.",
+                    "type": "integer"
+                },
+                "currency": {
+                    "description": "Updated currency.",
+                    "type": "string"
+                },
+                "items": {
+                    "description": "Replacement composition; omit to keep current items.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SellerBundleItemRequest"
+                    }
+                },
+                "title": {
+                    "description": "Updated title.",
                     "type": "string",
                     "maxLength": 200
                 }

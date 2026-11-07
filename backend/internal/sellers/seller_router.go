@@ -56,6 +56,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.DELETE("/promotions/:id", r.handler.DeletePromotion)
 		portal.GET("/bundles", r.handler.ListSellerBundles)
 		portal.POST("/bundles", r.handler.CreateSellerBundle)
+		portal.PATCH("/bundles/:id", r.handler.UpdateSellerBundle)
 		portal.DELETE("/bundles/:id", r.handler.DeleteSellerBundle)
 		portal.GET("/products", r.handler.ListMyProducts)
 		portal.POST("/products", r.handler.CreateProduct)

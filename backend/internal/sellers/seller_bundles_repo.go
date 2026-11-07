@@ -39,7 +39,10 @@ type SellerBundle struct {
 type BundleStore interface {
 	CreateBundle(ctx context.Context, sellerID uuid.UUID, bundlePrice int64, currency string, productID uuid.UUID, items []BundleItem) (*SellerBundle, error)
 	ListBundles(ctx context.Context, sellerID uuid.UUID) ([]SellerBundle, error)
+	UpdateBundle(ctx context.Context, sellerID, bundleID uuid.UUID, bundlePrice *int64, currency *string, replaceItems bool, items []BundleItem) error
 	DeleteBundle(ctx context.Context, sellerID, bundleID uuid.UUID) (productID uuid.UUID, err error)
+	GetBundleProductID(ctx context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error)
+	IsBundleProduct(ctx context.Context, productID uuid.UUID) (bool, error)
 }
 
 type bundleStore struct {
@@ -152,6 +155,69 @@ func (b *bundleStore) listItemsForBundles(ctx context.Context, executor database
 	}
 	defer rows.Close()
 	return pgx.CollectRows(rows, pgx.RowToStructByName[BundleItem])
+}
+
+func (b *bundleStore) UpdateBundle(ctx context.Context, sellerID, bundleID uuid.UUID, bundlePrice *int64, currency *string, replaceItems bool, items []BundleItem) error {
+	return b.runner.WithTx(ctx, func(ctx context.Context) error {
+		tx, err := database.RequireTx(ctx)
+		if err != nil {
+			return err
+		}
+		if bundlePrice != nil || currency != nil {
+			if _, err := tx.Exec(ctx, `
+				UPDATE product_bundles
+				SET bundle_price = COALESCE($1, bundle_price),
+				    currency = COALESCE($2, currency),
+				    updated_at = now()
+				WHERE seller_id = $3 AND id = $4
+			`, bundlePrice, currency, sellerID, bundleID); err != nil {
+				return fmt.Errorf("update bundle: %w", err)
+			}
+		}
+		if replaceItems {
+			if _, err := tx.Exec(ctx, `DELETE FROM bundle_items WHERE bundle_id = $1`, bundleID); err != nil {
+				return fmt.Errorf("replace bundle items: %w", err)
+			}
+			for _, item := range items {
+				item.ID = uuid.New()
+				if _, err := tx.Exec(ctx, `
+					INSERT INTO bundle_items (id, bundle_id, product_id, variant_id, quantity, created_at)
+					VALUES ($1, $2, $3, $4, $5, now())
+				`, item.ID, bundleID, item.ProductID, item.VariantID, item.Quantity); err != nil {
+					return fmt.Errorf("insert bundle item: %w", err)
+				}
+			}
+		}
+		return nil
+	})
+}
+
+func (b *bundleStore) GetBundleProductID(ctx context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	var productID uuid.UUID
+	if err := executor.QueryRow(ctx, `
+		SELECT product_id FROM product_bundles WHERE seller_id = $1 AND id = $2
+	`, sellerID, bundleID).Scan(&productID); err != nil {
+		return uuid.Nil, fmt.Errorf("get bundle product: %w", err)
+	}
+	return productID, nil
+}
+
+func (b *bundleStore) IsBundleProduct(ctx context.Context, productID uuid.UUID) (bool, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return false, err
+	}
+	var exists bool
+	if err := executor.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM product_bundles WHERE product_id = $1)
+	`, productID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check bundle product: %w", err)
+	}
+	return exists, nil
 }
 
 func (b *bundleStore) DeleteBundle(ctx context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {

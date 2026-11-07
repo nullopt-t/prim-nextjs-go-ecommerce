@@ -191,6 +191,43 @@ func (f *fakeBundleStore) ListBundles(_ context.Context, sellerID uuid.UUID) ([]
 	return list, nil
 }
 
+func (f *fakeBundleStore) UpdateBundle(_ context.Context, sellerID, bundleID uuid.UUID, bundlePrice *int64, currency *string, replaceItems bool, items []sellers.BundleItem) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	bundle, ok := f.bundles[bundleID]
+	if !ok {
+		return database.ErrNotFound
+	}
+	if bundlePrice != nil {
+		bundle.BundlePrice = *bundlePrice
+	}
+	if replaceItems {
+		bundle.Items = items
+	}
+	return nil
+}
+
+func (f *fakeBundleStore) IsBundleProduct(_ context.Context, productID uuid.UUID) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, bundle := range f.bundles {
+		if bundle.ProductID == productID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (f *fakeBundleStore) GetBundleProductID(_ context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	bundle, ok := f.bundles[bundleID]
+	if !ok {
+		return uuid.Nil, database.ErrNotFound
+	}
+	return bundle.ProductID, nil
+}
+
 func (f *fakeBundleStore) DeleteBundle(_ context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
