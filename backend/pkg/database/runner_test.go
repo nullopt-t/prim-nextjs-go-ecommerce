@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +70,7 @@ func TestWithTx_RejectsMismatchedDatabase(t *testing.T) {
 	tx := NewTxWithDB(nil, db1)
 	ctx := WithTx(context.Background(), tx)
 
-	runner2 := NewTxRunner(db2)
+	runner2 := NewTxRunner(db2, log.NewNoopLogger())
 	err := runner2.WithTx(ctx, func(ctx context.Context) error {
 		return nil
 	})
@@ -179,4 +180,115 @@ func TestExecutorFromContext_ReturnsTxWhenPresent(t *testing.T) {
 	pool := &fakeExecutor{name: "pool"}
 	got := ExecutorFromContext(ctx, pool)
 	require.Same(t, ambient, got)
+}
+
+func TestWithRetry_SuccessOnFirstAttempt(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		return nil
+	}, 3)
+
+	require.NoError(t, err)
+}
+
+func TestWithRetry_RetryableError(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	callCount := 0
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		callCount++
+		// Simulate a retryable error on first call, success on second
+		if callCount == 1 {
+			return &pgconn.PgError{Code: "40001"} // serialization_failure
+		}
+		return nil
+	}, 3)
+
+	require.NoError(t, err)
+	require.Equal(t, 2, callCount, "should have retried once")
+}
+
+func TestWithRetry_NonRetryableError(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	sentinel := errors.New("some other error")
+	callCount := 0
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		callCount++
+		return sentinel
+	}, 3)
+
+	require.ErrorIs(t, err, sentinel)
+	require.Equal(t, 1, callCount, "should not retry on non-retryable error")
+}
+
+func TestWithRetry_ExhaustsRetries(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	retryErr := &pgconn.PgError{Code: "40P01"} // deadlock_detected
+	callCount := 0
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		callCount++
+		return retryErr
+	}, 3)
+
+	require.ErrorIs(t, err, retryErr)
+	require.Equal(t, 3, callCount, "should have used all 3 attempts")
+}
+
+func TestWithRetry_ContextCancellation(t *testing.T) {
+	ambient := &Tx{}
+	ctx, cancel := context.WithCancel(contextWithTx(ambient))
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	callCount := 0
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		callCount++
+		cancel() // cancel context during execution
+		return &pgconn.PgError{Code: "40001"}
+	}, 3)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, 1, callCount, "should have attempted once before cancellation")
+}
+
+func TestWithRetry_ZeroRetries(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	sentinel := errors.New("test error")
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		return sentinel
+	}, 0)
+
+	require.ErrorIs(t, err, sentinel)
+}
+
+func TestWithRetry_SuccessAfterRetries(t *testing.T) {
+	ambient := &Tx{}
+	ctx := contextWithTx(ambient)
+	runner := NewTxRunner(&DB{}, log.NewNoopLogger())
+
+	callCount := 0
+	err := runner.WithRetry(ctx, func(ctx context.Context) error {
+		callCount++
+		// Fail first two, succeed on third
+		if callCount < 3 {
+			return &pgconn.PgError{Code: "40001"}
+		}
+		return nil
+	}, 5)
+
+	require.NoError(t, err)
+	require.Equal(t, 3, callCount, "should have succeeded on 3rd attempt")
 }

@@ -4,8 +4,12 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 // Runner defines the contract for executing units of work.
@@ -32,13 +36,20 @@ type Runner interface {
 	// reusing the ambient one when the context already carries it, or binding
 	// the database pool to the context.
 	WithExecutor(ctx context.Context, fn func(ctx context.Context) error) error
+
+	// WithRetry executes the provided callback inside a database transaction,
+	// retrying up to n times when encountering transient, retryable PostgreSQL errors
+	// (such as serialization failures, deadlocks, or connection drops).
+	// Each retry attempt is executed within a fresh transaction context via WithTx.
+	WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error
 }
 
 // crunner implements the Runner interface by managing transactions and pool access
 // against a target DB instance.
 type crunner struct {
 	// db points to the active database connection pool.
-	db *DB
+	db     *DB
+	logger log.Logger
 }
 
 // executorKey keys the active QueryExecutor (pool or *Tx) stored on a context.
@@ -102,8 +113,63 @@ func ExecutorFromContext(ctx context.Context, fallback QueryExecutor) QueryExecu
 }
 
 // NewTxRunner constructs a new transaction runner backed by the provided DB.
-func NewTxRunner(db *DB) *crunner {
-	return &crunner{db: db}
+func NewTxRunner(db *DB, logger log.Logger) *crunner {
+	return &crunner{
+		db:     db,
+		logger: logger,
+	}
+}
+
+// isRetryable checks if the given error is a retryable PostgreSQL error,
+// such as a serialization failure, deadlock, or connection failure.
+func isRetryable(err error) bool {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "40001", "40P01", "08006":
+			return true
+		}
+	}
+	return false
+}
+
+// WithRetry executes the provided callback with retry logic.
+// It retries up to n times when the error is retryable (e.g., serialization
+// failure, deadlock, or connection failure).
+// The callback is executed within a transaction context via WithTx.
+// Each retry attempt gets a fresh transaction.
+// If the context is canceled, the last error is returned.
+// Logging is done via the runner's logger for each retry attempt.
+func (t *crunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	if n <= 0 {
+		return fn(ctx)
+	}
+
+	var lastErr error
+	for attempt := 1; attempt <= n; attempt++ {
+		lastErr = t.WithTx(ctx, fn)
+		if lastErr == nil {
+			return nil // success, no retry needed
+		}
+
+		// If this isn't a retryable error or this is the last attempt, return the error
+		if !isRetryable(lastErr) || attempt >= n {
+			t.logger.Error("WithRetry: not retryable after attempt", log.Meta{"attempt": attempt, "error": lastErr})
+			return lastErr
+		}
+
+		select {
+		case <-ctx.Done():
+			t.logger.Error("WithRetry: context canceled after attempt", log.Meta{"attempt": attempt, "error": ctx.Err()})
+			return ctx.Err()
+		default:
+			// continue to retry
+		}
+
+		t.logger.Warn("WithRetry: retry attempt after error", log.Meta{"attempt": attempt, "max_attempts": n, "error": lastErr})
+	}
+	t.logger.Error("WithRetry: exhausted all attempts", log.Meta{"max_attempts": n, "error": lastErr})
+	return lastErr
 }
 
 // WithTx begins a new PostgreSQL transaction, passes the wrapped transaction on ctx to the
@@ -141,7 +207,7 @@ func (t *crunner) WithTx(ctx context.Context, fn func(ctx context.Context) error
 
 	tx, err := t.db.Pool.Begin(ctx)
 	if err != nil {
-		return MapError(err)
+		return err
 	}
 
 	// Defer rollback using a bounded context to ensure rollback is attempted
@@ -169,12 +235,12 @@ func (t *crunner) WithTx(ctx context.Context, fn func(ctx context.Context) error
 	boundCtx := WithTx(ctx, wrappedTx)
 
 	if err := fn(boundCtx); err != nil {
-		return MapError(err)
+		return err
 	}
 
 	// Commit the transaction.
 	if err := tx.Commit(ctx); err != nil {
-		return MapError(err)
+		return err
 	}
 	return nil
 }

@@ -60,7 +60,7 @@ func main() {
 		logger.Warn("redis connection issue", log.Meta{"error": err})
 	}
 
-	txRunner := database.NewTxRunner(db)
+	txRunner := database.NewTxRunner(db, logger)
 	notificationRepo := user.NewNotificationRepository()
 	notificationService := user.NewNotificationService(txRunner, notificationRepo, logger)
 

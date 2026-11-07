@@ -21,12 +21,12 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/report"
+	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/system"
 	"github.com/nullopt-t/prim-backend/internal/user"
-	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/wishlist"
 
 	"context"
@@ -79,7 +79,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		c.Next()
 	})
 
-	txRunner := database.NewTxRunner(app.db)
+	txRunner := database.NewTxRunner(app.db, app.logger)
 
 	// compression negotiates gzip for the (text-heavy) JSON/CSV responses. It is
 	// registered before ErrorHandler so it observes the fully rendered body and
