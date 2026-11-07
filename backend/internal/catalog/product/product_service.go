@@ -650,6 +650,26 @@ func (s *ProductService) populateProductDetails(
 							v.Thumbnail.PublicURL = s.storageProvider.GetPublicURL(v.Thumbnail.Bucket, v.Thumbnail.Key)
 						}
 					}
+					// A product with no image of its own falls back to the
+					// default variant's thumbnail, then any variant's, so
+					// product responses never lack a thumbnail when one
+					// exists anywhere on the listing.
+					if details.Product.Thumbnail == nil {
+						var fallback *model.Object
+						for _, v := range details.Variants {
+							if v.Thumbnail == nil {
+								continue
+							}
+							if prod.DefaultVariantID != nil && v.ID == *prod.DefaultVariantID {
+								fallback = v.Thumbnail
+								break
+							}
+							if fallback == nil {
+								fallback = v.Thumbnail
+							}
+						}
+						details.Product.Thumbnail = fallback
+					}
 					if mediaByVariant, mediaErr := s.variantReader.ListMediaByVariantIDs(ctx, vIDs); mediaErr == nil {
 						for _, v := range details.Variants {
 							media := mediaByVariant[v.ID]
