@@ -2881,7 +2881,8 @@
         "moreCombinations": "+{count} أخرى",
         "saveCombination": "حفظ التركيبة",
         "savedTitle": "التركيبات المحفوظة",
-        "chooseValue": "اختر قيمة"
+        "chooseValue": "اختر قيمة",
+        "previewTitle": "معاينة واجهة المتجر"
       },
       "variants": {
         "title": "تسعير كل متغير ومخزونه",

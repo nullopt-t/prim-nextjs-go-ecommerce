@@ -2881,7 +2881,8 @@
         "moreCombinations": "+{count} more",
         "saveCombination": "Save combination",
         "savedTitle": "Saved combinations",
-        "chooseValue": "Choose a value"
+        "chooseValue": "Choose a value",
+        "previewTitle": "Storefront preview"
       },
       "variants": {
         "title": "Variant pricing & stock",

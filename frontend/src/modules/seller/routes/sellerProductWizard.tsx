@@ -10,6 +10,7 @@ import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Brand, Category, CategoryAttribute } from "@/modules/catalog/types";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
+import { ProductGallery } from "@/modules/catalog/components/ui/ProductGallery";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
@@ -115,6 +116,8 @@ export function SellerProductWizard() {
 	const [savedCombinations, setSavedCombinations] = useState<Record<string, string>[]>([]);
 	const [variantOverrides, setVariantOverrides] = useState<Record<string, VariantOverride>>({});
 	const [uploadingThumbnailKey, setUploadingThumbnailKey] = useState<string | null>(null);
+	const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
+	const [previewImageIndex, setPreviewImageIndex] = useState(0);
 	const [loadingCatalog, setLoadingCatalog] = useState(true);
 	const [loadError, setLoadError] = useState<Error | null>(null);
 
@@ -553,6 +556,28 @@ export function SellerProductWizard() {
 			</div>
 		);
 	}
+
+	const previewCombinations = mode === "create" && formData.productType === "variable" ? savedCombinations : [];
+	const previewAxes = uniqueKeys(previewCombinations);
+	const previewCombination =
+		previewCombinations.find((combination) =>
+			previewAxes.every((axis) => {
+				const chosen = previewValues[axis];
+				return chosen === undefined || combination[axis] === chosen;
+			}),
+		) ?? previewCombinations[0];
+	const previewOverride = previewCombination ? variantOverrides[combinationKey(previewCombination)] : undefined;
+	const previewImages = previewCombinations
+		.map((combination) => variantOverrides[combinationKey(combination)]?.thumbnailUrl)
+		.filter((url): url is string => Boolean(url));
+	const previewPrice = formData.productType === "variable" ? previewOverride?.price : formData.price;
+	const previewCompareAt = formData.productType === "variable" ? previewOverride?.crossesOutPrice : formData.crossesOutPrice;
+	const previewSku = formData.productType === "variable" ? previewOverride?.sku : formData.sku;
+	const previewStock = formData.productType === "variable" ? previewOverride?.stock : formData.initialStock;
+	const previewDiscount =
+		previewPrice && previewCompareAt && Number(previewCompareAt) > Number(previewPrice)
+			? `${Math.round((1 - Number(previewPrice) / Number(previewCompareAt)) * 100)}%`
+			: undefined;
 
 	const reviewRows = [
 		{ label: t("products.form.title"), value: formData.title.trim() || "—" },
@@ -1070,6 +1095,89 @@ export function SellerProductWizard() {
 
 				{step === 3 && (
 					<div className="mt-5 space-y-4">
+						{mode === "create" && (
+							<div className="rounded-md border border-border">
+								<p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">{t("wizard.attributes.previewTitle")}</p>
+								<div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
+									<ProductGallery
+										images={previewImages}
+										productName={formData.title}
+										activeImage={previewImageIndex}
+										onSelectImage={(index) => {
+											setPreviewImageIndex(index);
+											const combination = previewCombinations[index];
+											if (combination) setPreviewValues(combination);
+										}}
+										discountPercentage={previewDiscount}
+									/>
+									<div className="space-y-3">
+										<div>
+											<p className="text-lg font-bold text-foreground">{formData.title || "—"}</p>
+											{previewSku && <p className="text-xs text-muted-foreground" dir="ltr">{previewSku}</p>}
+										</div>
+										<div className="flex flex-wrap items-baseline gap-2">
+											{previewPrice ? (
+												<span className="text-xl font-bold text-foreground">
+													{formData.currency.toUpperCase()} {Number(previewPrice).toFixed(2)}
+												</span>
+											) : (
+												<span className="text-xl font-bold text-foreground">—</span>
+											)}
+											{previewCompareAt && previewDiscount && (
+												<span className="text-sm text-muted-foreground line-through">
+													{formData.currency.toUpperCase()} {Number(previewCompareAt).toFixed(2)}
+												</span>
+											)}
+											{previewDiscount && (
+												<span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
+													-{previewDiscount}
+												</span>
+											)}
+										</div>
+										{previewAxes.map((axis) => {
+											const availableValues = [
+												...new Set(
+													previewCombinations
+														.filter((combination) =>
+															previewAxes.every(
+																(other) => other === axis || previewValues[other] === undefined || combination[other] === previewValues[other],
+															),
+														)
+														.map((combination) => combination[axis])
+														.filter((value): value is string => Boolean(value)),
+												),
+											];
+											return (
+												<div key={axis} className="space-y-1">
+													<label className="text-xs font-medium text-muted-foreground">
+														{categoryAttributes.find((attribute) => attribute.key === axis)?.label ?? axis}
+													</label>
+													<Select
+														value={previewValues[axis] ?? previewCombination?.[axis] ?? ""}
+														onValueChange={(value) => {
+															setPreviewValues((current) => ({ ...current, [axis]: value }));
+															setPreviewImageIndex(Math.max(previewCombinations.findIndex((combination) => combination[axis] === value), 0));
+														}}
+													>
+														<SelectTrigger>
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{availableValues.map((value) => (
+																<SelectItem key={value} value={value}>{value}</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+											);
+										})}
+										<p className="text-xs text-muted-foreground">
+											{t("products.form.initialStock")}: {previewStock || "—"}
+										</p>
+									</div>
+								</div>
+							</div>
+						)}
 						<dl className="divide-y divide-border rounded-md border border-border text-sm">
 							{reviewRows.map((row) => (
 								<div key={row.label} className="flex items-center justify-between gap-4 px-4 py-2.5">
