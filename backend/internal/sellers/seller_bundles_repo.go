@@ -28,9 +28,9 @@ type SellerBundle struct {
 	ProductSlug  string       `json:"productSlug"`
 	ProductTitle string       `json:"productTitle"`
 	Status       string       `json:"status"`
-	BundlePrice  int64        `json:"bundlePrice"`
-	Currency     string       `json:"currency"`
-	Items        []BundleItem `json:"items"`
+	BundlePrice  int64        `db:"bundle_price" json:"bundlePrice"`
+	Currency     string       `db:"currency" json:"currency"`
+	Items        []BundleItem `db:"-" json:"items"`
 	CreatedAt    time.Time    `json:"createdAt"`
 	UpdatedAt    time.Time    `json:"updatedAt"`
 }
