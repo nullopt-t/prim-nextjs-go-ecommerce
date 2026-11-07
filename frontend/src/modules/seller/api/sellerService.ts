@@ -1,4 +1,5 @@
 import { api } from "@/shared/api/client";
+import { revalidateCatalogForSeller } from "@/app/actions/revalidateCatalogForSeller";
 import type { ApiMessageResponse, ApiPaginatedResponse, ApiResponse } from "@/shared/api/types";
 import type {
   AdjustStockPayload,
@@ -37,6 +38,15 @@ function productQuery(params?: SellerProductListParams): string {
   return qs ? `?${qs}` : "";
 }
 
+// Product-affecting mutations drop the storefront catalog cache so new
+// products, prices, and images appear without waiting for revalidation.
+function invalidates<T>(request: Promise<T>): Promise<T> {
+  return request.then((result) => {
+    void revalidateCatalogForSeller().catch(() => false);
+    return result;
+  });
+}
+
 export const sellerService = {
   getProfile: () => api.get<ApiResponse<Seller>>("/api/v1/seller/profile"),
   checkSlugAvailability: (slug: string) =>
@@ -72,15 +82,15 @@ export const sellerService = {
   getProducts: (params?: SellerProductListParams) =>
     api.get<ApiPaginatedResponse<SellerProduct>>(`/api/v1/seller/products${productQuery(params)}`),
   createProduct: (payload: CreateSellerProductPayload) =>
-    api.post<ApiResponse<SellerProductResponse>, CreateSellerProductPayload>("/api/v1/seller/products", payload),
+    invalidates(api.post<ApiResponse<SellerProductResponse>, CreateSellerProductPayload>("/api/v1/seller/products", payload)),
   updateProduct: (id: string, payload: UpdateSellerProductPayload) =>
-    api.patch<ApiMessageResponse, UpdateSellerProductPayload>(`/api/v1/seller/products/${id}`, payload),
+    invalidates(api.patch<ApiMessageResponse, UpdateSellerProductPayload>(`/api/v1/seller/products/${id}`, payload)),
   deleteProduct: (id: string) =>
-    api.delete<ApiMessageResponse>(`/api/v1/seller/products/${id}`),
+    invalidates(api.delete<ApiMessageResponse>(`/api/v1/seller/products/${id}`)),
   publishProduct: (id: string) =>
-    api.post<ApiMessageResponse>(`/api/v1/seller/products/${id}/publish`),
+    invalidates(api.post<ApiMessageResponse>(`/api/v1/seller/products/${id}/publish`)),
   archiveProduct: (id: string) =>
-    api.post<ApiMessageResponse>(`/api/v1/seller/products/${id}/archive`),
+    invalidates(api.post<ApiMessageResponse>(`/api/v1/seller/products/${id}/archive`)),
 
   getVariants: (productId: string, params?: { page?: number; pageSize?: number }) => {
     const query = new URLSearchParams();
@@ -90,13 +100,13 @@ export const sellerService = {
     return api.get<ApiPaginatedResponse<SellerVariant>>(`/api/v1/seller/products/${productId}/variants${qs ? `?${qs}` : ""}`);
   },
   createVariant: (productId: string, payload: CreateSellerVariantPayload) =>
-    api.post<ApiResponse<SellerVariant>, CreateSellerVariantPayload>(`/api/v1/seller/products/${productId}/variants`, payload),
+    invalidates(api.post<ApiResponse<SellerVariant>, CreateSellerVariantPayload>(`/api/v1/seller/products/${productId}/variants`, payload)),
   updateVariant: (variantId: string, payload: UpdateSellerVariantPayload) =>
-    api.patch<ApiMessageResponse, UpdateSellerVariantPayload>(`/api/v1/seller/variants/${variantId}`, payload),
+    invalidates(api.patch<ApiMessageResponse, UpdateSellerVariantPayload>(`/api/v1/seller/variants/${variantId}`, payload)),
   deleteVariant: (variantId: string) =>
-    api.delete<ApiMessageResponse>(`/api/v1/seller/variants/${variantId}`),
+    invalidates(api.delete<ApiMessageResponse>(`/api/v1/seller/variants/${variantId}`)),
   adjustStock: (variantId: string, payload: AdjustStockPayload) =>
-    api.post<ApiResponse<SellerStock>, AdjustStockPayload>(`/api/v1/seller/variants/${variantId}/stock`, payload),
+    invalidates(api.post<ApiResponse<SellerStock>, AdjustStockPayload>(`/api/v1/seller/variants/${variantId}/stock`, payload)),
   uploadMedia: (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
