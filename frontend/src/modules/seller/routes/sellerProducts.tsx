@@ -14,6 +14,7 @@ import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/shared/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 
 
 function parseMajorPrice(value: string): number | undefined {
@@ -45,6 +46,7 @@ const EMPTY_VARIANT_FORM: VariantForm = {
 export function SellerProducts() {
   const t = useTranslations("seller");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<SellerProduct[]>([]);
   const [meta, setMeta] = useState<{ page: number; totalPages: number; totalItems: number } | null>(null);
@@ -53,7 +55,10 @@ export function SellerProducts() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<Error | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get("status");
+    return status === "draft" || status === "published" || status === "archived" ? status : "all";
+  });
 
   const [lifecycleId, setLifecycleId] = useState<string | null>(null);
 

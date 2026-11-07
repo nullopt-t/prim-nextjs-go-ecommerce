@@ -84,7 +84,7 @@ export function SellerDashboard() {
       {
         label: t("dashboard.nextSteps.finishDrafts"),
         detail: t("dashboard.nextSteps.finishDraftsDetail", { count: stats.draftProductCount }),
-        href: "/seller/products",
+        href: "/seller/products?status=draft",
         done: stats.draftProductCount === 0,
       },
       {
