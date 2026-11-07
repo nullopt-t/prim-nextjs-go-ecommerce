@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
@@ -21,11 +21,22 @@ export function LazyImage({
   const [isLoaded, setIsLoaded] = useState(false);
   const normalized = normalizeMediaUrl(src);
   const [imgSrc, setImgSrc] = useState(normalized);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     setImgSrc(normalizeMediaUrl(src));
     setIsLoaded(false);
   }, [src]);
+
+  // A cached image can complete before React attaches the load handler,
+  // which would leave the image stuck invisible. Check completion after
+  // every render pass.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      setIsLoaded(true);
+    }
+  }, [imgSrc]);
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     if (imgSrc !== "/placeholder-product.png") {
@@ -40,6 +51,7 @@ export function LazyImage({
       {!isLoaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
       {imgSrc && (
         <img
+          ref={imgRef}
           src={imgSrc}
           alt={alt}
           className={`transition-opacity duration-500 ${
