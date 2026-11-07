@@ -120,6 +120,15 @@ export function SellerOrderDetail() {
 				</div>
 			</div>
 
+			{order.couponCode && (
+				<div className="rounded-lg border border-emerald-600/30 bg-emerald-600/5 px-4 py-3 text-sm font-medium text-foreground">
+					{t("orders.couponApplied", {
+						code: order.couponCode,
+						amount: ((order.discountAmount ?? 0) / 100).toFixed(2),
+					})}
+				</div>
+			)}
+
 			<section className="overflow-hidden rounded-lg border border-border bg-background">
 				<div className="border-b border-border p-4">
 					<h2 className="text-sm font-semibold text-foreground">{t("orders.detail.linesTitle")}</h2>

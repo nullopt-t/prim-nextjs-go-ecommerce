@@ -180,6 +180,14 @@ export function SellerOrders() {
 										</td>
 										<td className="py-3 font-medium text-foreground tabular-nums">
 											{formatMinor(order.subtotal, order.currency)}
+											{order.couponCode && (
+												<span className="mt-0.5 block rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+													{t("orders.couponApplied", {
+														code: order.couponCode,
+														amount: ((order.discountAmount ?? 0) / 100).toFixed(2),
+													})}
+												</span>
+											)}
 										</td>
 										<td className="py-3 text-end font-medium text-foreground tabular-nums">
 											{formatMinor(order.earnings, order.currency)}

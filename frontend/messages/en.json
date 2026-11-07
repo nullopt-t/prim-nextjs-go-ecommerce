@@ -2477,6 +2477,7 @@
     "loadFailed": "The seller portal could not be loaded.",
     "orders": {
       "commission": "Commission: -EGP {amount}",
+      "couponApplied": "Coupon {code}: -EGP {amount}",
       "empty": "No orders yet.",
       "historySubtitle": "Orders placed on the marketplace containing your products.",
       "historyTitle": "Order History",

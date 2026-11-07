@@ -2477,6 +2477,7 @@
     "loadFailed": "تعذّر تحميل بوابة البائعين.",
     "orders": {
       "commission": "العمولة: -EGP {amount}",
+      "couponApplied": "القسيمة {code}: -EGP {amount}",
       "empty": "لا توجد طلبات بعد.",
       "historySubtitle": "الطلبات المقدمة على السوق والتي تتضمن منتجاتك.",
       "historyTitle": "سجل الطلبات",

@@ -251,6 +251,8 @@ export interface SellerOrder {
   status: SellerOrderStatus;
   currency: string;
   items: SellerOrderItem[];
+  couponCode?: string;
+  discountAmount?: number;
   subtotal: number;
   earnings: number;
   createdAt: string;
