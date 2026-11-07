@@ -110,6 +110,9 @@ func (s *Service) CreateAttribute(
 			return nil, apierr.ConflictError("An attribute with this key already exists for this category").
 				WithCode(apierr.CodeInvalidInput)
 		}
+		if errors.Is(database.MapError(err), database.ErrForeignKeyViolation) {
+			return nil, apierr.BadRequestError("Category does not exist").WithCode(apierr.CodeInvalidInput)
+		}
 		return nil, s.handleError(err, "Failed to create attribute")
 	}
 	return created, nil
