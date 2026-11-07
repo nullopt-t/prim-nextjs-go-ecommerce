@@ -12,6 +12,7 @@ import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { ProductGallery } from "@/modules/catalog/components/ui/ProductGallery";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/form/select";
+import { colorHexFor, isColorAttribute } from "@/modules/seller/lib/colorSwatch";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
@@ -114,6 +115,7 @@ export function SellerProductWizard() {
 	const [attributesError, setAttributesError] = useState<string | null>(null);
 	const [variationRows, setVariationRows] = useState<VariationRow[]>([]);
 	const [savedCombinations, setSavedCombinations] = useState<Record<string, string>[]>([]);
+	const [swatchImages, setSwatchImages] = useState<Record<string, string>>({});
 	const [variantOverrides, setVariantOverrides] = useState<Record<string, VariantOverride>>({});
 	const [uploadingThumbnailKey, setUploadingThumbnailKey] = useState<string | null>(null);
 	const [previewValues, setPreviewValues] = useState<Record<string, string>>({});
@@ -208,13 +210,16 @@ export function SellerProductWizard() {
 						formData?: ProductForm;
 						variantOverrides?: Record<string, VariantOverride>;
 						savedCombinations?: Record<string, string>[];
+						swatchImages?: Record<string, string>;
 					} & ProductForm;
 					// Older drafts stored the form directly; newer drafts wrap it
-					// so per-variant overrides and saved combinations survive a refresh.
+					// so per-variant overrides, saved combinations, and swatch
+					// images survive a refresh.
 					const draftForm = parsed.formData ?? parsed;
 					setFormData({ ...EMPTY_FORM, ...draftForm });
 					setVariationRows([]);
 					setSavedCombinations(parsed.formData ? (parsed.savedCombinations ?? []) : []);
+					setSwatchImages(parsed.formData ? (parsed.swatchImages ?? {}) : {});
 					setVariantOverrides(parsed.formData ? (parsed.variantOverrides ?? {}) : {});
 					setHydrated(true);
 					return;
@@ -300,9 +305,9 @@ export function SellerProductWizard() {
 	// Persist the staged draft so back/forward navigation and refresh keep state.
 	useEffect(() => {
 		if (!hydrated) return;
-		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides, savedCombinations }));
+		sessionStorage.setItem(draftKey, JSON.stringify({ formData, variantOverrides, savedCombinations, swatchImages }));
 		setLastSavedAt(Date.now());
-	}, [draftKey, formData, variantOverrides, savedCombinations, hydrated]);
+	}, [draftKey, formData, variantOverrides, savedCombinations, swatchImages, hydrated]);
 
 	const setField = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => {
 		setFormData((current) => ({ ...current, [key]: value }));
@@ -430,6 +435,19 @@ export function SellerProductWizard() {
 		}
 	};
 
+	const uploadSwatchImage = async (swatchKey: string, file: File | undefined) => {
+		if (!file) return;
+		setUploadingThumbnailKey(swatchKey);
+		try {
+			const uploaded = await sellerService.uploadMedia(file);
+			setSwatchImages((current) => ({ ...current, [swatchKey]: uploaded.data.url }));
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("products.saveFailed")));
+		} finally {
+			setUploadingThumbnailKey(null);
+		}
+	};
+
 	const finish = async (shouldPublish: boolean) => {
 		if (formData.productType === "variable") {
 			setField("variationAxes", uniqueKeys(savedCombinations).join(", "));
@@ -489,6 +507,9 @@ export function SellerProductWizard() {
 						const variantCrossedOut = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
 						const variantStock =
 							override?.stock !== undefined && override.stock !== "" ? Number.parseInt(override.stock, 10) : undefined;
+						const swatchThumbnail = Object.entries(combination)
+							.map(([axisKey, axisValue]) => swatchImages[`swatch:${axisKey}=${axisValue}`])
+							.find((url): url is string => Boolean(url));
 						const variant = await sellerService.createVariant(created.data.id, {
 							title: `${formData.title.trim()} - ${label}`,
 							sku: override?.sku?.trim() || undefined,
@@ -497,7 +518,7 @@ export function SellerProductWizard() {
 							currency: formData.currency.trim() || "EGP",
 							attributes: combination,
 							isDefault: index === 0,
-							thumbnailUrl: override?.thumbnailUrl,
+							thumbnailUrl: override?.thumbnailUrl ?? swatchThumbnail,
 						});
 						if (variantStock !== undefined && Number.isFinite(variantStock) && variantStock !== 0) {
 							await sellerService.adjustStock(variant.data.id, { quantity: variantStock, reason: "restock" });
@@ -568,7 +589,13 @@ export function SellerProductWizard() {
 		) ?? previewCombinations[0];
 	const previewOverride = previewCombination ? variantOverrides[combinationKey(previewCombination)] : undefined;
 	const previewImages = previewCombinations
-		.map((combination) => variantOverrides[combinationKey(combination)]?.thumbnailUrl)
+		.map(
+			(combination) =>
+				variantOverrides[combinationKey(combination)]?.thumbnailUrl ??
+				Object.entries(combination)
+					.map(([axisKey, axisValue]) => swatchImages[`swatch:${axisKey}=${axisValue}`])
+					.find((url): url is string => Boolean(url)),
+		)
 		.filter((url): url is string => Boolean(url));
 	const previewPrice = formData.productType === "variable" ? previewOverride?.price : formData.price;
 	const previewCompareAt = formData.productType === "variable" ? previewOverride?.crossesOutPrice : formData.crossesOutPrice;
@@ -827,7 +854,74 @@ export function SellerProductWizard() {
 											{row.key && (
 												<div className="mt-3">
 													<p className="text-xs font-medium text-muted-foreground">{t("wizard.attributes.values")}</p>
-													{selectedAttribute?.allowedValues?.length ? (
+													{selectedAttribute?.allowedValues?.length && isColorAttribute(row.key, selectedAttribute.allowedValues) ? (
+														<>
+															<div className="mt-2 flex flex-wrap gap-2">
+																{selectedAttribute.allowedValues.map((value) => {
+																	const selected = row.value === value;
+																	const swatchKey = `${row.key}=${value}`;
+																	const swatchImage = swatchImages[swatchKey];
+																	const hex = colorHexFor(value);
+																	return (
+																		<button
+																			key={value}
+																			type="button"
+																			title={value}
+																			onClick={() => updateRow({ ...row, value })}
+																			className={`flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition ${selected ? "border-primary bg-primary/10 font-semibold text-foreground ring-1 ring-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+																		>
+																			{swatchImage ? (
+																				<img src={swatchImage} alt={value} className="size-5 rounded-full object-cover" />
+																			) : (
+																				<span
+																					className="size-5 rounded-full border border-border"
+																					style={{ backgroundColor: hex ?? "transparent" }}
+																				/>
+																			)}
+																			{value}
+																		</button>
+																	);
+																})}
+															</div>
+															{row.value && (
+																<div className="mt-2 flex flex-wrap items-center gap-2">
+																	{swatchImages[`swatch:${row.key}=${row.value}`] ? (
+																		<>
+																			<img src={swatchImages[`swatch:${row.key}=${row.value}`]} alt={row.value} className="size-10 rounded-md border border-border object-cover" />
+																			<button
+																				type="button"
+																				onClick={() =>
+																					setSwatchImages((current) => {
+																						const next = { ...current };
+																						delete next[`${row.key}=${row.value}`];
+																						return next;
+																					})
+																				}
+																				className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive"
+																			>
+																				{t("wizard.variants.removeThumbnail")}
+																			</button>
+																		</>
+																	) : (
+																		<label className="inline-flex cursor-pointer items-center rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary">
+																			{uploadingThumbnailKey === `swatch:${row.key}=${row.value}` ? <Loader2 className="size-3.5 animate-spin" /> : null}
+																			{t("wizard.variants.chooseThumbnail")}
+																			<input
+																				type="file"
+																				accept="image/*"
+																				disabled={uploadingThumbnailKey === `swatch:${row.key}=${row.value}`}
+																				className="sr-only"
+																				onChange={(e) => {
+																					void uploadSwatchImage(`swatch:${row.key}=${row.value}`, e.target.files?.[0]);
+																					e.target.value = "";
+																				}}
+																			/>
+																		</label>
+																	)}
+																</div>
+															)}
+														</>
+													) : selectedAttribute?.allowedValues?.length ? (
 														<Select value={row.value} onValueChange={(value) => updateRow({ ...row, value })}>
 															<SelectTrigger className="mt-2" aria-label={`${t("wizard.attributes.values")} ${rowIndex + 1}`}>
 																<SelectValue placeholder={t("wizard.attributes.chooseValue")} />
