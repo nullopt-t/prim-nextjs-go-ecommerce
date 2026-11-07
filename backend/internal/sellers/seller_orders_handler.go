@@ -49,6 +49,10 @@ type SellerOrderResponse struct {
 	Currency string `json:"currency"`
 	// The seller's lines in this order.
 	Items []SellerOrderItemResponse `json:"items"`
+	// Applied coupon code, when the buyer used one.
+	CouponCode *string `json:"couponCode,omitempty"`
+	// Total discount on the order, in minor units, when a coupon applied.
+	DiscountAmount int64 `json:"discountAmount,omitempty"`
 	// Sum of the seller's line totals, in minor units.
 	Subtotal int64 `json:"subtotal"`
 	// Sum of the seller's frozen earnings, in minor units.
@@ -72,11 +76,13 @@ func snapshotTitle(raw string) string {
 
 func toSellerOrderResponse(o *model.Order) SellerOrderResponse {
 	res := SellerOrderResponse{
-		ID:        o.ID,
-		Status:    o.Status,
-		Currency:  o.Currency,
-		CreatedAt: o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: o.UpdatedAt.Format(time.RFC3339),
+		ID:             o.ID,
+		Status:         o.Status,
+		Currency:       o.Currency,
+		CouponCode:     o.CouponCode,
+		DiscountAmount: o.DiscountAmount,
+		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
 	}
 	res.Items = make([]SellerOrderItemResponse, 0, len(o.Items))
 	for _, item := range o.Items {

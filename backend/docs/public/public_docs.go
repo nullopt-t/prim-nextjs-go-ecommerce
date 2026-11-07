@@ -7448,6 +7448,10 @@ const docTemplatepublic = `{
         "SellerOrderResponse": {
             "type": "object",
             "properties": {
+                "couponCode": {
+                    "description": "Applied coupon code, when the buyer used one.",
+                    "type": "string"
+                },
                 "createdAt": {
                     "description": "Order created timestamp (RFC3339).",
                     "type": "string"
@@ -7455,6 +7459,10 @@ const docTemplatepublic = `{
                 "currency": {
                     "description": "Currency of the order.",
                     "type": "string"
+                },
+                "discountAmount": {
+                    "description": "Total discount on the order, in minor units, when a coupon applied.",
+                    "type": "integer"
                 },
                 "earnings": {
                     "description": "Sum of the seller's frozen earnings, in minor units.",
