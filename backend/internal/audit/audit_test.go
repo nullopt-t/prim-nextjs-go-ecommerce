@@ -53,28 +53,42 @@ type fakeAuditTx struct {
 	fakeAuditExecutor
 }
 
+func (f *fakeAuditTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return f.ExecContext(ctx, sql, args...)
+}
+func (f *fakeAuditTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return f.QueryContext(ctx, sql, args...)
+}
+func (f *fakeAuditTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return f.QueryRowContext(ctx, sql, args...)
+}
+
 func (f *fakeAuditTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
-func (f *fakeAuditTx) Commit(context.Context) error { return nil }
-func (f *fakeAuditTx) Rollback(context.Context) error { return nil }
-func (f *fakeAuditTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (f *fakeAuditTx) Commit(context.Context) error          { return nil }
+func (f *fakeAuditTx) Rollback(context.Context) error        { return nil }
+func (f *fakeAuditTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
 func (f *fakeAuditTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
-func (f *fakeAuditTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
-func (f *fakeAuditTx) Conn() *pgx.Conn { return nil }
+func (f *fakeAuditTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (f *fakeAuditTx) Conn() *pgx.Conn                { return nil }
 func (f *fakeAuditTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type fakeAuditExecutor struct {
 	row pgx.Row
 }
 
-func (f *fakeAuditExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (f *fakeAuditExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
 
-func (f *fakeAuditExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (f *fakeAuditExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (f *fakeAuditExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+func (f *fakeAuditExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row {
 	if f.row != nil {
 		return f.row
 	}

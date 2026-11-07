@@ -68,14 +68,14 @@ func (s *ProductSellerVisibilitySuite) SetupSuite() {
 	} {
 		schema, readErr := os.ReadFile(migration)
 		require.NoError(s.T(), readErr)
-		_, execErr := db.Exec(ctx, string(schema))
+		_, execErr := db.ExecContext(ctx, string(schema))
 		require.NoError(s.T(), execErr)
 	}
 
 	s.runner = database.NewTxRunner(s.db)
 	s.repo = product.NewProductRepository()
 	s.categoryID = uuid.New()
-	_, err = db.Exec(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "Visibility")
+	_, err = db.ExecContext(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "Visibility")
 	require.NoError(s.T(), err)
 }
 
@@ -94,7 +94,7 @@ func (s *ProductSellerVisibilitySuite) seedProduct(slug string, sellerID *uuid.U
 	if sellerID != nil {
 		seller = *sellerID
 	}
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes, seller_id)
 		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[], $5)
 	`, id, s.categoryID, slug, "Product "+slug, seller)
@@ -104,14 +104,14 @@ func (s *ProductSellerVisibilitySuite) seedProduct(slug string, sellerID *uuid.U
 
 func (s *ProductSellerVisibilitySuite) seedSeller(status model.SellerStatus) uuid.UUID {
 	userID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, 'Seller User', 'seller', true, 'active')
 	`, userID, "seller_"+userID.String()+"@example.com")
 	s.Require().NoError(err)
 
 	sellerID := uuid.New()
-	_, err = s.db.Exec(context.Background(), `
+	_, err = s.db.ExecContext(context.Background(), `
 		INSERT INTO sellers (id, user_id, store_name, slug, status)
 		VALUES ($1, $2, $3, $4, $5)
 	`, sellerID, userID, "Store "+sellerID.String()[:8], "store-"+sellerID.String()[:8], string(status))

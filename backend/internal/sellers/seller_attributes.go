@@ -16,6 +16,9 @@ import (
 // attribute definitions.
 type SellerAttributeStore interface {
 	ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]attribute.AttributeItem, error)
+	// ListByCategory returns the platform definitions that already describe the
+	// category, so a merchant key cannot shadow one of them.
+	ListByCategory(ctx context.Context, categoryID uuid.UUID) ([]attribute.AttributeItem, error)
 	CreateSellerAttribute(ctx context.Context, sellerID uuid.UUID, ai *attribute.AttributeItem) error
 	UpdateSellerAttribute(ctx context.Context, sellerID, id uuid.UUID, fields attribute.UpdateAttributeFields) error
 	DeleteSellerAttribute(ctx context.Context, sellerID, id uuid.UUID) error
@@ -25,8 +28,8 @@ var sellerAttributeAllowedTypes = map[string]struct{}{
 	"enum": {}, "text": {}, "number": {}, "boolean": {},
 }
 
-// ListAttributes returns the merchant's custom attributes for a category,
-// merged with the platform category attributes already used by the wizard.
+// ListAttributes returns the merchant's own custom attributes for a category.
+// The caller merges them with the platform category attributes.
 func (s *Service) ListAttributes(
 	ctx context.Context,
 	userID, categoryID uuid.UUID,
@@ -82,6 +85,19 @@ func (s *Service) CreateAttribute(
 		if err != nil {
 			return err
 		}
+		// Platform attributes are resolved by key when a variant is validated, so
+		// a merchant definition with the same key would silently replace the
+		// platform's allowed values for every product in the category.
+		platformDefs, err := s.attrs.ListByCategory(ctx, categoryID)
+		if err != nil {
+			return err
+		}
+		for _, def := range platformDefs {
+			if def.Key == code {
+				return apierr.ConflictError("An attribute with this key already exists for this category").
+					WithCode(apierr.CodeInvalidInput)
+			}
+		}
 		raw, err := json.Marshal(allowedValues)
 		if err != nil {
 			return err
@@ -125,8 +141,21 @@ func (s *Service) UpdateAttribute(
 	label *string,
 	allowedValues []string,
 ) error {
+	if label != nil {
+		trimmed := strings.TrimSpace(*label)
+		if trimmed == "" {
+			return apierr.BadRequestError("Attribute label is required").WithCode(apierr.CodeInvalidInput)
+		}
+		label = &trimmed
+	}
 	var raw json.RawMessage
 	if allowedValues != nil {
+		// An empty option list would leave an enum attribute with no valid
+		// values, which blocks every later variant using that axis.
+		if len(allowedValues) == 0 {
+			return apierr.BadRequestError("Enum attributes require at least one allowed value").
+				WithCode(apierr.CodeInvalidInput)
+		}
 		var err error
 		raw, err = json.Marshal(allowedValues)
 		if err != nil {

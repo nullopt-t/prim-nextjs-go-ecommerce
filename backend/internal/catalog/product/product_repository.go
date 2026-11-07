@@ -114,7 +114,7 @@ func (r *ProductRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		p.ID,
@@ -182,7 +182,7 @@ func (r *ProductRepository) SlugExists(
 
 	var exists bool
 	query := "SELECT EXISTS(SELECT 1 FROM products WHERE slug = $1)"
-	err = executor.QueryRow(ctx, query, slug).Scan(&exists)
+	err = executor.QueryRowContext(ctx, query, slug).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("check slug exists: %w", err)
 	}
@@ -226,7 +226,7 @@ func (r *ProductRepository) get(
 		LIMIT 1
 	`, whereClause)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query product: %w", err)
 	}
@@ -253,7 +253,7 @@ func (r *ProductRepository) GetSellerProductStats(
 	}
 
 	stats := new(model.SellerProductStats)
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) FILTER (WHERE deleted_at IS NULL),
 			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'published'),
@@ -272,7 +272,7 @@ func (r *ProductRepository) GetSellerProductStats(
 		return nil, fmt.Errorf("get seller product stats: %w", err)
 	}
 
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM product_variants pv
 		JOIN products p ON p.id = pv.product_id
@@ -303,7 +303,7 @@ func (r *ProductRepository) LockForUpdate(
 		return err
 	}
 	var lockedID uuid.UUID
-	return tx.QueryRow(ctx,
+	return tx.QueryRowContext(ctx,
 		`SELECT id FROM products WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
 		id,
 	).Scan(&lockedID)
@@ -341,7 +341,7 @@ func (r *ProductRepository) Update(
 		WHERE id = $12 AND deleted_at IS NULL
 	`
 
-	cmd, err := tx.Exec(
+	cmd, err := tx.ExecContext(
 		ctx,
 		query,
 		p.BrandID,
@@ -518,7 +518,7 @@ func (r *ProductRepository) List(
 		// in the count while the select (which nulls those joins out) excludes the
 		// row, otherwise the reported total disagrees with the returned rows.
 		countQuery := fmt.Sprintf("SELECT COUNT(*) FROM products p LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL LEFT JOIN product_variants pv ON p.default_variant_id = pv.id AND pv.deleted_at IS NULL %s", whereStmt)
-		if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 			return nil, fmt.Errorf("count products: %w", err)
 		}
 
@@ -606,7 +606,7 @@ func (r *ProductRepository) List(
 		%s
 	`, whereStmt, orderBy, tail)
 
-	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.QueryContext(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list products select: %w", err)
 	}
@@ -718,7 +718,7 @@ func (r *ProductRepository) CascadeSoftDeleteVariants(
 		SET deleted_at = now(), updated_at = now()
 		WHERE product_id = $1 AND deleted_at IS NULL
 	`
-	_, err = tx.Exec(ctx, query, productID)
+	_, err = tx.ExecContext(ctx, query, productID)
 	return err
 }
 
@@ -742,7 +742,7 @@ func (r *ProductRepository) softDelete(
 		WHERE %s
 	`, whereClause)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("soft delete product: %w", err)
 	}
@@ -775,7 +775,7 @@ func (r *ProductRepository) UpdateStatus(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, productID, status)
+	cmd, err := tx.ExecContext(ctx, query, productID, status)
 	if err != nil {
 		return fmt.Errorf("update product status: %w", err)
 	}
@@ -785,6 +785,108 @@ func (r *ProductRepository) UpdateStatus(
 	}
 
 	return nil
+}
+
+// GetBundleComposition returns the kit composition behind a bundle product.
+// It reports pgx.ErrNoRows (mapped to database.ErrNotFound by callers) when the
+// product is not a bundle.
+func (r *ProductRepository) GetBundleComposition(
+	ctx context.Context,
+	productID uuid.UUID,
+) (*model.BundleComposition, error) {
+	return r.getBundleComposition(ctx, "pb.product_id = $1", productID)
+}
+
+// GetBundleCompositionForVariant returns the kit composition when variantID is
+// the selling variant of a bundle product, so callers holding only a variant
+// (order restock, for example) can still resolve the kit's components.
+func (r *ProductRepository) GetBundleCompositionForVariant(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (*model.BundleComposition, error) {
+	return r.getBundleComposition(
+		ctx,
+		"pb.product_id = (SELECT pv.product_id FROM product_variants pv WHERE pv.id = $1)",
+		variantID,
+	)
+}
+
+// getBundleComposition loads a kit header and its flattened composition rows.
+// The predicate and its single argument identify the bundle to load.
+func (r *ProductRepository) getBundleComposition(
+	ctx context.Context,
+	predicate string,
+	arg uuid.UUID,
+) (*model.BundleComposition, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bundle := &model.BundleComposition{}
+	err = executor.QueryRowContext(ctx, fmt.Sprintf(`
+		SELECT pb.id, pb.bundle_price, pb.currency
+		FROM product_bundles pb
+		WHERE %s
+	`, predicate), arg).Scan(&bundle.ID, &bundle.Price, &bundle.Currency)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, pgx.ErrNoRows
+		}
+		return nil, fmt.Errorf("get bundle composition: %w", err)
+	}
+
+	rows, err := executor.QueryContext(ctx, `
+		SELECT
+			bi.product_id,
+			p.slug,
+			p.title,
+			bi.variant_id,
+			pv.title,
+			bi.quantity,
+			so.bucket,
+			so.object_key,
+			COALESCE(bi.variant_id, p.default_variant_id, (
+				SELECT v.id FROM product_variants v
+				WHERE v.product_id = p.id AND v.deleted_at IS NULL
+				ORDER BY v.created_at, v.id
+				LIMIT 1
+			)) AS stock_variant_id
+		FROM bundle_items bi
+		JOIN products p ON p.id = bi.product_id AND p.deleted_at IS NULL
+		LEFT JOIN product_variants pv ON pv.id = bi.variant_id AND pv.deleted_at IS NULL
+		LEFT JOIN storage_objects so ON so.id = COALESCE(p.thumbnail_object_id, pv.thumbnail_object_id)
+		WHERE bi.bundle_id = $1
+		ORDER BY p.title, bi.id
+	`, bundle.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list bundle composition: %w", err)
+	}
+	defer rows.Close()
+
+	bundle.Items = make([]model.BundleComponent, 0, 4)
+	for rows.Next() {
+		item := model.BundleComponent{}
+		if err := rows.Scan(
+			&item.ProductID,
+			&item.Slug,
+			&item.Title,
+			&item.VariantID,
+			&item.VariantTitle,
+			&item.Quantity,
+			&item.ThumbnailBucket,
+			&item.ThumbnailKey,
+			&item.StockVariantID,
+		); err != nil {
+			return nil, fmt.Errorf("scan bundle composition: %w", err)
+		}
+		bundle.Items = append(bundle.Items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate bundle composition: %w", err)
+	}
+
+	return bundle, nil
 }
 
 // SetDefaultVariant updates the default_variant_id for a product.
@@ -803,7 +905,7 @@ func (r *ProductRepository) SetDefaultVariant(
 		SET default_variant_id = $2, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	cmd, err := tx.Exec(ctx, query, productID, variantID)
+	cmd, err := tx.ExecContext(ctx, query, productID, variantID)
 	if err != nil {
 		return fmt.Errorf("set default variant: %w", err)
 	}

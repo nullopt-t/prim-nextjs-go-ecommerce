@@ -96,7 +96,7 @@ func (r *Repository) Sales(
 		WHERE ($1::timestamptz IS NULL OR created_at >= $1)
 		  AND ($2::timestamptz IS NULL OR created_at <= $2)
 	`
-	if err := executor.QueryRow(ctx, totalsQuery, f.From, f.To).Scan(
+	if err := executor.QueryRowContext(ctx, totalsQuery, f.From, f.To).Scan(
 		&rep.Totals.Revenue,
 		&rep.Totals.Orders,
 		&rep.Totals.AverageOrderValue,
@@ -115,7 +115,7 @@ func (r *Repository) Sales(
 		GROUP BY 1
 		ORDER BY 1
 	`
-	rows, err := executor.Query(ctx, seriesQuery, f.From, f.To, groupBy)
+	rows, err := executor.QueryContext(ctx, seriesQuery, f.From, f.To, groupBy)
 	if err != nil {
 		return nil, fmt.Errorf("sales series: %w", err)
 	}
@@ -176,7 +176,7 @@ func (r *Repository) exportOrders(ctx context.Context, qe database.QueryExecutor
 	if f.Status != "" {
 		status = &f.Status
 	}
-	rows, err := qe.Query(ctx, query, f.From, f.To, status, maxExportRows)
+	rows, err := qe.QueryContext(ctx, query, f.From, f.To, status, maxExportRows)
 	if err != nil {
 		return nil, nil, fmt.Errorf("export orders: %w", err)
 	}
@@ -217,7 +217,7 @@ func (r *Repository) exportPayments(ctx context.Context, qe database.QueryExecut
 	if f.Status != "" {
 		status = &f.Status
 	}
-	rows, err := qe.Query(ctx, query, f.From, f.To, status, maxExportRows)
+	rows, err := qe.QueryContext(ctx, query, f.From, f.To, status, maxExportRows)
 	if err != nil {
 		return nil, nil, fmt.Errorf("export payments: %w", err)
 	}
@@ -252,7 +252,7 @@ func (r *Repository) exportCustomers(ctx context.Context, qe database.QueryExecu
 		ORDER BY u.created_at DESC
 		LIMIT $3
 	`
-	rows, err := qe.Query(ctx, query, f.From, f.To, maxExportRows)
+	rows, err := qe.QueryContext(ctx, query, f.From, f.To, maxExportRows)
 	if err != nil {
 		return nil, nil, fmt.Errorf("export customers: %w", err)
 	}
@@ -286,7 +286,7 @@ func (r *Repository) exportInventory(ctx context.Context, qe database.QueryExecu
 		ORDER BY p.title, pv.sku
 		LIMIT $1
 	`
-	rows, err := qe.Query(ctx, query, maxExportRows)
+	rows, err := qe.QueryContext(ctx, query, maxExportRows)
 	if err != nil {
 		return nil, nil, fmt.Errorf("export inventory: %w", err)
 	}

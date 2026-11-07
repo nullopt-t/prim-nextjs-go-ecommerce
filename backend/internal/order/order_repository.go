@@ -53,7 +53,7 @@ func (r *Repository) CreateOrder(
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, now(), now())
 		RETURNING created_at, updated_at
 	`
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		o.ID,
@@ -97,7 +97,7 @@ func (r *Repository) AddOrderItem(
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
 		ctx,
 		query,
 		item.ID,
@@ -133,7 +133,7 @@ func (r *Repository) AddStatusHistory(
 		INSERT INTO order_status_history (order_id, status, notes, created_at)
 		VALUES ($1, $2, $3, now())
 	`
-	_, err = tx.Exec(ctx, query, orderID, status, notes)
+	_, err = tx.ExecContext(ctx, query, orderID, status, notes)
 	if err != nil {
 		return fmt.Errorf("add status history: %w", err)
 	}
@@ -161,7 +161,7 @@ func (r *Repository) GetOrderByID(
 		LEFT JOIN coupons c ON o.coupon_id = c.id
 		WHERE o.id = $1
 	`
-	row := qe.QueryRow(ctx, query, id)
+	row := qe.QueryRowContext(ctx, query, id)
 
 	var o model.Order
 	var shippingBytes []byte
@@ -238,7 +238,7 @@ func (r *Repository) GetOrderByIDForUpdate(
 		WHERE o.id = $1
 		FOR UPDATE OF o
 	`
-	row := tx.QueryRow(ctx, query, id)
+	row := tx.QueryRowContext(ctx, query, id)
 
 	var o model.Order
 	var shippingBytes []byte
@@ -315,7 +315,7 @@ func (r *Repository) GetOrdersByCustomerID(
 		WHERE o.customer_id = $1
 		ORDER BY o.created_at DESC
 	`
-	rows, err := qe.Query(ctx, query, customerID)
+	rows, err := qe.QueryContext(ctx, query, customerID)
 	if err != nil {
 		return nil, fmt.Errorf("get orders by customer id: %w", err)
 	}
@@ -420,13 +420,13 @@ func (r *Repository) ListSellerOrders(
 		FROM orders o
 		JOIN order_items oi ON oi.order_id = o.id
 		` + where
-	if err := qe.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := qe.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count seller orders: %w", err)
 	}
 
 	limitIdx := len(args) + 1
 	offsetIdx := len(args) + 2
-	rows, err := qe.Query(ctx, `
+	rows, err := qe.QueryContext(ctx, `
 		SELECT DISTINCT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
@@ -482,7 +482,7 @@ func (r *Repository) GetSellerOrder(ctx context.Context, sellerID, orderID uuid.
 	}
 
 	var owned bool
-	err = qe.QueryRow(ctx, `
+	err = qe.QueryRowContext(ctx, `
 		SELECT EXISTS (
 			SELECT 1 FROM order_items
 			WHERE order_id = $1 AND seller_id = $2
@@ -525,7 +525,7 @@ func (r *Repository) GetOrderItems(
 		FROM order_items
 		WHERE order_id = $1
 	`
-	rows, err := qe.Query(ctx, query, orderID)
+	rows, err := qe.QueryContext(ctx, query, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("get order items: %w", err)
 	}
@@ -574,7 +574,7 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 		FROM order_items
 		WHERE order_id = ANY($1)
 	`
-	rows, err := qe.Query(ctx, query, orderIDs)
+	rows, err := qe.QueryContext(ctx, query, orderIDs)
 	if err != nil {
 		return nil, fmt.Errorf("batch get order items: %w", err)
 	}
@@ -616,7 +616,7 @@ func (r *Repository) GetSellerSalesStats(
 	}
 
 	stats := new(model.SellerSalesStats)
-	err = qe.QueryRow(ctx, `
+	err = qe.QueryRowContext(ctx, `
 		SELECT
 			COALESCE(SUM(oi.price_at_purchase * oi.quantity)
 				FILTER (WHERE o.status IN ('paid', 'processing', 'shipped', 'delivered')), 0),
@@ -656,7 +656,7 @@ func (r *Repository) GetSellerSettledEarnings(
 	}
 
 	var total int64
-	err = qe.QueryRow(ctx, `
+	err = qe.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(oi.seller_earning), 0)
 		FROM order_items oi
 		JOIN orders o ON o.id = oi.order_id
@@ -684,7 +684,7 @@ func (r *Repository) UpdateOrderStatus(
 		SET status = $1, updated_at = NOW()
 		WHERE id = $2
 	`
-	tag, err := tx.Exec(ctx, query, status, orderID)
+	tag, err := tx.ExecContext(ctx, query, status, orderID)
 	if err != nil {
 		return fmt.Errorf("update order status: %w", err)
 	}
@@ -770,7 +770,7 @@ func (r *Repository) ListOrders(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, filter.Limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := qe.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list orders: %w", err)
 	}
@@ -872,7 +872,7 @@ func (r *Repository) CountOrders(
 	}
 
 	var count int
-	if err := qe.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+	if err := qe.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count orders: %w", err)
 	}
 
@@ -922,7 +922,7 @@ func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, er
 	stats := &DashboardStats{}
 
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0),
 			COUNT(*),
 			COUNT(DISTINCT customer_email),
@@ -934,7 +934,7 @@ func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, er
 			COUNT(*) FILTER (WHERE status = 'cancelled')
 		FROM orders
 	`
-	err = qe.QueryRow(ctx, query).Scan(
+	err = qe.QueryRowContext(ctx, query).Scan(
 		&stats.TotalRevenue,
 		&stats.TotalOrders,
 		&stats.TotalCustomers,
@@ -953,12 +953,12 @@ func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, er
 	// Propagating their errors (rather than silently returning zeroes) keeps
 	// the dashboard honest: a transient DB failure surfaces as an error the
 	// UI can retry instead of an all-zero "healthy" dashboard.
-	if err := qe.QueryRow(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts); err != nil {
+	if err := qe.QueryRowContext(ctx, `SELECT COUNT(*) FROM products WHERE deleted_at IS NULL`).Scan(&stats.TotalProducts); err != nil {
 		return nil, fmt.Errorf("get total products: %w", err)
 	}
 
 	salesQuery := `
-		SELECT 
+		SELECT
 			TO_CHAR(created_at, 'YYYY-MM-DD') as day,
 			COALESCE(SUM(total_amount) FILTER (WHERE status != 'cancelled'), 0) as daily_sales,
 			COUNT(*) FILTER (WHERE status != 'cancelled') as daily_orders
@@ -967,7 +967,7 @@ func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, er
 		ORDER BY day DESC
 		LIMIT 14
 	`
-	rows, err := qe.Query(ctx, salesQuery)
+	rows, err := qe.QueryContext(ctx, salesQuery)
 	if err != nil {
 		return nil, fmt.Errorf("get recent sales: %w", err)
 	}
@@ -1042,7 +1042,7 @@ func (r *Repository) ListPayments(ctx context.Context, filter PaymentListFilter)
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, filter.Limit+1)
 
-	rows, err := qe.Query(ctx, query, args...)
+	rows, err := qe.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list payments: %w", err)
 	}
@@ -1072,7 +1072,7 @@ func (r *Repository) UpdatePaymentStatus(ctx context.Context, id uuid.UUID, stat
 		return err
 	}
 	query := `UPDATE payments SET status = $1::payment_status, updated_at = NOW() WHERE id = $2`
-	tag, err := tx.Exec(ctx, query, status, id)
+	tag, err := tx.ExecContext(ctx, query, status, id)
 	if err != nil {
 		return err
 	}
@@ -1091,7 +1091,7 @@ func (r *Repository) GetPaymentStatusForUpdate(ctx context.Context, id uuid.UUID
 		return "", err
 	}
 	var status string
-	err = tx.QueryRow(ctx, `SELECT status FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&status)
+	err = tx.QueryRowContext(ctx, `SELECT status FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&status)
 	if err != nil {
 		return "", fmt.Errorf("get payment status for update: %w", err)
 	}
@@ -1107,7 +1107,7 @@ func (r *Repository) GetPaymentOrderIDForUpdate(ctx context.Context, id uuid.UUI
 		return uuid.Nil, err
 	}
 	var orderID uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT order_id FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&orderID)
+	err = tx.QueryRowContext(ctx, `SELECT order_id FROM payments WHERE id = $1 FOR UPDATE`, id).Scan(&orderID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get payment order id for update: %w", err)
 	}
@@ -1126,7 +1126,7 @@ func (r *Repository) UpdateOrderTracking(
 		return err
 	}
 	query := `UPDATE orders SET tracking_number = $1, carrier = $2, tracking_url = $3, updated_at = NOW() WHERE id = $4`
-	tag, err := tx.Exec(ctx, query, trackingNumber, carrier, trackingURL, orderID)
+	tag, err := tx.ExecContext(ctx, query, trackingNumber, carrier, trackingURL, orderID)
 	if err != nil {
 		return fmt.Errorf("update order tracking: %w", err)
 	}
@@ -1146,7 +1146,7 @@ func (r *Repository) CreatePayment(ctx context.Context, p *model.Payment) error 
 		INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 	`
-	if _, err := tx.Exec(
+	if _, err := tx.ExecContext(
 		ctx,
 		query,
 		p.ID,
@@ -1178,7 +1178,7 @@ func (r *Repository) RefundOrFailPaymentsForOrder(ctx context.Context, orderID u
 		updated_at = now()
 		WHERE order_id = $1 AND status NOT IN ('refunded'::payment_status, 'failed'::payment_status)
 	`
-	if _, err := tx.Exec(ctx, query, orderID); err != nil {
+	if _, err := tx.ExecContext(ctx, query, orderID); err != nil {
 		return fmt.Errorf("refund or fail payments for order: %w", err)
 	}
 	return nil
@@ -1197,7 +1197,7 @@ func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, orderID uu
 		SET status = 'failed'::payment_status, updated_at = now()
 		WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
 	`
-	if _, err := tx.Exec(ctx, query, orderID); err != nil {
+	if _, err := tx.ExecContext(ctx, query, orderID); err != nil {
 		return fmt.Errorf("fail pending payments for order: %w", err)
 	}
 	return nil

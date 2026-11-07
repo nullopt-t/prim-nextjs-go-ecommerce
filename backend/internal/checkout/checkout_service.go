@@ -80,9 +80,12 @@ type VariantReader interface {
 }
 
 // ProductReader is the subset of product persistence checkout needs for
-// order snapshots.
+// order snapshots and kit expansion.
 type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
+	// GetBundleComposition resolves a product's kit composition. It reports
+	// database.ErrNotFound for products that are not bundles.
+	GetBundleComposition(ctx context.Context, productID uuid.UUID) (*model.BundleComposition, error)
 }
 
 // SellerReader is the subset of seller data checkout needs: standing and
@@ -301,7 +304,7 @@ type pricedCart struct {
 	// sellerTotals accumulates line totals per selling seller so merchant
 	// coupons can be priced against the eligible subtotal only.
 	sellerTotals map[uuid.UUID]int64
-	currency   string
+	currency     string
 }
 
 // appliedCoupon captures the resolved coupon state checkout needs while the
@@ -850,24 +853,75 @@ func localeFromContext(ctx context.Context) string {
 // checkouts that share variants cannot deadlock by acquiring the same row
 // locks in opposite orders (mirrors CommitReservationsForOrder).
 func (s *CheckoutService) reserveOrderStock(ctx context.Context, cart *model.Cart, createdOrder *model.Order, orderItems []order.CreateOrderItemInput, cfg setting.Config) error {
-	sortedItems := make([]order.CreateOrderItemInput, len(orderItems))
-	copy(sortedItems, orderItems)
-	sort.Slice(sortedItems, func(i, j int) bool {
-		return sortedItems[i].VariantID.String() < sortedItems[j].VariantID.String()
-	})
+	holds, err := s.stockHolds(ctx, orderItems)
+	if err != nil {
+		return err
+	}
 
-	for _, item := range sortedItems {
+	for _, hold := range holds {
 		if _, err := s.stockWriter.HoldStock(ctx, inventory.ReserveStockInput{
-			VariantID: item.VariantID,
+			VariantID: hold.variantID,
 			CartID:    &cart.ID,
 			OrderID:   &createdOrder.ID,
-			Quantity:  item.Quantity,
+			Quantity:  hold.quantity,
 			Duration:  time.Duration(cfg.ReservationTTLMinutes()) * time.Minute,
 		}); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// stockHold is one variant quantity checkout must reserve.
+type stockHold struct {
+	variantID uuid.UUID
+	quantity  int
+}
+
+// stockHolds maps order lines onto the stock they consume. A kit line holds its
+// components (line quantity × component quantity) because a bundle carries no
+// inventory of its own; an ordinary line holds its own variant. Holds are merged
+// per variant and returned sorted by variant UUID so concurrent checkouts that
+// share variants acquire row locks in the same order and cannot deadlock.
+func (s *CheckoutService) stockHolds(
+	ctx context.Context,
+	orderItems []order.CreateOrderItemInput,
+) ([]stockHold, error) {
+	quantities := make(map[uuid.UUID]int, len(orderItems))
+	for _, item := range orderItems {
+		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
+		if err != nil {
+			return nil, apierr.NotFoundError("Variant not found").
+				WithCode(errcode.CodeVariantNotFound).
+				Wrap(err)
+		}
+
+		composition, err := s.productReader.GetBundleComposition(ctx, variant.ProductID)
+		if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, fmt.Errorf("load bundle composition for variant %s: %w", item.VariantID, err)
+		}
+		if composition == nil || len(composition.Items) == 0 {
+			quantities[item.VariantID] += item.Quantity
+			continue
+		}
+
+		for _, component := range composition.Items {
+			if component.StockVariantID == nil || component.Quantity <= 0 {
+				return nil, apierr.BadRequestError("A bundle item is no longer available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+			quantities[*component.StockVariantID] += item.Quantity * component.Quantity
+		}
+	}
+
+	holds := make([]stockHold, 0, len(quantities))
+	for variantID, quantity := range quantities {
+		holds = append(holds, stockHold{variantID: variantID, quantity: quantity})
+	}
+	sort.Slice(holds, func(i, j int) bool {
+		return holds[i].variantID.String() < holds[j].variantID.String()
+	})
+	return holds, nil
 }
 
 // recordCouponRedemption persists the coupon redemption against the created

@@ -80,9 +80,8 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 
 	schemaBytes, err := os.ReadFile("../../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
+	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
-
 
 	s.txRunner = database.NewTxRunner(s.db)
 	s.reviewRepo = review.NewReviewRepository()
@@ -116,27 +115,27 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 
 	// Seed product hierarchy
 	s.categoryID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_categories (id, name)
 		VALUES ($1, $2)
 	`, s.categoryID, "Review Category")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type)
 		VALUES ($1, $2, $3, $4, 'published', 'simple')
 	`, s.productID, s.categoryID, "anc-headphones-pro", "ANC Headphones Pro")
 	require.NoError(s.T(), err)
 
 	s.variantID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, product_id, sku, title, price)
 		VALUES ($1, $2, $3, $4, 29999)
 	`, s.variantID, s.productID, "SKU-ANC-PRO-BLK", "Black Edition")
 	require.NoError(s.T(), err)
 
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		UPDATE products SET default_variant_id = $2 WHERE id = $1
 	`, s.productID, s.variantID)
 	require.NoError(s.T(), err)
@@ -159,7 +158,7 @@ func (s *ReviewHTTPTestSuite) TearDownSuite() {
 
 func (s *ReviewHTTPTestSuite) createTestUser(role string) (uuid.UUID, string) {
 	userID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, status)
 		VALUES ($1, $2, 'Test User', $3, 'active')
 	`, userID, fmt.Sprintf("user-%s@example.com", uuid.NewString()[:8]), role)
@@ -185,7 +184,7 @@ func (s *ReviewHTTPTestSuite) createDeliveredOrder(userID uuid.UUID) uuid.UUID {
 
 	addrJSON := `{"street": "123 Main St", "city": "Cairo", "state": "Cairo", "country": "EG"}`
 
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, total_amount, currency)
 		VALUES ($1, $2, $3, $4::jsonb, 'delivered', 29999, 'USD')
 	`, orderID, userID, "customer@example.com", addrJSON)
@@ -193,7 +192,7 @@ func (s *ReviewHTTPTestSuite) createDeliveredOrder(userID uuid.UUID) uuid.UUID {
 
 	snapshotJSON := `{"title": "ANC Headphones Pro", "price": 29999}`
 
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
 		VALUES ($1, $2, $3, 1, 29999, $4::jsonb)
 	`, orderItemID, orderID, s.variantID, snapshotJSON)

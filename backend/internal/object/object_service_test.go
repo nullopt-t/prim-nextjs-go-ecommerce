@@ -88,23 +88,33 @@ type fakeExecutor struct {
 	execErr error
 }
 
-func (f fakeExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (f fakeExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, f.execErr
 }
 
-func (f fakeExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (f fakeExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (f fakeExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row { return f.row }
+func (f fakeExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row { return f.row }
 
 type fakeTx struct {
 	fakeExecutor
 }
 
+func (f *fakeTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return f.ExecContext(ctx, sql, args...)
+}
+func (f *fakeTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return f.QueryContext(ctx, sql, args...)
+}
+func (f *fakeTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return f.QueryRowContext(ctx, sql, args...)
+}
+
 func (f *fakeTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
-func (f *fakeTx) Commit(context.Context) error { return nil }
-func (f *fakeTx) Rollback(context.Context) error { return nil }
+func (f *fakeTx) Commit(context.Context) error          { return nil }
+func (f *fakeTx) Rollback(context.Context) error        { return nil }
 func (f *fakeTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
 	return 0, nil
 }
@@ -112,7 +122,7 @@ func (f *fakeTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { retur
 func (f *fakeTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
 	return nil, nil
 }
-func (f *fakeTx) Conn() *pgx.Conn { return nil }
+func (f *fakeTx) Conn() *pgx.Conn                { return nil }
 func (f *fakeTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type fakeRunner struct {

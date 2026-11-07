@@ -17,7 +17,7 @@ type captureQE struct {
 	args    [][]any
 }
 
-func (c *captureQE) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+func (c *captureQE) ExecContext(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
 	c.queries = append(c.queries, sql)
 	c.args = append(c.args, arguments)
 	return pgconn.NewCommandTag("OK 1"), nil
@@ -35,7 +35,7 @@ func (emptyRowsStub) Values() ([]any, error)                       { return nil,
 func (emptyRowsStub) RawValues() [][]byte                          { return nil }
 func (emptyRowsStub) Conn() *pgx.Conn                              { return nil }
 
-func (c *captureQE) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (c *captureQE) QueryContext(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	c.queries = append(c.queries, sql)
 	c.args = append(c.args, args)
 	return emptyRowsStub{}, nil
@@ -52,7 +52,7 @@ func (rowStub) Scan(dest ...any) error {
 	return nil
 }
 
-func (c *captureQE) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (c *captureQE) QueryRowContext(ctx context.Context, sql string, args ...any) pgx.Row {
 	c.queries = append(c.queries, sql)
 	c.args = append(c.args, args)
 	return rowStub{}

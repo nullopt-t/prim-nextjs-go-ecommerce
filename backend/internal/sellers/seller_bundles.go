@@ -24,18 +24,18 @@ type BundleItemInput struct {
 
 // CreateBundleInput carries the bundle definition from the handler.
 type CreateBundleInput struct {
-	Title       string
-	Description *string
-	BundlePrice int64
-	Currency    string
+	Title        string
+	Description  *string
+	BundlePrice  int64
+	Currency     string
 	ThumbnailURL string
-	Items       []BundleItemInput
+	Items        []BundleItemInput
 }
 
 // UpdateBundleInput carries the bundle edit payload. Nil fields are unchanged.
 type UpdateBundleInput struct {
 	Title       *string
-	BundlePrice  *int64
+	BundlePrice *int64
 	Currency    *string
 	Items       []BundleItemInput
 }
@@ -217,8 +217,21 @@ func (s *Service) UpdateBundle(
 	if in.BundlePrice != nil && *in.BundlePrice <= 0 {
 		return apierr.BadRequestError("Bundle price must be greater than zero").WithCode(apierr.CodeInvalidInput)
 	}
-	if in.Title != nil && strings.TrimSpace(*in.Title) == "" {
-		return apierr.BadRequestError("Bundle title is required").WithCode(apierr.CodeInvalidInput)
+	if in.Title != nil {
+		title := strings.TrimSpace(*in.Title)
+		if title == "" {
+			return apierr.BadRequestError("Bundle title is required").WithCode(apierr.CodeInvalidInput)
+		}
+		in.Title = &title
+	}
+	var currency *string
+	if in.Currency != nil {
+		normalized := strings.ToUpper(strings.TrimSpace(*in.Currency))
+		if !isCurrencyCode(normalized) {
+			return apierr.BadRequestError("Currency must be a three-letter ISO code").
+				WithCode(apierr.CodeInvalidInput)
+		}
+		currency = &normalized
 	}
 
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
@@ -258,6 +271,19 @@ func (s *Service) UpdateBundle(
 				if component.SellerID == nil || *component.SellerID != seller.ID {
 					return apierr.NotFoundError("Product not found").WithCode(errcode.CodeProductNotFound)
 				}
+				// The kit cannot contain its own product (infinite composition)
+				// nor another bundle's kit.
+				if item.ProductID == productID {
+					return apierr.BadRequestError("A bundle cannot include itself").WithCode(apierr.CodeInvalidInput)
+				}
+				isBundle, err := s.bundles.IsBundleProduct(ctx, item.ProductID)
+				if err != nil {
+					return s.handleError(err, "Failed to check bundle item")
+				}
+				if isBundle {
+					return apierr.BadRequestError("A bundle cannot include another bundle").
+						WithCode(apierr.CodeInvalidInput)
+				}
 				if item.VariantID != nil {
 					variant, err := s.variants.GetVariantByID(ctx, *item.VariantID)
 					if err != nil {
@@ -282,7 +308,7 @@ func (s *Service) UpdateBundle(
 				Quantity:  item.Quantity,
 			})
 		}
-		if err := s.bundles.UpdateBundle(ctx, seller.ID, bundleID, in.BundlePrice, in.Currency, len(in.Items) > 0, storeItems); err != nil {
+		if err := s.bundles.UpdateBundle(ctx, seller.ID, bundleID, in.BundlePrice, currency, len(in.Items) > 0, storeItems); err != nil {
 			return err
 		}
 
@@ -291,13 +317,15 @@ func (s *Service) UpdateBundle(
 				return err
 			}
 		}
-		if in.BundlePrice != nil {
+		// Keep the selling variant in step with the bundle product: a currency
+		// edit that never reaches the variant leaves the listing priced in one
+		// currency and charged in another.
+		if in.BundlePrice != nil || currency != nil || in.Title != nil {
 			variants, err := s.variants.ListVariantsByProductID(ctx, productID, &pagination.ListQuery{PageSize: 1}, false)
 			if err != nil {
 				return err
 			}
 			if len(variants.Items) > 0 {
-				currency := in.Currency
 				if err := s.variants.UpdateVariant(ctx, variants.Items[0].ID, variant.UpdateVariantInput{
 					Title:    in.Title,
 					Price:    in.BundlePrice,

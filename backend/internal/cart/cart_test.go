@@ -50,6 +50,12 @@ func (d *dummyProductService) GetByID(ctx context.Context, id uuid.UUID) (*model
 	}, nil
 }
 
+// GetBundleComposition reports every dummy product as an ordinary listing: the
+// cart only treats a product as a kit when a composition exists.
+func (d *dummyProductService) GetBundleComposition(_ context.Context, _ uuid.UUID) (*model.BundleComposition, error) {
+	return nil, database.ErrNotFound
+}
+
 // dummySellerReader keeps all cart fixtures platform-owned by reporting an
 // active seller for any id (the dummy products carry no seller).
 type dummySellerReader struct{}
@@ -111,8 +117,20 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 
 	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
+	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
+
+	// Bundles reference sellers, so the seller domain has to exist before the
+	// bundle tables are created in the test schema.
+	for _, migration := range []string{
+		"../../migrations/000003_seller_domain.up.sql",
+		"../../migrations/000008_product_bundles.up.sql",
+	} {
+		migrationBytes, readErr := os.ReadFile(migration)
+		require.NoError(s.T(), readErr)
+		_, execErr := db.ExecContext(ctx, string(migrationBytes))
+		require.NoError(s.T(), execErr)
+	}
 
 	s.txRunner = database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
@@ -124,14 +142,14 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, s.variantRepo, s.inventoryRepo, s.inventoryService)
 
 	s.categoryID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_categories (id, name)
 		VALUES ($1, $2)
 	`, s.categoryID, "Audio Electronics")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes)
 		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[])
 	`, s.productID, s.categoryID, "anc-headphones-"+uuid.NewString(), "ANC Headphones")
@@ -504,7 +522,7 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 
 func (s *CartHTTPTestSuite) createAuthenticatedUser() (uuid.UUID, string) {
 	userID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, $3, 'customer', true, 'active')
 	`, userID, "user_"+userID.String()+"@example.com", "Test User")

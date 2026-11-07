@@ -39,7 +39,7 @@ func (cr *CategoryRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err = executor.QueryRow(
+	err = executor.QueryRowContext(
 		ctx,
 		query,
 		category.ID,
@@ -75,7 +75,7 @@ func (cr *CategoryRepository) get(
 	`, whereClause)
 
 	category := new(model.ProductCategory)
-	err = executor.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&category.ID,
 		&category.ParentID,
 		&category.Name,
@@ -162,7 +162,7 @@ func (cr *CategoryRepository) Update(
 
 	args = append(args, categoryID)
 
-	cmdTag, err := tx.Exec(ctx, query, args...)
+	cmdTag, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update product category: %w", err)
 	}
@@ -200,7 +200,7 @@ func (cr *CategoryRepository) GetProductCategory(
 	`
 
 	category := new(model.ProductCategory)
-	err = executor.QueryRow(ctx, query, productID).Scan(
+	err = executor.QueryRowContext(ctx, query, productID).Scan(
 		&category.ID,
 		&category.ParentID,
 		&category.Name,
@@ -265,7 +265,7 @@ func (cr *CategoryRepository) attachParentNames(
 		return nil
 	}
 
-	rows, err := executor.Query(ctx, `SELECT id, name FROM product_categories WHERE id = ANY($1)`, parentIDs)
+	rows, err := executor.QueryContext(ctx, `SELECT id, name FROM product_categories WHERE id = ANY($1)`, parentIDs)
 	if err != nil {
 		return fmt.Errorf("resolve category parent names: %w", err)
 	}
@@ -361,7 +361,7 @@ func (cr *CategoryRepository) List(
 
 		args = append(args, q.PageSize+1)
 
-		rows, err := executor.Query(ctx, selectQuery, args...)
+		rows, err := executor.QueryContext(ctx, selectQuery, args...)
 		if err != nil {
 			return nil, fmt.Errorf("list product categories query: %w", err)
 		}
@@ -402,7 +402,7 @@ func (cr *CategoryRepository) List(
 	// 1. Total matching count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_categories WHERE %s", whereStmt)
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list product categories count: %w", err)
 	}
 
@@ -448,7 +448,7 @@ func (cr *CategoryRepository) List(
 
 	args = append(args, q.PageSize, q.Offset)
 
-	rows, err := executor.Query(ctx, selectQuery, args...)
+	rows, err := executor.QueryContext(ctx, selectQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list product categories query: %w", err)
 	}
@@ -491,7 +491,7 @@ func (cr *CategoryRepository) SoftDeleteCategory(ctx context.Context, id uuid.UU
 		return err
 	}
 	query := `UPDATE product_categories SET deleted_at = now(), updated_at = now() WHERE id = $1 AND deleted_at IS NULL`
-	tag, err := tx.Exec(ctx, query, id)
+	tag, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("soft delete category: %w", err)
 	}

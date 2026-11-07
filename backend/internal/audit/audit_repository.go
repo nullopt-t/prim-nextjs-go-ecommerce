@@ -28,7 +28,7 @@ func (r *Repository) Insert(
 	if err != nil {
 		return err
 	}
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		INSERT INTO audit_log (
 			actor_id, actor_role, action, entity_type, entity_id,
 			method, path, status_code, ip_address, user_agent,
@@ -129,7 +129,7 @@ func (r *Repository) List(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list audit log: %w", err)
 	}

@@ -14,16 +14,16 @@ type captureExecutor struct {
 	args []interface{}
 }
 
-func (e *captureExecutor) Exec(_ context.Context, _ string, args ...interface{}) (pgconn.CommandTag, error) {
+func (e *captureExecutor) ExecContext(_ context.Context, _ string, args ...interface{}) (pgconn.CommandTag, error) {
 	e.args = args
 	return pgconn.NewCommandTag("INSERT 0 1"), nil
 }
 
-func (e *captureExecutor) Query(_ context.Context, _ string, _ ...interface{}) (pgx.Rows, error) {
+func (e *captureExecutor) QueryContext(_ context.Context, _ string, _ ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (e *captureExecutor) QueryRow(_ context.Context, _ string, _ ...interface{}) pgx.Row {
+func (e *captureExecutor) QueryRowContext(_ context.Context, _ string, _ ...interface{}) pgx.Row {
 	return nil
 }
 

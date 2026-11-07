@@ -114,7 +114,7 @@ func (r *InventoryRepository) LockVariantForUpdate(
 	// Query product_variants table by ID with FOR UPDATE to block competing transactions on this SKU.
 	query := `SELECT id FROM product_variants WHERE id = $1 FOR UPDATE`
 	var id uuid.UUID
-	err = tx.QueryRow(ctx, query, variantID).Scan(&id)
+	err = tx.QueryRowContext(ctx, query, variantID).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("lock variant for update: %w", err)
 	}
@@ -144,7 +144,7 @@ func (r *InventoryRepository) CreateLedger(
 		RETURNING id, created_at
 	`
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		ledger.VariantID,
@@ -181,7 +181,7 @@ func (r *InventoryRepository) GetStock(
 	`
 
 	stock := &model.InventoryStock{}
-	err = executor.QueryRow(ctx, query, variantID).Scan(&stock.VariantID, &stock.OnHandQuantity, &stock.ReservedQuantity)
+	err = executor.QueryRowContext(ctx, query, variantID).Scan(&stock.VariantID, &stock.OnHandQuantity, &stock.ReservedQuantity)
 	if err != nil {
 		return nil, fmt.Errorf("get inventory stock: %w", err)
 	}
@@ -191,6 +191,63 @@ func (r *InventoryRepository) GetStock(
 	stock.IsInStock = stock.AvailableQuantity > 0
 
 	return stock, nil
+}
+
+// GetBundleComponentsForVariant returns the component rows of the kit that
+// variantID sells, or an empty slice when the variant is not a bundle's selling
+// variant. Components are ordered by their stock variant so callers locking rows
+// acquire them deterministically.
+func (r *InventoryRepository) GetBundleComponentsForVariant(
+	ctx context.Context,
+	variantID uuid.UUID,
+) ([]model.BundleComponent, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := executor.QueryContext(ctx, `
+		SELECT
+			bi.product_id,
+			bi.variant_id,
+			bi.quantity,
+			COALESCE(bi.variant_id, p.default_variant_id, (
+				SELECT v.id FROM product_variants v
+				WHERE v.product_id = p.id AND v.deleted_at IS NULL
+				ORDER BY v.created_at, v.id
+				LIMIT 1
+			)) AS stock_variant_id
+		FROM bundle_items bi
+		JOIN product_bundles pb ON pb.id = bi.bundle_id
+		JOIN products p ON p.id = bi.product_id AND p.deleted_at IS NULL
+		WHERE pb.product_id = (
+			SELECT pv.product_id FROM product_variants pv WHERE pv.id = $1
+		)
+		ORDER BY stock_variant_id, bi.id
+	`, variantID)
+	if err != nil {
+		return nil, fmt.Errorf("list bundle components for variant %s: %w", variantID, err)
+	}
+	defer rows.Close()
+
+	components := make([]model.BundleComponent, 0, 4)
+	for rows.Next() {
+		component := model.BundleComponent{}
+		if err := rows.Scan(
+			&component.ProductID,
+			&component.VariantID,
+			&component.Quantity,
+			&component.StockVariantID,
+		); err != nil {
+			return nil, fmt.Errorf("scan bundle component: %w", err)
+		}
+		components = append(components, component)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate bundle components: %w", err)
+	}
+
+	return components, nil
 }
 
 // GetStockForVariants performs batch stock computation for multiple variants in a single query using CTEs,
@@ -233,7 +290,7 @@ func (r *InventoryRepository) GetStockForVariants(
 		WHERE pv.id = ANY($1) AND pv.deleted_at IS NULL
 	`
 
-	rows, err := executor.Query(ctx, query, variantIDs)
+	rows, err := executor.QueryContext(ctx, query, variantIDs)
 	if err != nil {
 		return nil, fmt.Errorf("get stock for variants: %w", err)
 	}
@@ -278,7 +335,7 @@ func (r *InventoryRepository) ListVariantLedgers(
 	// Count total ledger entries for pagination metadata.
 	countQuery := `SELECT COUNT(*) FROM inventory_ledgers WHERE variant_id = $1`
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, variantID).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, variantID).Scan(&total); err != nil {
 		return nil, fmt.Errorf("count inventory ledgers: %w", err)
 	}
 
@@ -300,7 +357,7 @@ func (r *InventoryRepository) ListVariantLedgers(
 		LIMIT $2 OFFSET $3
 	`
 
-	rows, err := executor.Query(ctx, selectQuery, variantID, q.PageSize, q.Offset)
+	rows, err := executor.QueryContext(ctx, selectQuery, variantID, q.PageSize, q.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("list inventory ledgers: %w", err)
 	}
@@ -336,7 +393,7 @@ func (r *InventoryRepository) CreateReservation(
 		RETURNING created_at
 	`
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		res.ID,
@@ -379,7 +436,7 @@ func (r *InventoryRepository) GetReservationByID(
 		LIMIT 1
 	`
 
-	rows, err := executor.Query(ctx, query, id)
+	rows, err := executor.QueryContext(ctx, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("query reservation: %w", err)
 	}
@@ -419,7 +476,7 @@ func (r *InventoryRepository) GetActiveCartReservation(
 		LIMIT 1
 	`
 
-	rows, err := executor.Query(ctx, query, cartID, variantID)
+	rows, err := executor.QueryContext(ctx, query, cartID, variantID)
 	if err != nil {
 		return nil, fmt.Errorf("query active cart reservation: %w", err)
 	}
@@ -449,7 +506,7 @@ func (r *InventoryRepository) UpdateReservationQuantityAndExpiry(
 		WHERE id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, id, quantity, expiresAt)
+	cmd, err := tx.ExecContext(ctx, query, id, quantity, expiresAt)
 	if err != nil {
 		return fmt.Errorf("update reservation quantity and expiry: %w", err)
 	}
@@ -477,7 +534,7 @@ func (r *InventoryRepository) ReleaseReservation(
 		WHERE id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := executor.Exec(ctx, query, id)
+	cmd, err := executor.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("release reservation: %w", err)
 	}
@@ -504,7 +561,7 @@ func (r *InventoryRepository) ReleaseCartReservations(
 		WHERE cart_id = $1 AND released_at IS NULL
 	`
 
-	_, err = executor.Exec(ctx, query, cartID)
+	_, err = executor.ExecContext(ctx, query, cartID)
 	if err != nil {
 		return fmt.Errorf("release cart reservations: %w", err)
 	}
@@ -527,7 +584,7 @@ func (r *InventoryRepository) ReleaseExpiredReservations(
 		WHERE released_at IS NULL AND expires_at <= now()
 	`
 
-	cmd, err := executor.Exec(ctx, query)
+	cmd, err := executor.ExecContext(ctx, query)
 	if err != nil {
 		return 0, fmt.Errorf("release expired reservations: %w", err)
 	}
@@ -567,7 +624,7 @@ func (r *InventoryRepository) GetUnreleasedReservationsForOrder(
 		FOR UPDATE
 	`
 
-	rows, err := tx.Query(ctx, query, orderID)
+	rows, err := tx.QueryContext(ctx, query, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("query unreleased order reservations: %w", err)
 	}
@@ -598,7 +655,7 @@ func (r *InventoryRepository) ReleaseReservationsForOrder(
 		WHERE order_id = $1 AND released_at IS NULL
 	`
 
-	cmd, err := executor.Exec(ctx, query, orderID)
+	cmd, err := executor.ExecContext(ctx, query, orderID)
 	if err != nil {
 		return 0, fmt.Errorf("release order reservations: %w", err)
 	}
@@ -622,7 +679,7 @@ func (r *InventoryRepository) ExpiredReservationOrderIDs(
 		WHERE order_id IS NOT NULL AND released_at IS NULL AND expires_at <= now()
 	`
 
-	rows, err := executor.Query(ctx, query)
+	rows, err := executor.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("query expired reservation orders: %w", err)
 	}
@@ -684,7 +741,7 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, limit i
 		return nil, nil, err
 	}
 	query := `
-		SELECT 
+		SELECT
 			pv.id,
 			pv.product_id,
 			p.title,
@@ -723,7 +780,7 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, limit i
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list inventory: %w", err)
 	}
@@ -803,7 +860,7 @@ func (r *InventoryRepository) ListRecentLedgers(ctx context.Context, limit int, 
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list recent ledgers: %w", err)
 	}
@@ -844,7 +901,7 @@ func (r *InventoryRepository) GetPrimaryVariantIDByProductID(
 		ORDER BY (CASE WHEN p.default_variant_id IS NOT NULL AND pv.id = p.default_variant_id THEN 0 ELSE 1 END) ASC, pv.created_at ASC
 		LIMIT 1
 	`
-	err = executor.QueryRow(ctx, query, productID).Scan(&variantID)
+	err = executor.QueryRowContext(ctx, query, productID).Scan(&variantID)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("get primary variant for product: %w", err)
 	}
@@ -876,7 +933,7 @@ func (r *InventoryRepository) GetVariantInfo(
 		JOIN products p ON pv.product_id = p.id
 		WHERE pv.id = $1
 	`
-	err = executor.QueryRow(ctx, query, variantID).Scan(
+	err = executor.QueryRowContext(ctx, query, variantID).Scan(
 		&info.VariantID,
 		&info.ProductID,
 		&info.ProductName,

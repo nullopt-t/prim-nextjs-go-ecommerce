@@ -44,7 +44,7 @@ func (r *AttributeRepository) ListAttributes(ctx context.Context) ([]AttributeIt
 		LEFT JOIN product_categories pc ON ca.category_id = pc.id
 		ORDER BY ca.created_at DESC
 	`
-	rows, err := executor.Query(ctx, query)
+	rows, err := executor.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list attributes: %w", err)
 	}
@@ -77,7 +77,7 @@ func (r *AttributeRepository) GetByID(ctx context.Context, id uuid.UUID) (*Attri
 		WHERE ca.id = $1
 	`
 	var ai AttributeItem
-	err = executor.QueryRow(ctx, query, id).Scan(
+	err = executor.QueryRowContext(ctx, query, id).Scan(
 		&ai.ID, &ai.CategoryID, &ai.CategoryName, &ai.Key, &ai.Label, &ai.ValueType,
 		&ai.AllowedValues, &ai.IsFilterable, &ai.SortOrder, &ai.CreatedAt, &ai.UpdatedAt,
 	)
@@ -102,7 +102,7 @@ func (r *AttributeRepository) ListByCategory(ctx context.Context, categoryID uui
 		WHERE ca.category_id = $1
 		ORDER BY ca.sort_order ASC, ca.key ASC
 	`
-	rows, err := executor.Query(ctx, query, categoryID)
+	rows, err := executor.QueryContext(ctx, query, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("list category attributes: %w", err)
 	}
@@ -132,7 +132,7 @@ func (r *AttributeRepository) CreateAttribute(ctx context.Context, ai *Attribute
 		VALUES ($1, $2, $3, $4, $5::attribute_value_type, $6, $7, $8, NOW(), NOW())
 		RETURNING created_at, updated_at
 	`
-	return tx.QueryRow(ctx, query,
+	return tx.QueryRowContext(ctx, query,
 		ai.ID, ai.CategoryID, ai.Key, ai.Label, ai.ValueType, ai.AllowedValues, ai.IsFilterable, ai.SortOrder,
 	).Scan(&ai.CreatedAt, &ai.UpdatedAt)
 }
@@ -207,7 +207,7 @@ func (r *AttributeRepository) UpdateAttribute(
 
 	args = append(args, id)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update attribute: %w", err)
 	}
@@ -223,7 +223,7 @@ func (r *AttributeRepository) DeleteAttribute(ctx context.Context, id uuid.UUID)
 		return err
 	}
 	query := `DELETE FROM category_attributes WHERE id = $1`
-	cmd, err := tx.Exec(ctx, query, id)
+	cmd, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete attribute: %w", err)
 	}
@@ -248,7 +248,7 @@ func (r *AttributeRepository) ListBySellerCategory(ctx context.Context, sellerID
 		WHERE sa.seller_id = $1 AND sa.category_id = $2
 		ORDER BY sa.sort_order ASC, sa.key ASC
 	`
-	rows, err := executor.Query(ctx, query, sellerID, categoryID)
+	rows, err := executor.QueryContext(ctx, query, sellerID, categoryID)
 	if err != nil {
 		return nil, fmt.Errorf("list seller attributes: %w", err)
 	}
@@ -279,7 +279,7 @@ func (r *AttributeRepository) CreateSellerAttribute(ctx context.Context, sellerI
 		VALUES ($1, $2, $3, $4, $5, $6::attribute_value_type, $7, $8, $9, NOW(), NOW())
 		RETURNING created_at, updated_at
 	`
-	return tx.QueryRow(ctx, query,
+	return tx.QueryRowContext(ctx, query,
 		ai.ID, sellerID, ai.CategoryID, ai.Key, ai.Label, ai.ValueType, ai.AllowedValues, ai.IsFilterable, ai.SortOrder,
 	).Scan(&ai.CreatedAt, &ai.UpdatedAt)
 }
@@ -342,7 +342,7 @@ func (r *AttributeRepository) UpdateSellerAttribute(
 	`, strings.Join(setClauses, ", "), argIdx, argIdx+1)
 	args = append(args, sellerID, id)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update seller attribute: %w", err)
 	}
@@ -359,7 +359,7 @@ func (r *AttributeRepository) DeleteSellerAttribute(ctx context.Context, sellerI
 		return err
 	}
 	query := `DELETE FROM seller_attributes WHERE seller_id = $1 AND id = $2`
-	cmd, err := tx.Exec(ctx, query, sellerID, id)
+	cmd, err := tx.ExecContext(ctx, query, sellerID, id)
 	if err != nil {
 		return fmt.Errorf("delete seller attribute: %w", err)
 	}

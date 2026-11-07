@@ -17,19 +17,19 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
+	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/user"
-	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
-	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -107,12 +107,25 @@ func (f *fakeCouponCatalog) DeleteSellerCoupon(_ context.Context, sellerID, coup
 
 // fakeSellerAttributeStore is an in-memory SellerAttributeStore double.
 type fakeSellerAttributeStore struct {
-	mu    sync.Mutex
-	items map[uuid.UUID]*attribute.AttributeItem
+	mu           sync.Mutex
+	items        map[uuid.UUID]*attribute.AttributeItem
+	platformDefs []attribute.AttributeItem
 }
 
 func newFakeSellerAttributeStore() *fakeSellerAttributeStore {
 	return &fakeSellerAttributeStore{items: map[uuid.UUID]*attribute.AttributeItem{}}
+}
+
+func (f *fakeSellerAttributeStore) ListByCategory(_ context.Context, categoryID uuid.UUID) ([]attribute.AttributeItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var list []attribute.AttributeItem
+	for _, def := range f.platformDefs {
+		if def.CategoryID != nil && *def.CategoryID == categoryID {
+			list = append(list, def)
+		}
+	}
+	return list, nil
 }
 
 func (f *fakeSellerAttributeStore) ListBySellerCategory(_ context.Context, sellerID, categoryID uuid.UUID) ([]attribute.AttributeItem, error) {
@@ -534,7 +547,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	} {
 		migration, err := os.ReadFile(f)
 		require.NoError(err)
-		_, err = s.db.Exec(s.ctx, string(migration))
+		_, err = s.db.ExecContext(s.ctx, string(migration))
 		require.NoError(err)
 	}
 
@@ -545,7 +558,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	// Seed one seller-facing user; the service registers their profile.
 	db := s.db
 	s.sellerUID = uuid.New()
-	_, err = db.Exec(s.ctx, `
+	_, err = db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'seller@example.com', 'Seller User', 'seller', 'active', false, now(), now())
 	`, s.sellerUID)
@@ -577,7 +590,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	)
 
 	s.categoryID = uuid.New()
-	_, err = db.Exec(s.ctx, `
+	_, err = db.ExecContext(s.ctx, `
 		INSERT INTO product_categories (id, name) VALUES ($1, 'Payout Category')
 	`, s.categoryID)
 	require.NoError(err)
@@ -615,25 +628,25 @@ func (s *SellerServiceSuite) seedSettledEarningsFor(sellerID uuid.UUID, earning 
 	productID := uuid.New()
 	variantID := uuid.New()
 
-	_, err := db.Exec(ctx, `
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes, seller_id)
 		VALUES ($1, $2, $3, 'Payout Product', 'published', 'simple', '{}', $4)
 	`, productID, s.categoryID, "payout-product-"+orderID.String()[:8], sellerID)
 	require.NoError(err)
 
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, sku, product_id, title, price, currency)
 		VALUES ($1, $2, $3, 'Payout Variant', 0, 'EGP')
 	`, variantID, "SKU-"+orderID.String()[:8], productID)
 	require.NoError(err)
 
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, total_amount, currency)
 		VALUES ($1, NULL, 'buyer@example.com', '{}'::jsonb, 'delivered', 0, 'EGP')
 	`, orderID)
 	require.NoError(err)
 
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot, seller_id, seller_earning)
 		VALUES ($1, $2, $3, 1, $5, '{}'::jsonb, $4, $5)
 	`, uuid.New(), orderID, variantID, sellerID, earning)
@@ -646,7 +659,7 @@ func (s *SellerServiceSuite) seedSettledEarningsFor(sellerID uuid.UUID, earning 
 
 func (s *SellerServiceSuite) TestRegisterSellerCreatesPendingProfile() {
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'second@example.com', 'Second User', 'seller', 'active', false, now(), now())
 	`, uid)
@@ -674,7 +687,7 @@ func (s *SellerServiceSuite) TestRegisterSellerIsOnePerUser() {
 
 func (s *SellerServiceSuite) TestRegisterSellerSlugCollision() {
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'third@example.com', 'Third User', 'seller', 'active', false, now(), now())
 	`, uid)
@@ -795,7 +808,7 @@ func (s *SellerServiceSuite) TestAdminTransitionPayoutConcurrentConflict() {
 
 func (s *SellerServiceSuite) TestCustomerCanRegisterThroughHTTPRoutes() {
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'router-merchant@example.com', 'Router Merchant', 'customer', 'active', true, now(), now())
 	`, uid)
@@ -839,13 +852,13 @@ func (s *SellerServiceSuite) TestCustomerCanRegisterThroughHTTPRoutes() {
 	s.Equal(string(model.SellerStatusPending), payload.Data.Status)
 
 	var role model.UserRole
-	s.Require().NoError(s.db.QueryRow(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
+	s.Require().NoError(s.db.QueryRowContext(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
 	s.Equal(model.CustomerRole, role)
 }
 
 func (s *SellerServiceSuite) TestCustomerRoleCanRegisterAndReadProfile() {
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'customer-merchant@example.com', 'Customer Merchant', 'customer', 'active', true, now(), now())
 	`, uid)
@@ -863,7 +876,7 @@ func (s *SellerServiceSuite) TestCustomerRoleCanRegisterAndReadProfile() {
 	s.Equal(created.ID, profile.ID)
 
 	var role model.UserRole
-	s.Require().NoError(s.db.QueryRow(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
+	s.Require().NoError(s.db.QueryRowContext(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
 	s.Equal(model.CustomerRole, role, "seller capability must not mutate the staff role")
 }
 
@@ -892,7 +905,7 @@ func (s *SellerServiceSuite) TestRejectedApplicationCanBeResubmitted() {
 	s.Equal("resubmitted-store", resubmitted.Slug)
 
 	var role model.UserRole
-	s.Require().NoError(s.db.QueryRow(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
+	s.Require().NoError(s.db.QueryRowContext(s.ctx, `SELECT role FROM users WHERE id = $1`, uid).Scan(&role))
 	s.Equal(model.CustomerRole, role)
 
 	pending := model.SellerStatusPending
@@ -958,7 +971,7 @@ func (s *SellerServiceSuite) TestSlugConflictMapsToFieldError() {
 	_, existing := s.createSeller(model.SellerStatusPending)
 
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, $2, 'Slug Competitor', 'customer', 'active', true, now(), now())
 	`, uid, "slug-competitor-"+uid.String()[:8]+"@example.com")
@@ -1052,7 +1065,7 @@ func (s *SellerServiceSuite) createSeller(status model.SellerStatus) (uuid.UUID,
 	s.Require().NotNil(s.service)
 	uid := uuid.New()
 	email := "merchant-" + uid.String()[:8] + "@example.com"
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, $2, 'Lifecycle Merchant', 'customer', 'active', true, now(), now())
 	`, uid, email)
@@ -1289,7 +1302,7 @@ func (s *SellerServiceSuite) TestSellerCannotTouchForeignVariant() {
 func (s *SellerServiceSuite) TestDashboardReportsMoneyAndCatalog() {
 	// A dedicated seller keeps the counters independent of other tests.
 	uid := uuid.New()
-	_, err := s.db.Exec(s.ctx, `
+	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
 		VALUES ($1, 'dash@example.com', 'Dash Seller', 'seller', 'active', false, now(), now())
 	`, uid)

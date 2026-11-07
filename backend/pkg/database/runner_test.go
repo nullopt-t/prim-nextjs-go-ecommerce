@@ -17,15 +17,15 @@ type fakeExecutor struct {
 	name string
 }
 
-func (f *fakeExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (f *fakeExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
 
-func (f *fakeExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (f *fakeExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (f *fakeExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+func (f *fakeExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row {
 	return nil
 }
 

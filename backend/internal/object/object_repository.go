@@ -24,7 +24,7 @@ func (or *ObjectRepository) Create(
 	if err != nil {
 		return err
 	}
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		`
 		INSERT INTO storage_objects (
@@ -62,7 +62,7 @@ func (or *ObjectRepository) UpdateStatus(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(
 		ctx,
 		`
 		UPDATE storage_objects
@@ -87,7 +87,7 @@ func (or *ObjectRepository) MarkDeletingByKey(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx,
+	_, err = tx.ExecContext(ctx,
 		`UPDATE storage_objects SET status = 'deleting', updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
@@ -106,7 +106,7 @@ func (or *ObjectRepository) MarkDeletedByKey(
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx,
+	_, err = tx.ExecContext(ctx,
 		`UPDATE storage_objects SET status = 'deleted', deleted_at = now(), updated_at = now() WHERE bucket = $1 AND object_key = $2`,
 		bucket, key,
 	)
@@ -125,7 +125,7 @@ func (or *ObjectRepository) GetByID(
 		return nil, err
 	}
 	obj := &model.Object{}
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
 		FROM storage_objects
 		WHERE id = $1
@@ -148,7 +148,7 @@ func (or *ObjectRepository) GetByBucketAndKey(
 		return nil, err
 	}
 	obj := &model.Object{}
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		SELECT id, bucket, object_key, content_type, file_size, status, created_at, updated_at, deleted_at
 		FROM storage_objects
 		WHERE bucket = $1 AND object_key = $2
@@ -180,7 +180,7 @@ func (or *ObjectRepository) GetByIDs(
 		FROM storage_objects
 		WHERE id = ANY($1)
 	`
-	rows, err := executor.Query(ctx, query, ids)
+	rows, err := executor.QueryContext(ctx, query, ids)
 	if err != nil {
 		return nil, fmt.Errorf("get objects by ids query: %w", err)
 	}
@@ -227,7 +227,7 @@ func (or *ObjectRepository) ListMedia(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list media: %w", err)
 	}

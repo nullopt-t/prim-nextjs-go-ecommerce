@@ -16,20 +16,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-
-
 // QueryExecutor abstracts SQL query execution across both raw connection pools (*DB)
 // and active transactional contexts (*Tx). This allows repository methods to execute
 // queries seamlessly inside or outside a database transaction.
 type QueryExecutor interface {
 	// Exec executes a SQL command that does not return rows (e.g. INSERT, UPDATE, DELETE).
-	Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error)
 
 	// Query executes a SQL query returning multiple rows (e.g. SELECT).
-	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
+	QueryContext(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
 
 	// QueryRow executes a SQL query expected to return at most one row.
-	QueryRow(ctx context.Context, query string, args ...interface{}) pgx.Row
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) pgx.Row
 }
 
 // DB wraps a pgxpool.Pool instance to manage pooled PostgreSQL connections
@@ -101,19 +99,19 @@ func (db *DB) Ping(ctx context.Context) error {
 }
 
 // Exec executes a SQL statement using a pooled connection without returning rows.
-func (db *DB) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+func (db *DB) ExecContext(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	return db.Pool.Exec(ctx, sql, args...)
 }
 
 // QueryRow executes a query that is expected to return at most one row.
 // The caller must call Scan on the returned Row to release the connection.
-func (db *DB) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (db *DB) QueryRowContext(ctx context.Context, sql string, args ...any) pgx.Row {
 	return db.Pool.QueryRow(ctx, sql, args...)
 }
 
 // Query executes a query that returns rows, typically a SELECT.
 // The caller is responsible for closing the returned Rows to return the connection to the pool.
-func (db *DB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (db *DB) QueryContext(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return db.Pool.Query(ctx, sql, args...)
 }
 
@@ -139,27 +137,26 @@ func (t *Tx) DB() *DB {
 }
 
 // Exec executes a query within the active transaction.
-func (t *Tx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+func (t *Tx) ExecContext(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
 	return t.tx.Exec(ctx, sql, args...)
 }
 
 // QueryRow executes a single-row query within the active transaction.
-func (t *Tx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (t *Tx) QueryRowContext(ctx context.Context, sql string, args ...any) pgx.Row {
 	return t.tx.QueryRow(ctx, sql, args...)
 }
 
 // Query executes a multi-row query within the active transaction.
-func (t *Tx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (t *Tx) QueryContext(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return t.tx.Query(ctx, sql, args...)
 }
 
 // Commit commits the active transaction.
-func (t *Tx) Commit(ctx context.Context) error {
+func (t *Tx) CommitContext(ctx context.Context) error {
 	return t.tx.Commit(ctx)
 }
 
 // Rollback rolls back the active transaction.
-func (t *Tx) Rollback(ctx context.Context) error {
+func (t *Tx) RollbackContext(ctx context.Context) error {
 	return t.tx.Rollback(ctx)
 }
-

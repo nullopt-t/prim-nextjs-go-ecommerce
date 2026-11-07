@@ -216,6 +216,33 @@ type ProductDetails struct {
 	Variants []*model.ProductVariant             `json:"variants,omitempty"`
 	Stock    map[uuid.UUID]*model.InventoryStock `json:"stock,omitempty"`
 	Tags     []*model.ProductTag                 `json:"tags,omitempty"`
+	Bundle   *BundleDetails                      `json:"bundle,omitempty"`
+}
+
+// BundleDetails is a kit's composition as sold on the storefront. A bundle has
+// no inventory of its own, so its availability is derived from its components.
+type BundleDetails struct {
+	// ItemCount is the number of distinct products in the kit.
+	ItemCount int
+	// AvailableQuantity is how many complete kits the components can build.
+	AvailableQuantity int
+	// IsInStock is true when at least one complete kit is buildable.
+	IsInStock bool
+	// Items is the kit's composition in display order.
+	Items []*BundleItemDetails
+}
+
+// BundleItemDetails is one component of a kit, with its own availability.
+type BundleItemDetails struct {
+	ProductID         uuid.UUID
+	Title             string
+	Slug              string
+	ThumbnailURL      *string
+	VariantID         *uuid.UUID
+	VariantTitle      *string
+	Quantity          int
+	AvailableQuantity int
+	IsInStock         bool
 }
 
 // normalizeVariationAxes trims, removes empty entries, and preserves order while
@@ -710,7 +737,108 @@ func (s *ProductService) populateProductDetails(
 		}
 	}
 
+	bundle, err := s.populateBundle(ctx, prod)
+	if err != nil {
+		return nil, err
+	}
+	if bundle != nil {
+		details.Bundle = bundle
+		// A kit keeps no inventory of its own. Every one of its variants
+		// reports how many complete kits the components can build, so the
+		// storefront never shows a buyable kit as out of stock (or the reverse).
+		if details.Stock == nil {
+			details.Stock = make(map[uuid.UUID]*model.InventoryStock, len(details.Variants))
+		}
+		for _, v := range details.Variants {
+			details.Stock[v.ID] = &model.InventoryStock{
+				VariantID:         v.ID,
+				OnHandQuantity:    bundle.AvailableQuantity,
+				AvailableQuantity: bundle.AvailableQuantity,
+				IsInStock:         bundle.IsInStock,
+			}
+		}
+	}
+
 	return details, nil
+}
+
+// populateBundle hydrates a product's kit composition and derives its
+// availability from the component variants. It returns nil when the product is
+// not a bundle.
+func (s *ProductService) populateBundle(
+	ctx context.Context,
+	prod *model.Product,
+) (*BundleDetails, error) {
+	composition, err := s.productRepo.GetBundleComposition(ctx, prod.ID)
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("load bundle composition: %w", err)
+	}
+
+	componentVariantIDs := make([]uuid.UUID, 0, len(composition.Items))
+	for _, item := range composition.Items {
+		if item.StockVariantID != nil {
+			componentVariantIDs = append(componentVariantIDs, *item.StockVariantID)
+		}
+	}
+
+	var componentStock map[uuid.UUID]*model.InventoryStock
+	if s.inventoryReader != nil && len(componentVariantIDs) > 0 {
+		componentStock, err = s.inventoryReader.GetStockForVariants(ctx, componentVariantIDs)
+		if err != nil {
+			return nil, fmt.Errorf("load bundle component stock: %w", err)
+		}
+	}
+
+	bundle := &BundleDetails{
+		ItemCount: len(composition.Items),
+		Items:     make([]*BundleItemDetails, 0, len(composition.Items)),
+	}
+	for _, item := range composition.Items {
+		component := &BundleItemDetails{
+			ProductID:    item.ProductID,
+			Title:        item.Title,
+			Slug:         item.Slug,
+			VariantID:    item.VariantID,
+			VariantTitle: item.VariantTitle,
+			Quantity:     item.Quantity,
+		}
+		if item.ThumbnailBucket != nil && item.ThumbnailKey != nil && s.storageProvider != nil {
+			url := s.storageProvider.GetPublicURL(*item.ThumbnailBucket, *item.ThumbnailKey)
+			component.ThumbnailURL = &url
+		}
+		if item.StockVariantID != nil {
+			if stock := componentStock[*item.StockVariantID]; stock != nil {
+				component.AvailableQuantity = stock.AvailableQuantity
+				component.IsInStock = stock.IsInStock
+			}
+		}
+		bundle.Items = append(bundle.Items, component)
+	}
+
+	bundle.AvailableQuantity = composition.AvailableQuantity(componentStock)
+	bundle.IsInStock = bundle.AvailableQuantity > 0
+	return bundle, nil
+}
+
+// GetBundleComposition exposes a product's kit composition to the cart and
+// checkout domains, which gate and reserve a kit through its components.
+func (s *ProductService) GetBundleComposition(
+	ctx context.Context,
+	productID uuid.UUID,
+) (*model.BundleComposition, error) {
+	return s.productRepo.GetBundleComposition(ctx, productID)
+}
+
+// GetBundleCompositionForVariant exposes a kit's composition to callers that
+// only hold a variant UUID, such as order restock.
+func (s *ProductService) GetBundleCompositionForVariant(
+	ctx context.Context,
+	variantID uuid.UUID,
+) (*model.BundleComposition, error) {
+	return s.productRepo.GetBundleCompositionForVariant(ctx, variantID)
 }
 
 // GetAdminDetailsByID retrieves full administrative product details (including soft-deleted),

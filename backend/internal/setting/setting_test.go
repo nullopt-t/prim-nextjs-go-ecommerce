@@ -60,15 +60,15 @@ type fakeSettingExecutor struct {
 	execErr error
 }
 
-func (e *fakeSettingExecutor) Exec(_ context.Context, _ string, _ ...interface{}) (pgconn.CommandTag, error) {
+func (e *fakeSettingExecutor) ExecContext(_ context.Context, _ string, _ ...interface{}) (pgconn.CommandTag, error) {
 	return pgconn.NewCommandTag("INSERT 0 1"), e.execErr
 }
 
-func (e *fakeSettingExecutor) Query(_ context.Context, _ string, _ ...interface{}) (pgx.Rows, error) {
+func (e *fakeSettingExecutor) QueryContext(_ context.Context, _ string, _ ...interface{}) (pgx.Rows, error) {
 	return &fakeSettingRows{items: e.items}, nil
 }
 
-func (e *fakeSettingExecutor) QueryRow(_ context.Context, _ string, _ ...interface{}) pgx.Row {
+func (e *fakeSettingExecutor) QueryRowContext(_ context.Context, _ string, _ ...interface{}) pgx.Row {
 	return nil
 }
 
@@ -76,9 +76,19 @@ type fakeSettingTx struct {
 	fakeSettingExecutor
 }
 
+func (f *fakeSettingTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return f.ExecContext(ctx, sql, args...)
+}
+func (f *fakeSettingTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return f.QueryContext(ctx, sql, args...)
+}
+func (f *fakeSettingTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return f.QueryRowContext(ctx, sql, args...)
+}
+
 func (f *fakeSettingTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
-func (f *fakeSettingTx) Commit(context.Context) error { return nil }
-func (f *fakeSettingTx) Rollback(context.Context) error { return nil }
+func (f *fakeSettingTx) Commit(context.Context) error          { return nil }
+func (f *fakeSettingTx) Rollback(context.Context) error        { return nil }
 func (f *fakeSettingTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
 	return 0, nil
 }
@@ -86,7 +96,7 @@ func (f *fakeSettingTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults 
 func (f *fakeSettingTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
 	return nil, nil
 }
-func (f *fakeSettingTx) Conn() *pgx.Conn { return nil }
+func (f *fakeSettingTx) Conn() *pgx.Conn                { return nil }
 func (f *fakeSettingTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type fakeRunner struct {
@@ -287,7 +297,7 @@ func TestSettingService_UpdateSettings_ErrorMapping(t *testing.T) {
 }
 
 type testCountingRunner struct {
-	runner   *fakeRunner
+	runner         *fakeRunner
 	onWithExecutor func()
 }
 

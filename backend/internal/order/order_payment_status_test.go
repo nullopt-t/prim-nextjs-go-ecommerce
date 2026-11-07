@@ -29,11 +29,11 @@ func (f *fakeInventoryReader) ExpiredReservationOrderIDs(ctx context.Context) ([
 // simulate both an updated row and a missing payment (UPDATE 0).
 type paymentStatusExecutor struct{ tag pgconn.CommandTag }
 
-func (e paymentStatusExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (e paymentStatusExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	return e.tag, nil
 }
 
-func (e paymentStatusExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (e paymentStatusExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
@@ -50,8 +50,18 @@ func (r paymentStatusRow) Scan(dest ...any) error {
 	return nil
 }
 
-func (e paymentStatusExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+func (e paymentStatusExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row {
 	return paymentStatusRow{orderID: uuid.New()}
+}
+
+func (e paymentStatusExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return e.ExecContext(ctx, sql, args...)
+}
+func (e paymentStatusExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return e.QueryContext(ctx, sql, args...)
+}
+func (e paymentStatusExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return e.QueryRowContext(ctx, sql, args...)
 }
 
 func (e paymentStatusExecutor) Begin(context.Context) (pgx.Tx, error) { return e, nil }

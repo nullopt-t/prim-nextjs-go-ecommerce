@@ -72,10 +72,11 @@ func (s *OrderLifecycleSuite) SetupSuite() {
 		"../../migrations/000001_init_sechema.up.sql",
 		"../../migrations/000003_seller_domain.up.sql",
 		"../../migrations/000004_merchant_lifecycle.up.sql",
+		"../../migrations/000008_product_bundles.up.sql",
 	} {
 		schema, readErr := os.ReadFile(migration)
 		require.NoError(s.T(), readErr)
-		_, execErr := db.Exec(ctx, string(schema))
+		_, execErr := db.ExecContext(ctx, string(schema))
 		require.NoError(s.T(), execErr)
 	}
 
@@ -95,11 +96,11 @@ func (s *OrderLifecycleSuite) SetupSuite() {
 	)
 
 	s.categoryID = uuid.New()
-	_, err = db.Exec(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "Lifecycle")
+	_, err = db.ExecContext(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "Lifecycle")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes)
 		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[])
 	`, s.productID, s.categoryID, "lifecycle-"+uuid.NewString(), "Lifecycle Product")
@@ -117,7 +118,7 @@ func (s *OrderLifecycleSuite) TearDownSuite() {
 
 func (s *OrderLifecycleSuite) seedUser() uuid.UUID {
 	id := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, $3, 'customer', true, 'active')
 	`, id, "order_lifecycle_"+id.String()+"@example.com", "Lifecycle Customer")
@@ -129,7 +130,7 @@ func (s *OrderLifecycleSuite) seedVariant() uuid.UUID {
 	id := uuid.New()
 	sku := "ORD-" + uuid.NewString()
 	attributes := `{"color":"` + sku + `"}`
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO product_variants (id, sku, product_id, title, price, currency, attributes)
 		VALUES ($1, $2, $3, 'Default', 1000, 'EGP', $4::jsonb)
 	`, id, sku, s.productID, attributes)
@@ -148,7 +149,7 @@ func (s *OrderLifecycleSuite) stockVariant(variantID uuid.UUID, quantity int) {
 
 func (s *OrderLifecycleSuite) seedOrder(customerID uuid.UUID, status model.OrderStatus) uuid.UUID {
 	orderID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, total_amount, currency)
 		VALUES ($1, $2, 'lifecycle@example.com', '{}'::jsonb, $3, 1000, 'EGP')
 	`, orderID, customerID, string(status))
@@ -157,7 +158,7 @@ func (s *OrderLifecycleSuite) seedOrder(customerID uuid.UUID, status model.Order
 }
 
 func (s *OrderLifecycleSuite) seedOrderItem(orderID, variantID uuid.UUID, quantity int) {
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
 		VALUES ($1, $2, $3, $4, 1000, '{}'::jsonb)
 	`, uuid.New(), orderID, variantID, quantity)
@@ -166,7 +167,7 @@ func (s *OrderLifecycleSuite) seedOrderItem(orderID, variantID uuid.UUID, quanti
 
 func (s *OrderLifecycleSuite) seedPayment(orderID uuid.UUID, status string) uuid.UUID {
 	id := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO payments (id, order_id, amount, currency, status, provider, provider_transaction_id)
 		VALUES ($1, $2, 1000, 'EGP', $3, 'test', $4)
 	`, id, orderID, status, "TX-"+uuid.NewString())
@@ -176,28 +177,28 @@ func (s *OrderLifecycleSuite) seedPayment(orderID uuid.UUID, status string) uuid
 
 func (s *OrderLifecycleSuite) paymentStatus(paymentID uuid.UUID) string {
 	var status string
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT status::text FROM payments WHERE id = $1`, paymentID).Scan(&status))
 	return status
 }
 
 func (s *OrderLifecycleSuite) orderStatus(orderID uuid.UUID) string {
 	var status string
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT status::text FROM orders WHERE id = $1`, orderID).Scan(&status))
 	return status
 }
 
 func (s *OrderLifecycleSuite) ledgerCount(variantID uuid.UUID) int {
 	var count int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM inventory_ledgers WHERE variant_id = $1`, variantID).Scan(&count))
 	return count
 }
 
 func (s *OrderLifecycleSuite) historyCount(orderID uuid.UUID) int {
 	var count int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM order_status_history WHERE order_id = $1`, orderID).Scan(&count))
 	return count
 }
@@ -264,7 +265,7 @@ func (s *OrderLifecycleSuite) TestCancelOrder_RestocksPaidOrderOnce() {
 	s.Require().NoError(s.service.CancelOrder(context.Background(), orderID, customerID))
 
 	var restocked int
-	s.Require().NoError(s.db.QueryRow(context.Background(), `
+	s.Require().NoError(s.db.QueryRowContext(context.Background(), `
 		SELECT COALESCE(SUM(quantity), 0)
 		FROM inventory_ledgers
 		WHERE variant_id = $1 AND reason = 'return'
@@ -336,7 +337,7 @@ func (s *OrderLifecycleSuite) TestUpdatePaymentStatus_CaptureFailureRollsBackPay
 
 	// A live hold was written without any on-hand stock behind it, so
 	// committing the sale fails on insufficient physical stock.
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO inventory_reservations (id, variant_id, order_id, quantity, expires_at)
 		VALUES ($1, $2, $3, 5, now() + interval '15 minutes')
 	`, uuid.New(), variantID, orderID)

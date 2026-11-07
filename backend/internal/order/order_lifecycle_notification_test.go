@@ -97,19 +97,29 @@ type lifecycleExecutor struct {
 	execErr error
 }
 
-func (e lifecycleExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (e lifecycleExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	if e.execErr != nil {
 		return pgconn.CommandTag{}, e.execErr
 	}
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
 
-func (e lifecycleExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (e lifecycleExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return emptyRows{}, nil
 }
 
-func (e lifecycleExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+func (e lifecycleExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row {
 	return lifecycleRow{order: e.order}
+}
+
+func (e lifecycleExecutor) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return e.ExecContext(ctx, sql, args...)
+}
+func (e lifecycleExecutor) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return e.QueryContext(ctx, sql, args...)
+}
+func (e lifecycleExecutor) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return e.QueryRowContext(ctx, sql, args...)
 }
 
 func (e lifecycleExecutor) Begin(context.Context) (pgx.Tx, error) { return e, nil }

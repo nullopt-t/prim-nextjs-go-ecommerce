@@ -63,10 +63,16 @@ func (s *InventoryTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../../migrations/000001_init_sechema.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
-	require.NoError(s.T(), err)
+	for _, migration := range []string{
+		"../../../migrations/000001_init_sechema.up.sql",
+		"../../../migrations/000003_seller_domain.up.sql",
+		"../../../migrations/000008_product_bundles.up.sql",
+	} {
+		schemaBytes, readErr := os.ReadFile(migration)
+		require.NoError(s.T(), readErr)
+		_, execErr := db.ExecContext(ctx, string(schemaBytes))
+		require.NoError(s.T(), execErr)
+	}
 
 	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
@@ -75,14 +81,14 @@ func (s *InventoryTestSuite) SetupSuite() {
 
 	// Create base Category and Product for Foreign Key relations
 	s.categoryID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_categories (id, name)
 		VALUES ($1, $2)
 	`, s.categoryID, "Test Category")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type)
 		VALUES ($1, $2, $3, $4, 'published', 'simple')
 	`, s.productID, s.categoryID, "test-product-"+uuid.NewString(), "Test Product")
@@ -101,7 +107,7 @@ func (s *InventoryTestSuite) TearDownSuite() {
 func (s *InventoryTestSuite) createTestVariant() uuid.UUID {
 	variantID := uuid.New()
 	sku := "SKU-" + uuid.NewString()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO product_variants (id, sku, product_id, title)
 		VALUES ($1, $2, $3, $4)
 	`, variantID, sku, s.productID, "Test Variant "+sku)
@@ -112,7 +118,7 @@ func (s *InventoryTestSuite) createTestVariant() uuid.UUID {
 func (s *InventoryTestSuite) createTestCart() uuid.UUID {
 	cartID := uuid.New()
 	sessionID := "session-" + uuid.NewString()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO carts (id, session_id)
 		VALUES ($1, $2)
 	`, cartID, sessionID)
@@ -216,7 +222,7 @@ func (s *InventoryTestSuite) Test01_ReservationFiltering() {
 
 	// Expired reservation: manually insert an expired reservation (expired 1 hour ago)
 	expiredResID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_reservations (id, variant_id, cart_id, quantity, expires_at, created_at, released_at)
 		VALUES ($1, $2, $3, $4, now() - INTERVAL '1 hour', now() - INTERVAL '2 hours', NULL)
 	`, expiredResID, variantID, cartID, 15)
@@ -484,7 +490,7 @@ func (s *InventoryTestSuite) Test03_CheckoutVsExpirationRace() {
 
 	// Insert an expired reservation
 	expiredResID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_reservations (id, variant_id, quantity, expires_at, created_at, released_at)
 		VALUES ($1, $2, $3, now() - INTERVAL '1 second', now() - INTERVAL '10 seconds', NULL)
 	`, expiredResID, variantID, 2)
@@ -518,7 +524,7 @@ func (s *InventoryTestSuite) Test04_SoftExpiryVsHardCleanup() {
 
 	// Insert expired reservation (soft expiry)
 	resID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_reservations (id, variant_id, quantity, expires_at, created_at, released_at)
 		VALUES ($1, $2, $3, now() - INTERVAL '5 minutes', now() - INTERVAL '20 minutes', NULL)
 	`, resID, variantID, 10)
@@ -538,7 +544,7 @@ func (s *InventoryTestSuite) Test04_SoftExpiryVsHardCleanup() {
 
 	// Verify hard cleanup in DB (released_at is now set)
 	var releasedAt *time.Time
-	err = s.db.QueryRow(ctx, `SELECT released_at FROM inventory_reservations WHERE id = $1`, resID).Scan(&releasedAt)
+	err = s.db.QueryRowContext(ctx, `SELECT released_at FROM inventory_reservations WHERE id = $1`, resID).Scan(&releasedAt)
 	s.Require().NoError(err)
 	s.NotNil(releasedAt)
 }
@@ -598,7 +604,7 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 	variantID := s.createTestVariant()
 
 	// 1. quantity = 0 into inventory_ledgers -> CHECK (quantity <> 0) fails
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
 		VALUES ($1, 0, 'restock')
 	`, variantID)
@@ -608,7 +614,7 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 	s.Equal("23514", pgErr.Code) // check_violation
 
 	// 2. quantity <= 0 into inventory_reservations -> CHECK (quantity > 0) fails
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_reservations (id, variant_id, quantity, expires_at)
 		VALUES ($1, $2, -5, now() + INTERVAL '10 minutes')
 	`, uuid.New(), variantID)
@@ -618,7 +624,7 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 
 	// 3. Invalid variant_id -> Foreign Key constraint failure
 	nonExistentVariantID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
 		VALUES ($1, 10, 'restock')
 	`, nonExistentVariantID)
@@ -633,7 +639,7 @@ func (s *InventoryTestSuite) Test05_DatabaseConstraintViolations() {
 
 func (s *InventoryTestSuite) createTestOrder() uuid.UUID {
 	orderID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO orders (id, customer_email, shipping_address, status, total_amount)
 		VALUES ($1, $2, '{}'::jsonb, 'pending', 0)
 	`, orderID, "buyer-"+uuid.NewString()+"@example.com")
@@ -733,7 +739,7 @@ func (s *InventoryTestSuite) Test09_ExpiredReservationOrderIDs() {
 	s.Require().NoError(err)
 
 	orderID := s.createTestOrder()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_reservations (id, variant_id, order_id, quantity, expires_at, created_at)
 		VALUES ($1, $2, $3, 1, now() - interval '1 minute', now())
 	`, uuid.New(), variantID, orderID)

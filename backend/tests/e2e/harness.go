@@ -41,7 +41,7 @@ func NewMockQueryExecutor() *MockQueryExecutor {
 	}
 }
 
-func (m *MockQueryExecutor) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
+func (m *MockQueryExecutor) ExecContext(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
 	m.mu.Lock()
 	m.queries = append(m.queries, query)
 	err := m.execErr
@@ -52,7 +52,7 @@ func (m *MockQueryExecutor) Exec(ctx context.Context, query string, args ...any)
 	return pgconn.NewCommandTag("EXEC 1"), nil
 }
 
-func (m *MockQueryExecutor) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
+func (m *MockQueryExecutor) QueryContext(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
 	m.mu.Lock()
 	m.queries = append(m.queries, query)
 	err := m.queryErr
@@ -63,7 +63,7 @@ func (m *MockQueryExecutor) Query(ctx context.Context, query string, args ...any
 	return &mockRows{}, nil
 }
 
-func (m *MockQueryExecutor) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
+func (m *MockQueryExecutor) QueryRowContext(ctx context.Context, query string, args ...any) pgx.Row {
 	m.mu.Lock()
 	m.queries = append(m.queries, query)
 	err := m.queryRowErr

@@ -54,26 +54,40 @@ type fakeReportTx struct {
 	fakeReportExecutor
 }
 
+func (f *fakeReportTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return f.ExecContext(ctx, sql, args...)
+}
+func (f *fakeReportTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return f.QueryContext(ctx, sql, args...)
+}
+func (f *fakeReportTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return f.QueryRowContext(ctx, sql, args...)
+}
+
 func (f *fakeReportTx) Begin(context.Context) (pgx.Tx, error) { return f, nil }
-func (f *fakeReportTx) Commit(context.Context) error { return nil }
-func (f *fakeReportTx) Rollback(context.Context) error { return nil }
-func (f *fakeReportTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) { return 0, nil }
+func (f *fakeReportTx) Commit(context.Context) error          { return nil }
+func (f *fakeReportTx) Rollback(context.Context) error        { return nil }
+func (f *fakeReportTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
+	return 0, nil
+}
 func (f *fakeReportTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { return nil }
-func (f *fakeReportTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) { return nil, nil }
-func (f *fakeReportTx) Conn() *pgx.Conn { return nil }
+func (f *fakeReportTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
+	return nil, nil
+}
+func (f *fakeReportTx) Conn() *pgx.Conn                { return nil }
 func (f *fakeReportTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type fakeReportExecutor struct{}
 
-func (f *fakeReportExecutor) Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
+func (f *fakeReportExecutor) ExecContext(context.Context, string, ...interface{}) (pgconn.CommandTag, error) {
 	return pgconn.CommandTag{}, nil
 }
 
-func (f *fakeReportExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
+func (f *fakeReportExecutor) QueryContext(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (f *fakeReportExecutor) QueryRow(context.Context, string, ...interface{}) pgx.Row {
+func (f *fakeReportExecutor) QueryRowContext(context.Context, string, ...interface{}) pgx.Row {
 	return fakeReportRow{}
 }
 

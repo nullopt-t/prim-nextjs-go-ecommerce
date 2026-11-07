@@ -40,7 +40,7 @@ func (r *Repository) Touch(ctx context.Context, userID, productID uuid.UUID) (bo
 		return false, err
 	}
 
-	cmd, err := tx.Exec(ctx, `
+	cmd, err := tx.ExecContext(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		SELECT $1, p.id, now()
 		FROM products p
@@ -62,7 +62,7 @@ func (r *Repository) Prune(ctx context.Context, userID uuid.UUID, limit int) err
 		return err
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		DELETE FROM user_product_views
 		WHERE user_id = $1
 		AND id NOT IN (
@@ -85,7 +85,7 @@ func (r *Repository) List(ctx context.Context, userID uuid.UUID, limit int) ([]V
 		return nil, err
 	}
 
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT
 			p.id,
 			p.title,
@@ -154,7 +154,7 @@ func (r *Repository) Merge(
 		return 0, err
 	}
 
-	cmd, err := tx.Exec(ctx, `
+	cmd, err := tx.ExecContext(ctx, `
 		WITH resolved AS (
 			SELECT
 				p.id,
@@ -198,7 +198,7 @@ func (r *Repository) Delete(ctx context.Context, userID, productID uuid.UUID) (b
 		return false, err
 	}
 
-	cmd, err := tx.Exec(ctx, `
+	cmd, err := tx.ExecContext(ctx, `
 		DELETE FROM user_product_views
 		WHERE user_id = $1 AND product_id = $2
 	`, userID, productID)
@@ -215,7 +215,7 @@ func (r *Repository) Clear(ctx context.Context, userID uuid.UUID) error {
 		return err
 	}
 
-	if _, err := tx.Exec(ctx, `DELETE FROM user_product_views WHERE user_id = $1`, userID); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM user_product_views WHERE user_id = $1`, userID); err != nil {
 		return fmt.Errorf("clear product views: %w", err)
 	}
 	return nil

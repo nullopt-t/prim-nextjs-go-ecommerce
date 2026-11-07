@@ -113,9 +113,8 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
+	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
-
 
 	s.txRunner = database.NewTxRunner(s.db)
 	s.repo = wishlist.NewWishlistRepository()
@@ -154,14 +153,14 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Seed catalog data
 	s.categoryID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_categories (id, name)
 		VALUES ($1, $2)
 	`, s.categoryID, "Electronics")
 	require.NoError(s.T(), err)
 
 	brandID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_brands (id, name)
 		VALUES ($1, $2)
 	`, brandID, "Apple")
@@ -169,26 +168,26 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Product 1
 	s.product1ID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, brand_id, category_id, slug, title, description, status, product_type)
 		VALUES ($1, $2, $3, $4, $5, $6, 'published', 'simple')
 	`, s.product1ID, brandID, s.categoryID, "macbook-pro-16", "MacBook Pro 16", "M3 Max Powerhouse")
 	require.NoError(s.T(), err)
 
 	v1ID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency)
 		VALUES ($1, $2, $3, $4, $5, $6, 'USD')
 	`, v1ID, s.product1ID, "SKU-MBP-16", "Space Black", int64(249900), int64(299900))
 	require.NoError(s.T(), err)
 
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		UPDATE products SET default_variant_id = $2 WHERE id = $1
 	`, s.product1ID, v1ID)
 	require.NoError(s.T(), err)
 
 	// Add inventory ledger for product 1 variant 1
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
 		VALUES ($1, 10, 'restock')
 	`, v1ID)
@@ -196,14 +195,14 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Product 1 Variant 2 (Silver)
 	s.product1Variant2ID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, product_id, sku, title, price, crossed_out_price, currency)
 		VALUES ($1, $2, $3, $4, $5, $6, 'USD')
 	`, s.product1Variant2ID, s.product1ID, "SKU-MBP-16-SILVER", "Silver", int64(269900), int64(319900))
 	require.NoError(s.T(), err)
 
 	// Add inventory ledger for product 1 variant 2
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO inventory_ledgers (variant_id, quantity, reason)
 		VALUES ($1, 5, 'restock')
 	`, s.product1Variant2ID)
@@ -218,20 +217,20 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Product 2
 	s.product2ID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, brand_id, category_id, slug, title, description, status, product_type)
 		VALUES ($1, $2, $3, $4, $5, $6, 'published', 'simple')
 	`, s.product2ID, brandID, s.categoryID, "iphone-16-pro", "iPhone 16 Pro", "Titanium Design")
 	require.NoError(s.T(), err)
 
 	v2ID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, product_id, sku, title, price, currency)
 		VALUES ($1, $2, $3, $4, $5, 'USD')
 	`, v2ID, s.product2ID, "SKU-IPH-16", "Desert Titanium", int64(99900))
 	require.NoError(s.T(), err)
 
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		UPDATE products SET default_variant_id = $2 WHERE id = $1
 	`, s.product2ID, v2ID)
 	require.NoError(s.T(), err)
@@ -245,7 +244,7 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 
 	// Product 3 (Draft status)
 	s.product3ID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type)
 		VALUES ($1, $2, $3, $4, 'draft', 'simple')
 	`, s.product3ID, s.categoryID, "unreleased-device", "Unreleased Device")
@@ -275,7 +274,7 @@ func (s *WishlistHTTPTestSuite) TearDownSuite() {
 
 func (s *WishlistHTTPTestSuite) createTestUser() (uuid.UUID, string) {
 	userID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, status)
 		VALUES ($1, $2, 'Test User', 'customer', 'active')
 	`, userID, fmt.Sprintf("user-%s@example.com", uuid.NewString()[:8]))

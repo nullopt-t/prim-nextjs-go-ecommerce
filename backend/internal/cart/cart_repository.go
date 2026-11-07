@@ -37,7 +37,7 @@ func (r *CartRepository) CreateCart(
 		RETURNING created_at, updated_at
 	`
 	// Execute insertion and assign returned database timestamps to the passed cart pointer.
-	return executor.QueryRow(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
+	return executor.QueryRowContext(ctx, query, cart.ID, cart.UserID, cart.SessionID).Scan(&cart.CreatedAt, &cart.UpdatedAt)
 }
 
 // getCartItems retrieves all items belonging to a cart ordered by carted_at ascending.
@@ -55,7 +55,7 @@ func (r *CartRepository) getCartItems(
 		WHERE cart_id = $1
 		ORDER BY carted_at ASC
 	`
-	rows, err := executor.Query(ctx, query, cartID)
+	rows, err := executor.QueryContext(ctx, query, cartID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (r *CartRepository) GetCartByID(
 		WHERE id = $1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err = executor.QueryRow(ctx, query, id).Scan(
+	err = executor.QueryRowContext(ctx, query, id).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -143,7 +143,7 @@ func (r *CartRepository) LockCartByUserID(
 		FOR UPDATE
 	`
 	var id uuid.UUID
-	err = tx.QueryRow(ctx, query, userID).Scan(&id)
+	err = tx.QueryRowContext(ctx, query, userID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -166,7 +166,7 @@ func (r *CartRepository) LockCartByID(
 		return err
 	}
 	var id uuid.UUID
-	err = tx.QueryRow(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
+	err = tx.QueryRowContext(ctx, `SELECT id FROM carts WHERE id = $1 FOR UPDATE`, cartID).Scan(&id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return database.ErrNotFound
@@ -193,7 +193,7 @@ func (r *CartRepository) GetCartByUserID(
 		LIMIT 1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err = executor.QueryRow(ctx, query, userID).Scan(
+	err = executor.QueryRowContext(ctx, query, userID).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -233,7 +233,7 @@ func (r *CartRepository) GetCartBySessionID(
 		LIMIT 1
 	`
 	cart := &model.Cart{Items: make([]model.CartItem, 0)}
-	err = executor.QueryRow(ctx, query, sessionID).Scan(
+	err = executor.QueryRowContext(ctx, query, sessionID).Scan(
 		&cart.ID,
 		&cart.UserID,
 		&cart.SessionID,
@@ -275,14 +275,14 @@ func (r *CartRepository) AddItem(
 		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency, carted_at)
 		VALUES ($1, $2, $3, $4, $5, now())
 		ON CONFLICT (cart_id, variant_id) DO UPDATE
-		SET 
+		SET
 			quantity = cart_items.quantity + EXCLUDED.quantity,
 			price_at_purchase = EXCLUDED.price_at_purchase,
 			currency = EXCLUDED.currency,
 			carted_at = now()
 		RETURNING id, quantity, carted_at
 	`
-	err = executor.QueryRow(
+	err = executor.QueryRowContext(
 		ctx,
 		query,
 		item.CartID,
@@ -296,7 +296,7 @@ func (r *CartRepository) AddItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = executor.Exec(ctx, updateCartQuery, item.CartID)
+	_, _ = executor.ExecContext(ctx, updateCartQuery, item.CartID)
 	return nil
 }
 
@@ -320,7 +320,7 @@ func (r *CartRepository) UpdateItemQuantity(
 		SET quantity = $1
 		WHERE id = $2 AND cart_id = $3
 	`
-	tag, err := executor.Exec(ctx, query, quantity, itemID, cartID)
+	tag, err := executor.ExecContext(ctx, query, quantity, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -330,7 +330,7 @@ func (r *CartRepository) UpdateItemQuantity(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.ExecContext(ctx, updateCartQuery, cartID)
 	return nil
 }
 
@@ -352,7 +352,7 @@ func (r *CartRepository) RemoveItem(
 		DELETE FROM cart_items
 		WHERE id = $1 AND cart_id = $2
 	`
-	tag, err := executor.Exec(ctx, query, itemID, cartID)
+	tag, err := executor.ExecContext(ctx, query, itemID, cartID)
 	if err != nil {
 		return err
 	}
@@ -361,7 +361,7 @@ func (r *CartRepository) RemoveItem(
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.ExecContext(ctx, updateCartQuery, cartID)
 	return nil
 }
 
@@ -379,13 +379,13 @@ func (r *CartRepository) ClearCart(
 	}
 
 	query := `DELETE FROM cart_items WHERE cart_id = $1`
-	_, err = executor.Exec(ctx, query, cartID)
+	_, err = executor.ExecContext(ctx, query, cartID)
 	if err != nil {
 		return err
 	}
 
 	updateCartQuery := `UPDATE carts SET updated_at = now() WHERE id = $1`
-	_, _ = executor.Exec(ctx, updateCartQuery, cartID)
+	_, _ = executor.ExecContext(ctx, updateCartQuery, cartID)
 	return nil
 }
 
@@ -398,6 +398,6 @@ func (r *CartRepository) DeleteCart(
 		return err
 	}
 	query := `DELETE FROM carts WHERE id = $1`
-	_, err = executor.Exec(ctx, query, cartID)
+	_, err = executor.ExecContext(ctx, query, cartID)
 	return err
 }

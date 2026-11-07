@@ -374,7 +374,7 @@ func (s *Service) postgresResources(ctx context.Context) []ResourceMetric {
 	}
 
 	var size string
-	if err := s.db.QueryRow(ctx, "SELECT pg_size_pretty(pg_database_size(current_database()))").Scan(&size); err == nil && size != "" {
+	if err := s.db.QueryRowContext(ctx, "SELECT pg_size_pretty(pg_database_size(current_database()))").Scan(&size); err == nil && size != "" {
 		resources = append(resources, metric("storage", size))
 	}
 	return resources

@@ -37,6 +37,18 @@ func (e refundExecutor) Exec(context.Context, string, ...interface{}) (pgconn.Co
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
 
+func (e refundExecutor) ExecContext(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+	return e.Exec(ctx, sql, arguments...)
+}
+
+func (e refundExecutor) QueryContext(ctx context.Context, sql string, arguments ...any) (pgx.Rows, error) {
+	return e.Query(ctx, sql, arguments...)
+}
+
+func (e refundExecutor) QueryRowContext(ctx context.Context, sql string, arguments ...any) pgx.Row {
+	return e.QueryRow(ctx, sql, arguments...)
+}
+
 func (e refundExecutor) Query(context.Context, string, ...interface{}) (pgx.Rows, error) {
 	return nil, nil
 }

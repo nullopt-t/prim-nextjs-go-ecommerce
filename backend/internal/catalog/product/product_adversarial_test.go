@@ -19,18 +19,18 @@ type mockQE struct {
 	execFn func(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
-func (m *mockQE) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+func (m *mockQE) ExecContext(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
 	if m.execFn != nil {
 		return m.execFn(ctx, sql, arguments...)
 	}
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
 
-func (m *mockQE) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (m *mockQE) QueryContext(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return nil, pgx.ErrNoRows
 }
 
-func (m *mockQE) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (m *mockQE) QueryRowContext(ctx context.Context, sql string, args ...any) pgx.Row {
 	return nil
 }
 
@@ -39,8 +39,17 @@ type mockQETx struct {
 }
 
 func (m *mockQETx) Begin(context.Context) (pgx.Tx, error) { return m, nil }
-func (m *mockQETx) Commit(context.Context) error { return nil }
-func (m *mockQETx) Rollback(context.Context) error { return nil }
+func (m *mockQETx) Commit(context.Context) error          { return nil }
+func (m *mockQETx) Rollback(context.Context) error        { return nil }
+func (m *mockQETx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return m.ExecContext(ctx, sql, args...)
+}
+func (m *mockQETx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return m.QueryContext(ctx, sql, args...)
+}
+func (m *mockQETx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return m.QueryRowContext(ctx, sql, args...)
+}
 func (m *mockQETx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
 	return 0, nil
 }
@@ -48,7 +57,7 @@ func (m *mockQETx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { ret
 func (m *mockQETx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
 	return nil, nil
 }
-func (m *mockQETx) Conn() *pgx.Conn { return nil }
+func (m *mockQETx) Conn() *pgx.Conn                { return nil }
 func (m *mockQETx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type mockConnectionTrackingRunner struct {

@@ -101,7 +101,7 @@ func (vr *VariantRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		variant.ID,
@@ -134,7 +134,7 @@ func (vr *VariantRepository) SetProductThumbnailIfMissing(
 		return err
 	}
 
-	_, err = tx.Exec(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		UPDATE products
 		SET thumbnail_object_id = $2, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL AND thumbnail_object_id IS NULL
@@ -225,7 +225,7 @@ func (vr *VariantRepository) get(
 		LIMIT 1
 	`, strings.Join(whereClauses, " AND "))
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get variant query: %w", err)
 	}
@@ -357,7 +357,7 @@ func (vr *VariantRepository) Update(
 
 	args = append(args, variantID)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update variant: %w", err)
 	}
@@ -389,7 +389,7 @@ func (vr *VariantRepository) ClearDefaultFlags(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err = tx.Exec(ctx, query, productID)
+	_, err = tx.ExecContext(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("clear default flags: %w", err)
 	}
@@ -418,7 +418,7 @@ func (vr *VariantRepository) SetDefaultVariant(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err = tx.Exec(ctx, query, productID, variantID)
+	_, err = tx.ExecContext(ctx, query, productID, variantID)
 	if err != nil {
 		return fmt.Errorf("set default variant: %w", err)
 	}
@@ -466,7 +466,7 @@ func (vr *VariantRepository) ListByProductID(
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_variants pv WHERE %s", whereStmt)
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list variants count: %w", err)
 	}
 
@@ -523,7 +523,7 @@ func (vr *VariantRepository) ListByProductID(
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
-	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.QueryContext(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list variants select: %w", err)
 	}
@@ -623,7 +623,7 @@ func (vr *VariantRepository) GetVariationContext(
 	}
 
 	var out ProductVariationContext
-	if err := qe.QueryRow(ctx, query, productID).Scan(
+	if err := qe.QueryRowContext(ctx, query, productID).Scan(
 		&out.ProductID,
 		&out.Title,
 		&out.CategoryID,
@@ -659,7 +659,7 @@ func (vr *VariantRepository) CombinationExists(
 		)
 	`
 	var exists bool
-	if err := executor.QueryRow(ctx, query, productID, attributes, excludeVariantID).Scan(&exists); err != nil {
+	if err := executor.QueryRowContext(ctx, query, productID, attributes, excludeVariantID).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check variant combination: %w", err)
 	}
 	return exists, nil
@@ -681,7 +681,7 @@ func (vr *VariantRepository) CountByProductID(
 
 	query := `SELECT COUNT(*) FROM product_variants WHERE product_id = $1 AND deleted_at IS NULL`
 	var count int
-	err = executor.QueryRow(ctx, query, productID).Scan(&count)
+	err = executor.QueryRowContext(ctx, query, productID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count variants: %w", err)
 	}
@@ -704,7 +704,7 @@ func (vr *VariantRepository) GetProductType(
 	}
 
 	var productType model.ProductType
-	err = executor.QueryRow(ctx,
+	err = executor.QueryRowContext(ctx,
 		`SELECT product_type FROM products WHERE id = $1 AND deleted_at IS NULL`,
 		productID,
 	).Scan(&productType)
@@ -735,7 +735,7 @@ func (vr *VariantRepository) Delete(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, variantID)
+	cmd, err := tx.ExecContext(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("delete variant: %w", err)
 	}
@@ -750,7 +750,7 @@ func (vr *VariantRepository) Delete(
 		SET released_at = now()
 		WHERE variant_id = $1 AND released_at IS NULL
 	`
-	if _, err := tx.Exec(ctx, releaseReservationsQuery, variantID); err != nil {
+	if _, err := tx.ExecContext(ctx, releaseReservationsQuery, variantID); err != nil {
 		return fmt.Errorf("release variant reservations: %w", err)
 	}
 
@@ -783,7 +783,7 @@ func (vr *VariantRepository) SetFirstAvailableAsDefault(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	_, err = tx.Exec(ctx, query, productID)
+	_, err = tx.ExecContext(ctx, query, productID)
 	if err != nil {
 		return fmt.Errorf("set first available as default: %w", err)
 	}
@@ -805,7 +805,7 @@ func (vr *VariantRepository) GetDeletedVariantInfo(
 		productID        uuid.UUID
 		defaultVariantID *uuid.UUID
 	)
-	err = tx.QueryRow(ctx,
+	err = tx.QueryRowContext(ctx,
 		`SELECT pv.product_id, p.default_variant_id
 		 FROM product_variants pv
 		 JOIN products p ON pv.product_id = p.id
@@ -826,7 +826,7 @@ func (vr *VariantRepository) LockProduct(
 	}
 
 	var pID uuid.UUID
-	return tx.QueryRow(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, productID).Scan(&pID)
+	return tx.QueryRowContext(ctx, `SELECT id FROM products WHERE id = $1 FOR UPDATE`, productID).Scan(&pID)
 }
 
 // Restore un-deletes a variant by resetting deleted_at to NULL.
@@ -849,7 +849,7 @@ func (vr *VariantRepository) Restore(
 		WHERE id = $1 AND deleted_at IS NOT NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, variantID)
+	cmd, err := tx.ExecContext(ctx, query, variantID)
 	if err != nil {
 		return fmt.Errorf("restore variant: %w", err)
 	}
@@ -886,7 +886,7 @@ func (vr *VariantRepository) AddMedia(
 			SET sort_order = sort_order + 1
 			WHERE variant_id = $1 AND sort_order >= $2
 		`
-		if _, err := tx.Exec(ctx, shiftQuery, in.VariantID, in.SortOrder); err != nil {
+		if _, err := tx.ExecContext(ctx, shiftQuery, in.VariantID, in.SortOrder); err != nil {
 			return nil, fmt.Errorf("shift variant media sort order: %w", err)
 		}
 
@@ -900,7 +900,7 @@ func (vr *VariantRepository) AddMedia(
 			VALUES ($1, $2, $3, $4)
 			RETURNING id, sort_order
 		`
-		err := tx.QueryRow(
+		err := tx.QueryRowContext(
 			ctx,
 			insertQuery,
 			in.VariantID,
@@ -927,7 +927,7 @@ func (vr *VariantRepository) AddMedia(
 			)
 			RETURNING id, sort_order
 		`
-		err := tx.QueryRow(
+		err := tx.QueryRowContext(
 			ctx,
 			insertQuery,
 			in.VariantID,
@@ -981,7 +981,7 @@ func (vr *VariantRepository) ListMediaByVariantID(
 		ORDER BY m.sort_order ASC
 	`
 
-	rows, err := executor.Query(ctx, query, variantID)
+	rows, err := executor.QueryContext(ctx, query, variantID)
 	if err != nil {
 		return nil, fmt.Errorf("list variant media query: %w", err)
 	}
@@ -1051,7 +1051,7 @@ func (vr *VariantRepository) ListMediaByVariantIDs(
 		ORDER BY m.sort_order ASC
 	`
 
-	rows, err := executor.Query(ctx, query, variantIDs)
+	rows, err := executor.QueryContext(ctx, query, variantIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list media by variant IDs: %w", err)
 	}
@@ -1106,7 +1106,7 @@ func (vr *VariantRepository) RemoveMedia(
 		WHERE id = $1 AND variant_id = $2
 	`
 
-	cmd, err := tx.Exec(ctx, query, mediaID, variantID)
+	cmd, err := tx.ExecContext(ctx, query, mediaID, variantID)
 	if err != nil {
 		return fmt.Errorf("remove variant media: %w", err)
 	}
@@ -1126,7 +1126,7 @@ func (vr *VariantRepository) RemoveMedia(
 		) AS ranked
 		WHERE vm.id = ranked.id AND vm.variant_id = $1
 	`
-	_, _ = tx.Exec(ctx, resequenceQuery, variantID)
+	_, _ = tx.ExecContext(ctx, resequenceQuery, variantID)
 
 	return nil
 }
@@ -1160,7 +1160,7 @@ func (vr *VariantRepository) ReorderMedia(
 		WHERE vm.id = batch.id AND vm.variant_id = $3
 	`
 
-	_, err = tx.Exec(ctx, query, orderedMediaIDs, orders, variantID)
+	_, err = tx.ExecContext(ctx, query, orderedMediaIDs, orders, variantID)
 	if err != nil {
 		return fmt.Errorf("reorder variant media: %w", err)
 	}
@@ -1183,6 +1183,6 @@ func (r *VariantRepository) ClearThumbnail(
 		SET thumbnail_object_id = NULL, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	_, err = tx.Exec(ctx, query, variantID)
+	_, err = tx.ExecContext(ctx, query, variantID)
 	return err
 }

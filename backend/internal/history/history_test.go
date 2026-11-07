@@ -108,7 +108,7 @@ func (s *HistoryTestSuite) SetupSuite() {
 	} {
 		raw, err := os.ReadFile("../../migrations/" + migration)
 		require.NoError(s.T(), err)
-		_, err = db.Exec(ctx, string(raw))
+		_, err = db.ExecContext(ctx, string(raw))
 		require.NoError(s.T(), err)
 	}
 
@@ -117,14 +117,14 @@ func (s *HistoryTestSuite) SetupSuite() {
 	s.service = history.NewService(s.runner, repo, storage.NoopProvider{})
 
 	s.userID = uuid.New()
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO users (id, email, full_name, role)
 		VALUES ($1, $2, $3, 'customer')
 	`, s.userID, "history@example.com", "History Customer")
 	require.NoError(s.T(), err)
 
 	s.categoryID = uuid.New()
-	_, err = db.Exec(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "History")
+	_, err = db.ExecContext(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "History")
 	require.NoError(s.T(), err)
 
 	s.product1ID = s.createProduct("history-product-1", "History Product 1", model.PublicationStatusPublished, nil, nil)
@@ -132,12 +132,12 @@ func (s *HistoryTestSuite) SetupSuite() {
 	s.product3ID = s.createProduct("history-product-3", "History Product 3", model.PublicationStatusPublished, nil, nil)
 
 	variantID := uuid.New()
-	_, err = db.Exec(ctx, `
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO product_variants (id, sku, product_id, title, price, currency)
 		VALUES ($1, $2, $3, $4, 249900, 'EGP')
 	`, variantID, "HISTORY-SKU-1", s.product1ID, "Default")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, `UPDATE products SET default_variant_id = $1 WHERE id = $2`, variantID, s.product1ID)
+	_, err = db.ExecContext(ctx, `UPDATE products SET default_variant_id = $1 WHERE id = $2`, variantID, s.product1ID)
 	require.NoError(s.T(), err)
 
 	gin.SetMode(gin.TestMode)
@@ -159,7 +159,7 @@ func (s *HistoryTestSuite) SetupSuite() {
 }
 
 func (s *HistoryTestSuite) SetupTest() {
-	_, err := s.db.Exec(context.Background(), `TRUNCATE user_product_views`)
+	_, err := s.db.ExecContext(context.Background(), `TRUNCATE user_product_views`)
 	require.NoError(s.T(), err)
 }
 
@@ -182,7 +182,7 @@ func (s *HistoryTestSuite) createProduct(
 	s.T().Helper()
 
 	id := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO products (
 			id, category_id, slug, title, status, product_type, seller_id, thumbnail_object_id
 		)
@@ -282,7 +282,7 @@ func (s *HistoryTestSuite) TestRecordIsIdempotentAndListsNewestFirst() {
 	s.Equal("EGP", items[0].Currency)
 
 	var count int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM user_product_views WHERE user_id = $1`, s.userID,
 	).Scan(&count))
 	s.Equal(2, count)
@@ -293,7 +293,7 @@ func (s *HistoryTestSuite) TestListHidesProductsThatAreNoLongerVisible() {
 	draft := s.createProduct("history-draft", "Draft", model.PublicationStatusDraft, nil, nil)
 
 	ctx := context.Background()
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		VALUES ($1, $2, now()), ($1, $3, now()), ($1, $4, now())
 	`, s.userID, archived, draft, s.product1ID)
@@ -307,21 +307,21 @@ func (s *HistoryTestSuite) TestListHidesProductsThatAreNoLongerVisible() {
 func (s *HistoryTestSuite) TestListHidesInactiveSellerProducts() {
 	ctx := context.Background()
 	sellerUserID := uuid.New()
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO users (id, email, full_name, role)
 		VALUES ($1, $2, $3, 'customer')
 	`, sellerUserID, "inactive-seller@example.com", "Inactive Seller")
 	s.Require().NoError(err)
 
 	sellerID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO sellers (id, user_id, store_name, slug, status)
 		VALUES ($1, $2, $3, $4, 'suspended')
 	`, sellerID, sellerUserID, "Inactive Store", "inactive-store")
 	s.Require().NoError(err)
 
 	productID := s.createProduct("history-seller-product", "Seller Product", model.PublicationStatusPublished, &sellerID, nil)
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		VALUES ($1, $2, now())
 	`, s.userID, productID)
@@ -399,7 +399,7 @@ func (s *HistoryTestSuite) TestCapacityKeepsNewestFiftyViews() {
 	s.Equal(55, synced)
 
 	var count int
-	s.Require().NoError(s.db.QueryRow(ctx,
+	s.Require().NoError(s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM user_product_views WHERE user_id = $1`, s.userID,
 	).Scan(&count))
 	s.Equal(history.MaxItems, count)
@@ -433,36 +433,36 @@ func (s *HistoryTestSuite) TestDeleteAndClear() {
 func (s *HistoryTestSuite) TestCascadeDeletesCleanViews() {
 	ctx := context.Background()
 	productID := s.createProduct("history-cascade-product", "Cascade", model.PublicationStatusPublished, nil, nil)
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		VALUES ($1, $2, now())
 	`, s.userID, productID)
 	s.Require().NoError(err)
 
-	_, err = s.db.Exec(ctx, `DELETE FROM products WHERE id = $1`, productID)
+	_, err = s.db.ExecContext(ctx, `DELETE FROM products WHERE id = $1`, productID)
 	s.Require().NoError(err)
 
 	var count int
-	s.Require().NoError(s.db.QueryRow(ctx,
+	s.Require().NoError(s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM user_product_views WHERE product_id = $1`, productID,
 	).Scan(&count))
 	s.Equal(0, count)
 
 	cascadeUserID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO users (id, email, full_name, role)
 		VALUES ($1, $2, $3, 'customer')
 	`, cascadeUserID, "cascade-user@example.com", "Cascade User")
 	s.Require().NoError(err)
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO user_product_views (user_id, product_id, viewed_at)
 		VALUES ($1, $2, now())
 	`, cascadeUserID, s.product1ID)
 	s.Require().NoError(err)
 
-	_, err = s.db.Exec(ctx, `DELETE FROM users WHERE id = $1`, cascadeUserID)
+	_, err = s.db.ExecContext(ctx, `DELETE FROM users WHERE id = $1`, cascadeUserID)
 	s.Require().NoError(err)
-	s.Require().NoError(s.db.QueryRow(ctx,
+	s.Require().NoError(s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM user_product_views WHERE user_id = $1`, cascadeUserID,
 	).Scan(&count))
 	s.Equal(0, count)
@@ -471,7 +471,7 @@ func (s *HistoryTestSuite) TestCascadeDeletesCleanViews() {
 func (s *HistoryTestSuite) TestThumbnailIsResolvedFromStorage() {
 	ctx := context.Background()
 	objectID := uuid.New()
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO storage_objects (id, bucket, object_key, content_type, file_size, status)
 		VALUES ($1, 'catalog', 'products/history-cover.webp', 'image/webp', 1024, 'uploaded')
 	`, objectID)

@@ -67,7 +67,7 @@ func (s *UserDomainSuite) SetupSuite() {
 
 	schema, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schema))
+	_, err = db.ExecContext(ctx, string(schema))
 	require.NoError(s.T(), err)
 
 	logger := log.NewNoopLogger()
@@ -87,7 +87,7 @@ func (s *UserDomainSuite) TearDownSuite() {
 
 func (s *UserDomainSuite) seedUser() uuid.UUID {
 	id := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, $3, 'customer', true, 'active')
 	`, id, "user_domain_"+id.String()+"@example.com", "User Domain")
@@ -315,7 +315,7 @@ func (s *UserDomainSuite) TestAddress_ConcurrentFirstCreationsProduceOneDefault(
 	// The advisory lock may serialize the two creations; both may succeed, but
 	// at most one may be marked default.
 	var defaults int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM addresses WHERE user_id = $1 AND deleted_at IS NULL AND is_default = true`,
 		userID).Scan(&defaults))
 	s.Equal(1, defaults)

@@ -63,7 +63,7 @@ func (tr *TagRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err = executor.QueryRow(
+	err = executor.QueryRowContext(
 		ctx,
 		query,
 		tag.ID,
@@ -135,7 +135,7 @@ func (tr *TagRepository) get(
 		WHERE %s
 	`, strings.Join(whereClauses, " AND "))
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get tag query: %w", err)
 	}
@@ -173,7 +173,7 @@ func (tr *TagRepository) Update(
 		WHERE id = $2 AND deleted_at IS NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, *fields.Name, tagID)
+	cmd, err := tx.ExecContext(ctx, query, *fields.Name, tagID)
 	if err != nil {
 		return fmt.Errorf("update tag: %w", err)
 	}
@@ -221,7 +221,7 @@ func (tr *TagRepository) List(
 	// 1. Total Count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_tags WHERE %s", whereStmt)
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list tags count: %w", err)
 	}
 
@@ -265,7 +265,7 @@ func (tr *TagRepository) List(
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
-	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.QueryContext(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list tags select: %w", err)
 	}
@@ -298,7 +298,7 @@ func (tr *TagRepository) Delete(
 		WHERE id = $1 AND deleted_at IS NULL
 	`
 
-	cmd, err := tx.Exec(ctx, query, tagID)
+	cmd, err := tx.ExecContext(ctx, query, tagID)
 	if err != nil {
 		return fmt.Errorf("delete tag: %w", err)
 	}
@@ -327,7 +327,7 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 	}
 
 	// Delete all existing assignments
-	_, err = tx.Exec(ctx,
+	_, err = tx.ExecContext(ctx,
 		`DELETE FROM product_tag_assignments WHERE product_id = $1`,
 		productID,
 	)
@@ -353,7 +353,7 @@ func (tr *TagRepository) ReplaceTagsForProduct(
 		strings.Join(valueParts, ", "),
 	)
 
-	if _, err := tx.Exec(ctx, insertQuery, args...); err != nil {
+	if _, err := tx.ExecContext(ctx, insertQuery, args...); err != nil {
 		return fmt.Errorf("replace product tags: insert: %w", err)
 	}
 
@@ -382,7 +382,7 @@ func (tr *TagRepository) GetTagsByProductID(
 		ORDER BY t.name ASC
 	`
 
-	rows, err := executor.Query(ctx, query, productID)
+	rows, err := executor.QueryContext(ctx, query, productID)
 	if err != nil {
 		return nil, fmt.Errorf("get product tags query: %w", err)
 	}

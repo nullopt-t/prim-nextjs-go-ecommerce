@@ -126,15 +126,15 @@ func TestAdversarial_Object_HandleError(t *testing.T) {
 
 type mockObjQE struct{}
 
-func (m *mockObjQE) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+func (m *mockObjQE) ExecContext(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
 	return pgconn.NewCommandTag("UPDATE 1"), nil
 }
 
-func (m *mockObjQE) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+func (m *mockObjQE) QueryContext(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
 	return nil, nil
 }
 
-func (m *mockObjQE) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+func (m *mockObjQE) QueryRowContext(ctx context.Context, sql string, args ...any) pgx.Row {
 	return &mockObjRow{}
 }
 
@@ -155,8 +155,17 @@ type mockObjTx struct {
 }
 
 func (m *mockObjTx) Begin(context.Context) (pgx.Tx, error) { return m, nil }
-func (m *mockObjTx) Commit(context.Context) error { return nil }
-func (m *mockObjTx) Rollback(context.Context) error { return nil }
+func (m *mockObjTx) Commit(context.Context) error          { return nil }
+func (m *mockObjTx) Rollback(context.Context) error        { return nil }
+func (m *mockObjTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	return m.ExecContext(ctx, sql, args...)
+}
+func (m *mockObjTx) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	return m.QueryContext(ctx, sql, args...)
+}
+func (m *mockObjTx) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return m.QueryRowContext(ctx, sql, args...)
+}
 func (m *mockObjTx) CopyFrom(context.Context, pgx.Identifier, []string, pgx.CopyFromSource) (int64, error) {
 	return 0, nil
 }
@@ -164,7 +173,7 @@ func (m *mockObjTx) SendBatch(context.Context, *pgx.Batch) pgx.BatchResults { re
 func (m *mockObjTx) Prepare(context.Context, string, string) (*pgconn.StatementDescription, error) {
 	return nil, nil
 }
-func (m *mockObjTx) Conn() *pgx.Conn { return nil }
+func (m *mockObjTx) Conn() *pgx.Conn                { return nil }
 func (m *mockObjTx) LargeObjects() pgx.LargeObjects { return pgx.LargeObjects{} }
 
 type mockObjectRunner struct {
@@ -225,5 +234,3 @@ func TestAdversarial_DeleteObject_UsesWithTx(t *testing.T) {
 	assert.Equal(t, 0, runner.withDBCalls, "DeleteObject must NOT use WithExecutor")
 	assert.Equal(t, 2, runner.withTxCalls, "DeleteObject must use WithTx for both mark deleting and mark deleted")
 }
-
-

@@ -51,10 +51,10 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/notifier"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
+	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/setting"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/user"
-	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/config"
@@ -81,6 +81,12 @@ func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.P
 		Slug:   "integration-test-product",
 		Status: model.PublicationStatusPublished,
 	}, nil
+}
+
+// GetBundleComposition reports every fixture product as an ordinary listing: it
+// is only treated as a kit when a composition exists.
+func (d *dummyProductService) GetBundleComposition(_ context.Context, _ uuid.UUID) (*model.BundleComposition, error) {
+	return nil, database.ErrNotFound
 }
 
 type fakeOrderNotifier struct {
@@ -209,27 +215,32 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
+	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
 	sellerSchemaBytes, err := os.ReadFile("../../migrations/000003_seller_domain.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(sellerSchemaBytes))
+	_, err = db.ExecContext(ctx, string(sellerSchemaBytes))
 	require.NoError(s.T(), err)
 
 	lifecycleSchemaBytes, err := os.ReadFile("../../migrations/000004_merchant_lifecycle.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(lifecycleSchemaBytes))
+	_, err = db.ExecContext(ctx, string(lifecycleSchemaBytes))
 	require.NoError(s.T(), err)
 
 	couponSellerSchemaBytes, err := os.ReadFile("../../migrations/000006_coupon_seller_scope.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(couponSellerSchemaBytes))
+	_, err = db.ExecContext(ctx, string(couponSellerSchemaBytes))
 	require.NoError(s.T(), err)
 
 	sellerAttributesSchemaBytes, err := os.ReadFile("../../migrations/000007_seller_attributes.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(sellerAttributesSchemaBytes))
+	_, err = db.ExecContext(ctx, string(sellerAttributesSchemaBytes))
+	require.NoError(s.T(), err)
+
+	bundlesSchemaBytes, err := os.ReadFile("../../migrations/000008_product_bundles.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.ExecContext(ctx, string(bundlesSchemaBytes))
 	require.NoError(s.T(), err)
 
 	// ---- Redis (sessions) -------------------------------------------------
@@ -310,14 +321,14 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	// ---- Seed catalog base ------------------------------------------------
 	s.categoryID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO product_categories (id, name)
 		VALUES ($1, $2)
 	`, s.categoryID, "Integration Electronics")
 	require.NoError(s.T(), err)
 
 	s.productID = uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes)
 		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[])
 	`, s.productID, s.categoryID, "it-product-"+uuid.NewString(), "Integration Product")
@@ -421,7 +432,7 @@ func (s *CheckoutTestSuite) seedUser() (uuid.UUID, string) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, $3, 'customer', true, 'active')
 	`, userID, "checkout_"+userID.String()+"@example.com", "Checkout Customer")
@@ -443,7 +454,7 @@ func (s *CheckoutTestSuite) seedUser() (uuid.UUID, string) {
 // seedAddress inserts a saved shipping address owned by userID.
 func (s *CheckoutTestSuite) seedAddress(userID uuid.UUID) uuid.UUID {
 	addressID := uuid.New()
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO addresses (id, user_id, full_name, line1, city, state, postal_code, country, is_default)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
 	`, addressID, userID, "Checkout Customer", "12 Test Street", "Cairo", "Cairo", "11511", "EG")
@@ -589,7 +600,7 @@ func (s *CheckoutTestSuite) seedCoupon(c couponSeed) uuid.UUID {
 		expires = *c.ExpiresAt
 	}
 
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO coupons (
 			id, code, discount_type, discount_value, min_cart_amount,
 			usage_limit, per_user_limit, starts_at, expires_at, status
@@ -611,7 +622,7 @@ func (s *CheckoutTestSuite) seedRawOrder(customerID *uuid.UUID) uuid.UUID {
 		customer = *customerID
 	}
 
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO orders (id, customer_id, customer_email, shipping_address, status, total_amount, currency)
 		VALUES ($1, $2, 'seed@example.com', '{}'::jsonb, 'pending', 0, 'EGP')
 	`, id, customer)
@@ -627,7 +638,7 @@ func (s *CheckoutTestSuite) seedRedemption(couponID uuid.UUID, customerID *uuid.
 		customer = *customerID
 	}
 
-	_, err := s.db.Exec(context.Background(), `
+	_, err := s.db.ExecContext(context.Background(), `
 		INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount)
 		VALUES ($1, $2, $3, 100)
 	`, couponID, customer, orderID)
@@ -640,13 +651,13 @@ func (s *CheckoutTestSuite) seedRawCartItem(userID, variantID uuid.UUID, qty int
 	ctx := context.Background()
 	cartID := uuid.New()
 
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO carts (id, user_id)
 		VALUES ($1, $2)
 	`, cartID, userID)
 	s.Require().NoError(err)
 
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO cart_items (cart_id, variant_id, quantity, price_at_purchase, currency)
 		VALUES ($1, $2, $3, $4, $5)
 	`, cartID, variantID, qty, price, defaultCurrency)
@@ -722,7 +733,7 @@ type orderRow struct {
 
 func (s *CheckoutTestSuite) fetchOrder(orderID uuid.UUID) orderRow {
 	var o orderRow
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT id, customer_id, customer_email, status::text,
 		       discount_amount, shipping_amount, tax_amount, total_amount, currency
 		FROM orders
@@ -744,7 +755,7 @@ type paymentRow struct {
 
 func (s *CheckoutTestSuite) fetchPayment(orderID uuid.UUID) paymentRow {
 	var p paymentRow
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT amount, currency, status::text, provider
 		FROM payments
 		WHERE order_id = $1
@@ -755,14 +766,14 @@ func (s *CheckoutTestSuite) fetchPayment(orderID uuid.UUID) paymentRow {
 
 func (s *CheckoutTestSuite) countOrdersForUser(userID uuid.UUID) int {
 	var n int
-	err := s.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM orders WHERE customer_id = $1`, userID).Scan(&n)
+	err := s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM orders WHERE customer_id = $1`, userID).Scan(&n)
 	s.Require().NoError(err)
 	return n
 }
 
 func (s *CheckoutTestSuite) countPaymentsForUser(userID uuid.UUID) int {
 	var n int
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*)
 		FROM payments p
 		JOIN orders o ON o.id = p.order_id
@@ -774,7 +785,7 @@ func (s *CheckoutTestSuite) countPaymentsForUser(userID uuid.UUID) int {
 
 func (s *CheckoutTestSuite) countActiveCartItems(userID uuid.UUID) int {
 	var n int
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*)
 		FROM cart_items ci
 		JOIN carts c ON c.id = ci.cart_id
@@ -786,7 +797,7 @@ func (s *CheckoutTestSuite) countActiveCartItems(userID uuid.UUID) int {
 
 func (s *CheckoutTestSuite) countActiveReservations(variantID uuid.UUID) int {
 	var n int
-	err := s.db.QueryRow(context.Background(), `
+	err := s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*)
 		FROM inventory_reservations
 		WHERE variant_id = $1 AND released_at IS NULL AND expires_at > now()
@@ -954,7 +965,7 @@ func (s *CheckoutTestSuite) TestCheckout_Success_PercentageCoupon() {
 	// Exactly one redemption with the discounted amount.
 	var count int
 	var discount int64
-	err = s.db.QueryRow(context.Background(), `
+	err = s.db.QueryRowContext(context.Background(), `
 		SELECT COUNT(*), COALESCE(SUM(discount_amount), 0)
 		FROM coupon_redemptions
 		WHERE coupon_id = $1 AND user_id = $2
@@ -1026,7 +1037,7 @@ func (s *CheckoutTestSuite) TestCheckout_Success_CouponByID() {
 	s.Equal(int64(4499), o.TotalAmount)
 
 	var redemptionCount int
-	err = s.db.QueryRow(context.Background(),
+	err = s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2 AND order_id = $3`,
 		couponID, userID, orderID,
 	).Scan(&redemptionCount)
@@ -1053,7 +1064,7 @@ func (s *CheckoutTestSuite) TestCheckout_Success_SnapshotAndAuthoritativePrice()
 	var qty int
 	var unitPrice int64
 	var snapshot map[string]any
-	err = s.db.QueryRow(context.Background(), `
+	err = s.db.QueryRowContext(context.Background(), `
 		SELECT quantity, price_at_purchase, product_snapshot
 		FROM order_items
 		WHERE order_id = $1
@@ -1398,7 +1409,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_AtomicityOnCouponFailure() {
 	s.Equal(0, s.countActiveReservations(variantID))
 
 	var redemptions int
-	err := s.db.QueryRow(context.Background(), `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions)
+	err := s.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions)
 	s.Require().NoError(err)
 	s.Equal(0, redemptions)
 
@@ -1486,14 +1497,14 @@ type orderItemRow struct {
 func (s *CheckoutTestSuite) seedSellerProfile(status string) uuid.UUID {
 	ctx := context.Background()
 	sellerUserID := uuid.New()
-	_, err := s.db.Exec(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
 		VALUES ($1, $2, $3, 'seller', true, 'active')
 	`, sellerUserID, "seller_"+uuid.NewString()+"@example.com", "Seller Seller")
 	s.Require().NoError(err)
 
 	sellerID := uuid.New()
-	_, err = s.db.Exec(ctx, `
+	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO sellers (id, user_id, store_name, slug, commission_rate_bps, status)
 		VALUES ($1, $2, $3, $4, 1000, $5::seller_status)
 	`, sellerID, sellerUserID, "Seller Store "+uuid.NewString(), "seller-store-"+uuid.NewString(), status)
@@ -1503,7 +1514,7 @@ func (s *CheckoutTestSuite) seedSellerProfile(status string) uuid.UUID {
 
 // attachSellerProduct marks the seeded catalog product as owned by the seller.
 func (s *CheckoutTestSuite) attachSellerProduct(sellerID uuid.UUID) {
-	_, err := s.db.Exec(context.Background(), `UPDATE products SET seller_id = $1 WHERE id = $2`, sellerID, s.productID)
+	_, err := s.db.ExecContext(context.Background(), `UPDATE products SET seller_id = $1 WHERE id = $2`, sellerID, s.productID)
 	s.Require().NoError(err)
 }
 
@@ -1537,7 +1548,7 @@ func (s *CheckoutTestSuite) seedSellerVariant(price int64, stock int) uuid.UUID 
 // seller attribution and earning.
 func (s *CheckoutTestSuite) fetchOrderItems(orderID uuid.UUID) []orderItemRow {
 	ctx := context.Background()
-	rows, err := s.db.Query(ctx, `
+	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, variant_id, quantity, price_at_purchase, seller_id, seller_earning,
 			commission_rate_bps, commission_amount
 		FROM order_items
@@ -1612,12 +1623,12 @@ func (s *CheckoutTestSuite) TestCheckout_Success_SellerOwnedLine_FreezeSellerEar
 
 	// The attributed product is no longer platform-owned for this checkout.
 	var ownerID uuid.UUID
-	err = s.db.QueryRow(ctx, `SELECT seller_id FROM products WHERE id = $1`, s.productID).Scan(&ownerID)
+	err = s.db.QueryRowContext(ctx, `SELECT seller_id FROM products WHERE id = $1`, s.productID).Scan(&ownerID)
 	s.Require().NoError(err)
 	s.Require().NotEqual(uuid.Nil, ownerID)
 
 	// Restore the shared seeded product to the platform-owned baseline.
-	_, err = s.db.Exec(ctx, `UPDATE products SET seller_id = NULL WHERE id = $1`, s.productID)
+	_, err = s.db.ExecContext(ctx, `UPDATE products SET seller_id = NULL WHERE id = $1`, s.productID)
 	s.Require().NoError(err)
 }
 
@@ -1646,7 +1657,7 @@ func (s *CheckoutTestSuite) TestCheckout_Red_SuspendedSellerBlocked() {
 	s.Equal(1, s.countActiveCartItems(buyerID))
 
 	// Restore the shared seeded product to the platform-owned baseline.
-	_, err := s.db.Exec(context.Background(), `UPDATE products SET seller_id = NULL WHERE id = $1`, s.productID)
+	_, err := s.db.ExecContext(context.Background(), `UPDATE products SET seller_id = NULL WHERE id = $1`, s.productID)
 	s.Require().NoError(err)
 }
 
@@ -1846,7 +1857,7 @@ func (s *CheckoutTestSuite) TestCheckout_RecordPaymentFailureRollsBackEverything
 	s.Equal(0, stock.ReservedQuantity)
 
 	var redemptions int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions))
 	s.Equal(0, redemptions, "coupon redemption must roll back")
 	_ = sessionID
@@ -1954,7 +1965,7 @@ func (s *CheckoutTestSuite) TestCheckout_CouponGuestPreview() {
 	s.Equal(int64(4599), resp.Data.Total)
 
 	var redemptions int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`, couponID).Scan(&redemptions))
 	s.Equal(0, redemptions)
 }
@@ -2014,7 +2025,7 @@ func (s *CheckoutTestSuite) TestCheckout_CouponGlobalLimitConcurrency() {
 	s.Equal(1, limitRejected)
 
 	var redemptions int
-	s.Require().NoError(s.db.QueryRow(context.Background(),
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
 		`SELECT COUNT(*) FROM coupon_redemptions r JOIN coupons c ON c.id = r.coupon_id WHERE c.code = $1`, code).Scan(&redemptions))
 	s.Equal(1, redemptions)
 }

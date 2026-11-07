@@ -38,7 +38,7 @@ func (r *WishlistRepository) Create(
 		VALUES ($1, $2, $3, $4, now())
 		RETURNING created_at
 	`
-	return tx.QueryRow(ctx, query, item.ID, item.UserID, item.ProductID, item.VariantID).Scan(&item.CreatedAt)
+	return tx.QueryRowContext(ctx, query, item.ID, item.UserID, item.ProductID, item.VariantID).Scan(&item.CreatedAt)
 }
 
 func (r *WishlistRepository) GetByID(
@@ -96,7 +96,7 @@ func (r *WishlistRepository) GetByID(
 		LEFT JOIN storage_objects vso ON pv.thumbnail_object_id = vso.id
 		WHERE wi.id = $1 AND wi.user_id = $2
 	`
-	row := executor.QueryRow(ctx, query, id, userID)
+	row := executor.QueryRowContext(ctx, query, id, userID)
 	item, err := scanWishlistItem(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -165,7 +165,7 @@ func (r *WishlistRepository) GetByUserAndProduct(
 		ORDER BY wi.created_at DESC
 		LIMIT 1
 	`
-	row := executor.QueryRow(ctx, query, userID, productID)
+	row := executor.QueryRowContext(ctx, query, userID, productID)
 	item, err := scanWishlistItem(row)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -193,7 +193,7 @@ func (r *WishlistRepository) ListByUser(
 		WHERE wi.user_id = $1
 	`
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, userID).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -268,7 +268,7 @@ func (r *WishlistRepository) ListByUser(
 		LIMIT $2 OFFSET $3
 	`, orderBy)
 
-	rows, err := executor.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
+	rows, err := executor.QueryContext(ctx, selectQuery, userID, q.PageSize, q.Offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -305,7 +305,7 @@ func (r *WishlistRepository) CountByUser(
 		WHERE wi.user_id = $1
 	`
 	var count int
-	err = executor.QueryRow(ctx, query, userID).Scan(&count)
+	err = executor.QueryRowContext(ctx, query, userID).Scan(&count)
 	return count, err
 }
 
@@ -320,7 +320,7 @@ func (r *WishlistRepository) DeleteByID(
 	}
 
 	query := `DELETE FROM wishlist_items WHERE id = $1 AND user_id = $2`
-	tag, err := tx.Exec(ctx, query, id, userID)
+	tag, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func (r *WishlistRepository) GetVariantProductID(
 
 	query := `SELECT product_id FROM product_variants WHERE id = $1 AND deleted_at IS NULL`
 	var prodID uuid.UUID
-	err = executor.QueryRow(ctx, query, variantID).Scan(&prodID)
+	err = executor.QueryRowContext(ctx, query, variantID).Scan(&prodID)
 	return prodID, err
 }
 
@@ -362,7 +362,7 @@ func (r *WishlistRepository) DeleteByProduct(
 
 	if variantID != nil {
 		query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
-		tag, err := tx.Exec(ctx, query, userID, productID, *variantID)
+		tag, err := tx.ExecContext(ctx, query, userID, productID, *variantID)
 		if err != nil {
 			return err
 		}
@@ -373,7 +373,7 @@ func (r *WishlistRepository) DeleteByProduct(
 	}
 
 	query := `DELETE FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id IS NULL`
-	tag, err := tx.Exec(ctx, query, userID, productID)
+	tag, err := tx.ExecContext(ctx, query, userID, productID)
 	if err != nil {
 		return err
 	}
@@ -393,7 +393,7 @@ func (r *WishlistRepository) ClearByUser(
 	}
 
 	query := `DELETE FROM wishlist_items WHERE user_id = $1`
-	_, err = tx.Exec(ctx, query, userID)
+	_, err = tx.ExecContext(ctx, query, userID)
 	return err
 }
 
@@ -413,10 +413,10 @@ func (r *WishlistRepository) Exists(
 
 	if variantID != nil {
 		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 AND variant_id = $3`
-		err = executor.QueryRow(ctx, query, userID, productID, *variantID).Scan(&id)
+		err = executor.QueryRowContext(ctx, query, userID, productID, *variantID).Scan(&id)
 	} else {
 		query = `SELECT id FROM wishlist_items WHERE user_id = $1 AND product_id = $2 LIMIT 1`
-		err = executor.QueryRow(ctx, query, userID, productID).Scan(&id)
+		err = executor.QueryRowContext(ctx, query, userID, productID).Scan(&id)
 	}
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -433,20 +433,20 @@ type rowScanner interface {
 
 func scanWishlistItem(scanner rowScanner) (*model.WishlistItem, error) {
 	var (
-		item          model.WishlistItem
-		pTypeStr      string
-		pStatusStr    string
-		brandName     *string
-		categoryName  *string
-		thumbBucket   *string
-		thumbKey      *string
-		variantIDVal  *uuid.UUID
-		variantTitle  *string
-		variantSKU    *string
-		price         *int64
-		crossedPrice  *int64
-		currency      *string
-		inStock       bool
+		item         model.WishlistItem
+		pTypeStr     string
+		pStatusStr   string
+		brandName    *string
+		categoryName *string
+		thumbBucket  *string
+		thumbKey     *string
+		variantIDVal *uuid.UUID
+		variantTitle *string
+		variantSKU   *string
+		price        *int64
+		crossedPrice *int64
+		currency     *string
+		inStock      bool
 	)
 
 	err := scanner.Scan(

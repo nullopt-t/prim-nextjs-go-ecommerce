@@ -108,7 +108,7 @@ func (r *SellerRepository) Create(ctx context.Context, in *CreateSellerInput) (*
 		BankAccountInfo:   map[string]any{},
 	}
 
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		INSERT INTO sellers (
 			id, user_id, store_name, slug, description,
 			logo_object_id, banner_object_id, commission_rate_bps,
@@ -137,7 +137,7 @@ func (r *SellerRepository) getBy(ctx context.Context, where string, args ...any)
 		return nil, err
 	}
 
-	row := executor.QueryRow(
+	row := executor.QueryRowContext(
 		ctx,
 		`SELECT `+sellerColumns+` FROM sellers WHERE `+where,
 		args...,
@@ -174,13 +174,13 @@ func (r *SellerRepository) ListAll(ctx context.Context, status *model.SellerStat
 
 	var total int64
 	countQuery := `SELECT COUNT(*) FROM sellers ` + where
-	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count sellers: %w", err)
 	}
 
 	offsetIdx := len(args) + 1
 	limitIdx := len(args) + 2
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT `+sellerColumns+` FROM sellers `+where+`
 		ORDER BY created_at DESC, id DESC
 		LIMIT $`+fmt.Sprint(limitIdx)+` OFFSET $`+fmt.Sprint(offsetIdx),
@@ -217,7 +217,7 @@ func (r *SellerRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (
 		return nil, err
 	}
 
-	row := executor.QueryRow(
+	row := executor.QueryRowContext(
 		ctx,
 		`SELECT `+sellerColumns+` FROM sellers WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
 		id,
@@ -242,7 +242,7 @@ func (r *SellerRepository) Update(ctx context.Context, sellerID uuid.UUID, field
 		}
 	}
 
-	row := executor.QueryRow(ctx, `
+	row := executor.QueryRowContext(ctx, `
 		UPDATE sellers SET
 			store_name         = COALESCE($2, store_name),
 			slug               = COALESCE($3, slug),
@@ -273,7 +273,7 @@ func (r *SellerRepository) SetStatus(
 		return err
 	}
 
-	cmd, err := executor.Exec(ctx, `
+	cmd, err := executor.ExecContext(ctx, `
 		UPDATE sellers SET
 			status = $2,
 			status_reason = $3,
@@ -299,7 +299,7 @@ func (r *SellerRepository) MarkResubmitted(ctx context.Context, sellerID uuid.UU
 		return err
 	}
 
-	cmd, err := executor.Exec(ctx, `
+	cmd, err := executor.ExecContext(ctx, `
 		UPDATE sellers SET
 			status = 'pending',
 			status_reason = NULL,
@@ -327,7 +327,7 @@ func (r *SellerRepository) SlugExists(ctx context.Context, slug string) (bool, e
 	}
 
 	var exists bool
-	if err := executor.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM sellers WHERE slug = $1)`, slug).Scan(&exists); err != nil {
+	if err := executor.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM sellers WHERE slug = $1)`, slug).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check seller slug: %w", err)
 	}
 	return exists, nil
@@ -340,7 +340,7 @@ func (r *SellerRepository) SetCommissionRate(ctx context.Context, sellerID uuid.
 		return err
 	}
 
-	cmd, err := executor.Exec(ctx, `
+	cmd, err := executor.ExecContext(ctx, `
 		UPDATE sellers SET commission_rate_bps = $2, updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`, sellerID, rateBps)
@@ -365,7 +365,7 @@ func (r *SellerRepository) GetOutstandingPayoutTotal(ctx context.Context, seller
 	}
 
 	var total int64
-	err = executor.QueryRow(ctx, `
+	err = executor.QueryRowContext(ctx, `
 		SELECT COALESCE(SUM(amount), 0)
 		FROM seller_payouts
 		WHERE seller_id = $1
@@ -413,7 +413,7 @@ func (r *SellerRepository) CreatePayout(ctx context.Context, sellerID uuid.UUID,
 		return nil, err
 	}
 
-	row := executor.QueryRow(ctx, `
+	row := executor.QueryRowContext(ctx, `
 		INSERT INTO seller_payouts (
 			id, seller_id, amount, currency, status,
 			snapshot_available_balance, idempotency_key, created_at, updated_at
@@ -437,7 +437,7 @@ func (r *SellerRepository) GetPayoutByIdempotencyKey(ctx context.Context, seller
 		return nil, err
 	}
 
-	row := executor.QueryRow(ctx, `
+	row := executor.QueryRowContext(ctx, `
 		SELECT
 			id, seller_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
@@ -456,7 +456,7 @@ func (r *SellerRepository) ListPayoutsBySeller(ctx context.Context, sellerID uui
 		return nil, err
 	}
 
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT
 			id, seller_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
@@ -501,7 +501,7 @@ func (r *SellerRepository) UpdatePayoutStatus(
 		return err
 	}
 
-	cmd, err := executor.Exec(ctx, `
+	cmd, err := executor.ExecContext(ctx, `
 		UPDATE seller_payouts SET
 			status = $3::payout_status,
 			reference_number = COALESCE($4::text, reference_number),
@@ -526,7 +526,7 @@ func (r *SellerRepository) GetPayoutByID(ctx context.Context, payoutID uuid.UUID
 		return nil, err
 	}
 
-	row := executor.QueryRow(ctx, `
+	row := executor.QueryRowContext(ctx, `
 		SELECT
 			id, seller_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,
@@ -544,7 +544,7 @@ func (r *SellerRepository) ListPayouts(ctx context.Context) ([]*model.SellerPayo
 		return nil, err
 	}
 
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT
 			id, seller_id, amount, currency, status,
 			reference_number, COALESCE(notes, ''), snapshot_available_balance,

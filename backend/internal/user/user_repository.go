@@ -59,7 +59,7 @@ func (r *UserRepository) Create(
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err = tx.QueryRow(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err = tx.QueryRowContext(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -97,7 +97,7 @@ func (r *UserRepository) ExistsByID(
 	query := `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL)`
 
 	var exists bool
-	if err := executor.QueryRow(ctx, query, id).Scan(&exists); err != nil {
+	if err := executor.QueryRowContext(ctx, query, id).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check user existence: %w", err)
 	}
 	return exists, nil
@@ -137,7 +137,7 @@ func (r *UserRepository) get(
 	var roleStr string
 	var statusStr string
 
-	err = executor.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
 		&u.FullName,
@@ -221,7 +221,7 @@ func (r *UserRepository) ListUsers(
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, filter.Limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list users query: %w", err)
 	}
@@ -297,7 +297,7 @@ func (r *UserRepository) CountUsers(
 	}
 
 	var count int
-	if err := executor.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+	if err := executor.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count users query: %w", err)
 	}
 
@@ -328,7 +328,7 @@ func (r *UserRepository) ListByRoles(
 		ORDER BY created_at
 	`
 
-	rows, err := executor.Query(ctx, query, names)
+	rows, err := executor.QueryContext(ctx, query, names)
 	if err != nil {
 		return nil, fmt.Errorf("list users by roles query: %w", err)
 	}
@@ -386,7 +386,7 @@ func (r *UserRepository) UpdateRole(
 		SET role = $1::user_role, updated_at = now()
 		WHERE id = $2 AND deleted_at IS NULL
 	`
-	tag, err := tx.Exec(ctx, query, string(role), userID)
+	tag, err := tx.ExecContext(ctx, query, string(role), userID)
 	if err != nil {
 		return fmt.Errorf("update user role: %w", err)
 	}
@@ -414,7 +414,7 @@ func (r *UserRepository) UpdateStatus(
 		SET status = $1, suspended_until = $2, updated_at = now()
 		WHERE id = $3 AND deleted_at IS NULL
 	`
-	tag, err := tx.Exec(ctx, query, string(status), suspendedUntil, userID)
+	tag, err := tx.ExecContext(ctx, query, string(status), suspendedUntil, userID)
 	if err != nil {
 		return fmt.Errorf("update user status: %w", err)
 	}
@@ -440,7 +440,7 @@ func (r *UserRepository) SoftDelete(
 		SET status = 'deleted', deleted_at = now(), updated_at = now()
 		WHERE id = $1 AND deleted_at IS NULL
 	`
-	tag, err := tx.Exec(ctx, query, userID)
+	tag, err := tx.ExecContext(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("soft delete user: %w", err)
 	}
@@ -493,7 +493,7 @@ func (r *UserRepository) UpdateProfile(
 	var roleStr string
 	var statusStr string
 
-	err = executor.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&u.ID,
 		&u.Identifier,
 		&u.FullName,

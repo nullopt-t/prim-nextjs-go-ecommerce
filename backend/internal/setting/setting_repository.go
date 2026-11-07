@@ -33,7 +33,7 @@ func (r *Repository) GetAll(ctx context.Context) ([]Item, error) {
 	}
 	const query = `SELECT key, value, updated_at FROM admin_settings ORDER BY key`
 
-	rows, err := executor.Query(ctx, query)
+	rows, err := executor.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("list settings: %w", err)
 	}
@@ -71,7 +71,7 @@ func (r *Repository) Upsert(ctx context.Context, key string, value interface{}) 
 		return fmt.Errorf("encode setting %s: %w", key, err)
 	}
 
-	if _, err := executor.Exec(ctx, query, key, payload); err != nil {
+	if _, err := executor.ExecContext(ctx, query, key, payload); err != nil {
 		return fmt.Errorf("upsert setting %s: %w", key, err)
 	}
 	return nil

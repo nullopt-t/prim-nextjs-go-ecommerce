@@ -94,7 +94,7 @@ func (s *AuthTestSuite) SetupSuite() {
 	// Run migration
 	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
 	require.NoError(s.T(), err)
-	_, err = db.Exec(ctx, string(schemaBytes))
+	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
 	// 3. Start Redis Container

@@ -20,6 +20,9 @@ type VariantReader interface {
 
 type ProductReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Product, error)
+	// GetBundleComposition resolves a product's kit composition. It reports
+	// database.ErrNotFound for products that are not bundles.
+	GetBundleComposition(ctx context.Context, productID uuid.UUID) (*model.BundleComposition, error)
 }
 
 // SellerReader resolves a product's seller so the cart refuses items from a
@@ -303,6 +306,42 @@ func (s *CartService) GetCartBySessionID(ctx context.Context, sessionID string) 
 	return cart, nil
 }
 
+// kitAvailability reports how many complete kits a product's components can
+// build. isBundle is false for ordinary products, whose stock lives on the
+// variant itself.
+func (s *CartService) kitAvailability(
+	ctx context.Context,
+	productID uuid.UUID,
+) (available int, isBundle bool, err error) {
+	composition, compErr := s.productReader.GetBundleComposition(ctx, productID)
+	if compErr != nil {
+		if errors.Is(database.MapError(compErr), database.ErrNotFound) {
+			return 0, false, nil
+		}
+		return 0, false, apierr.InternalServerError("Failed to load bundle").Wrap(compErr)
+	}
+	if composition == nil || len(composition.Items) == 0 {
+		return 0, false, nil
+	}
+
+	componentVariantIDs := make([]uuid.UUID, 0, len(composition.Items))
+	for _, item := range composition.Items {
+		if item.StockVariantID != nil {
+			componentVariantIDs = append(componentVariantIDs, *item.StockVariantID)
+		}
+	}
+
+	var componentStock map[uuid.UUID]*model.InventoryStock
+	if s.inventoryReader != nil && len(componentVariantIDs) > 0 {
+		componentStock, err = s.inventoryReader.GetStockForVariants(ctx, componentVariantIDs)
+		if err != nil {
+			return 0, true, apierr.InternalServerError("Failed to check inventory").Wrap(err)
+		}
+	}
+
+	return composition.AvailableQuantity(componentStock), true, nil
+}
+
 func (s *CartService) AddItem(
 	ctx context.Context,
 	cartID uuid.UUID,
@@ -377,7 +416,18 @@ func (s *CartService) AddItem(
 		}
 		desiredQuantity := existingQuantity + quantity
 
-		if s.inventoryReader != nil {
+		available, isBundle, kitErr := s.kitAvailability(ctx, product.ID)
+		if kitErr != nil {
+			return kitErr
+		}
+		if isBundle {
+			// A kit has no inventory of its own: it can be sold as many times
+			// as its components can build it.
+			if available < desiredQuantity {
+				return apierr.BadRequestError("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		} else if s.inventoryReader != nil {
 			stock, stockErr := s.inventoryReader.GetStock(ctx, v.ID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError
@@ -464,7 +514,24 @@ func (s *CartService) UpdateCartItemQuantity(
 			return database.ErrNotFound
 		}
 
-		if s.inventoryReader != nil {
+		variant, variantErr := s.variantReader.GetByID(ctx, variantID)
+		if variantErr != nil {
+			if errors.Is(database.MapError(variantErr), database.ErrNotFound) {
+				return database.ErrNotFound
+			}
+			return apierr.InternalServerError("Failed to load cart variant").Wrap(variantErr)
+		}
+
+		available, isBundle, kitErr := s.kitAvailability(ctx, variant.ProductID)
+		if kitErr != nil {
+			return kitErr
+		}
+		if isBundle {
+			if available < quantity {
+				return apierr.BadRequestError("Insufficient inventory available").
+					WithCode(errcode.CodeInsufficientInventory)
+			}
+		} else if s.inventoryReader != nil {
 			stock, stockErr := s.inventoryReader.GetStock(ctx, variantID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError

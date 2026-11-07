@@ -226,6 +226,42 @@ type ProductDetailsResponse struct {
 	Tags []ProductTagSummary `json:"tags"`
 	// Aggregated review score and count
 	Rating *ProductRatingSummaryResponse `json:"rating,omitempty"`
+	// Kit composition, present only when the product is a bundle
+	Bundle *BundleResponse `json:"bundle,omitempty"`
+}
+
+// BundleItemResponse is one component of a kit, with its own availability so a
+// customer can see which part of the kit is holding it back.
+type BundleItemResponse struct {
+	// Component product UUID
+	ID string `json:"id" example:"60000000-0000-0000-0000-000000000001"`
+	// Component product title
+	Title string `json:"title" example:"Wireless Mouse"`
+	// Component product storefront slug
+	Slug string `json:"slug" example:"wireless-mouse"`
+	// Component cover image URL
+	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/mouse.jpg"`
+	// Units of this component included in one kit
+	Quantity int `json:"quantity" example:"2"`
+	// Pinned variant title, when the kit was built with a specific variant
+	Variant *string `json:"variant,omitempty" example:"Black"`
+	// Units currently available for sale
+	AvailableQuantity int `json:"availableQuantity" example:"12"`
+	// True when availableQuantity > 0
+	IsInStock bool `json:"isInStock" example:"true"`
+}
+
+// BundleResponse describes a kit's contents and the availability derived from
+// its components, which is the only meaningful stock figure for a bundle.
+type BundleResponse struct {
+	// Number of distinct products in the kit
+	ItemCount int `json:"itemCount" example:"3"`
+	// Complete kits the components can currently build
+	AvailableQuantity int `json:"availableQuantity" example:"4"`
+	// True when at least one complete kit is available
+	IsInStock bool `json:"isInStock" example:"true"`
+	// Kit composition in display order
+	Items []BundleItemResponse `json:"items"`
 }
 
 type AdminProductDetailsResponse struct {
@@ -1160,9 +1196,39 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 		}
 	}
 
+	res.Bundle = mapBundleResponse(details.Bundle)
+
 	c.JSON(http.StatusOK, api.DataResponse{
 		Data: res,
 	})
+}
+
+// mapBundleResponse projects a kit composition onto the public response shape.
+// It returns nil for ordinary products so the field stays omitted.
+func mapBundleResponse(bundle *BundleDetails) *BundleResponse {
+	if bundle == nil {
+		return nil
+	}
+
+	res := &BundleResponse{
+		ItemCount:         bundle.ItemCount,
+		AvailableQuantity: bundle.AvailableQuantity,
+		IsInStock:         bundle.IsInStock,
+		Items:             make([]BundleItemResponse, 0, len(bundle.Items)),
+	}
+	for _, item := range bundle.Items {
+		res.Items = append(res.Items, BundleItemResponse{
+			ID:                item.ProductID.String(),
+			Title:             item.Title,
+			Slug:              item.Slug,
+			Thumbnail:         item.ThumbnailURL,
+			Quantity:          item.Quantity,
+			Variant:           item.VariantTitle,
+			AvailableQuantity: item.AvailableQuantity,
+			IsInStock:         item.IsInStock,
+		})
+	}
+	return res
 }
 
 // UpdateProduct godoc

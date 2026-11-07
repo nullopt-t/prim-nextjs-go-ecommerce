@@ -44,7 +44,7 @@ func (r *NotificationRepository) Create(
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, now())
 		RETURNING id, created_at
 	`
-	return tx.QueryRow(
+	return tx.QueryRowContext(
 		ctx,
 		query,
 		n.UserID,
@@ -79,7 +79,7 @@ func (r *NotificationRepository) ListByUser(
 	}
 
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, userID).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, userID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count user notifications: %w", err)
 	}
 
@@ -106,7 +106,7 @@ func (r *NotificationRepository) ListByUser(
 		`
 	}
 
-	rows, err := executor.Query(ctx, selectQuery, userID, q.PageSize, q.Offset)
+	rows, err := executor.QueryContext(ctx, selectQuery, userID, q.PageSize, q.Offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list user notifications: %w", err)
 	}
@@ -146,7 +146,7 @@ func (r *NotificationRepository) CountUnreadByUser(
 
 	query := `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`
 	var count int
-	if err := executor.QueryRow(ctx, query, userID).Scan(&count); err != nil {
+	if err := executor.QueryRowContext(ctx, query, userID).Scan(&count); err != nil {
 		return 0, fmt.Errorf("count unread user notifications: %w", err)
 	}
 	return count, nil
@@ -169,7 +169,7 @@ func (r *NotificationRepository) MarkAsRead(
 		SET read_at = COALESCE(read_at, now())
 		WHERE id = $1 AND user_id = $2
 	`
-	cmd, err := tx.Exec(ctx, query, id, userID)
+	cmd, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("mark notification as read: %w", err)
 	}
@@ -194,7 +194,7 @@ func (r *NotificationRepository) MarkAllAsRead(
 		SET read_at = now()
 		WHERE user_id = $1 AND read_at IS NULL
 	`
-	cmd, err := tx.Exec(ctx, query, userID)
+	cmd, err := tx.ExecContext(ctx, query, userID)
 	if err != nil {
 		return 0, fmt.Errorf("mark all notifications as read: %w", err)
 	}
@@ -213,7 +213,7 @@ func (r *NotificationRepository) Delete(
 	}
 
 	query := `DELETE FROM user_notifications WHERE id = $1 AND user_id = $2`
-	cmd, err := tx.Exec(ctx, query, id, userID)
+	cmd, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("delete user notification: %w", err)
 	}

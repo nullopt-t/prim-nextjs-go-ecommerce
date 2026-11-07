@@ -102,7 +102,7 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 		perUserLimit  sql.NullInt32
 	)
 
-	err = executor.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&c.ID,
 		&c.Code,
 		&c.DiscountType,
@@ -194,7 +194,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 	fmt.Fprintf(&sb, " LIMIT $%d", idx)
 	args = append(args, filter.Limit+1)
 
-	rows, err := executor.Query(ctx, sb.String(), args...)
+	rows, err := executor.QueryContext(ctx, sb.String(), args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list coupons: %w", err)
 	}
@@ -207,7 +207,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			minCartAmount sql.NullInt64
 			usageLimit    sql.NullInt32
 			perUserLimit  sql.NullInt32
-			)
+		)
 
 		if err := rows.Scan(
 			&c.ID,
@@ -300,7 +300,7 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 		status = model.CouponStatusActive
 	}
 
-	return executor.QueryRow(ctx, query,
+	return executor.QueryRowContext(ctx, query,
 		c.ID,
 		c.Code,
 		c.DiscountType,
@@ -324,7 +324,7 @@ func (r *CouponRepository) UpdateStatus(ctx context.Context, id uuid.UUID, statu
 	}
 
 	query := `UPDATE coupons SET status = $1::coupon_status, updated_at = NOW() WHERE id = $2`
-	ct, err := executor.Exec(ctx, query, string(status), id)
+	ct, err := executor.ExecContext(ctx, query, string(status), id)
 	if err != nil {
 		return fmt.Errorf("update coupon status: %w", err)
 	}
@@ -342,7 +342,7 @@ func (r *CouponRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	query := `DELETE FROM coupons WHERE id = $1`
-	ct, err := executor.Exec(ctx, query, id)
+	ct, err := executor.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("delete coupon: %w", err)
 	}
@@ -361,7 +361,7 @@ func (r *CouponRepository) GetRedemptionCount(ctx context.Context, couponID uuid
 
 	query := `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1`
 	var count int
-	err = executor.QueryRow(ctx, query, couponID).Scan(&count)
+	err = executor.QueryRowContext(ctx, query, couponID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("get redemption count: %w", err)
 	}
@@ -377,7 +377,7 @@ func (r *CouponRepository) GetUserRedemptionCount(ctx context.Context, couponID 
 
 	query := `SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2`
 	var count int
-	err = executor.QueryRow(ctx, query, couponID, userID).Scan(&count)
+	err = executor.QueryRowContext(ctx, query, couponID, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("get user redemption count: %w", err)
 	}
@@ -396,7 +396,7 @@ func (r *CouponRepository) RecordRedemption(ctx context.Context, red *model.Coup
 		VALUES ($1, $2, $3, $4, $5, NOW())
 		RETURNING id, created_at
 	`
-	return tx.QueryRow(ctx, query,
+	return tx.QueryRowContext(ctx, query,
 		red.CouponID,
 		red.UserID,
 		red.OrderID,
@@ -414,7 +414,7 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UU
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			r.id,
 			r.user_id,
 			u.full_name,
@@ -439,7 +439,7 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UU
 	query += fmt.Sprintf(" LIMIT $%d", i)
 	args = append(args, limit+1)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("list coupon redemptions: %w", err)
 	}

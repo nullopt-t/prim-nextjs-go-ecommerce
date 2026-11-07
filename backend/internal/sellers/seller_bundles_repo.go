@@ -71,7 +71,7 @@ func (b *bundleStore) CreateBundle(ctx context.Context, sellerID uuid.UUID, bund
 			Currency:    currency,
 			Items:       make([]BundleItem, 0, len(items)),
 		}
-		if err := tx.QueryRow(ctx, `
+		if err := tx.QueryRowContext(ctx, `
 			INSERT INTO product_bundles (id, seller_id, product_id, bundle_price, currency, created_at, updated_at)
 			VALUES ($1, $2, $3, $4, $5, now(), now())
 			RETURNING created_at, updated_at
@@ -81,7 +81,7 @@ func (b *bundleStore) CreateBundle(ctx context.Context, sellerID uuid.UUID, bund
 		for _, item := range items {
 			item.ID = uuid.New()
 			item.BundleID = bundle.ID
-			if err := tx.QueryRow(ctx, `
+			if err := tx.QueryRowContext(ctx, `
 				INSERT INTO bundle_items (id, bundle_id, product_id, variant_id, quantity, created_at)
 				VALUES ($1, $2, $3, $4, $5, now())
 				RETURNING created_at
@@ -103,7 +103,7 @@ func (b *bundleStore) ListBundles(ctx context.Context, sellerID uuid.UUID) ([]Se
 	if err != nil {
 		return nil, err
 	}
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT pb.id, pb.product_id, p.slug AS product_slug, p.title AS product_title, p.status::text, pb.bundle_price, pb.currency, pb.created_at, pb.updated_at
 		FROM product_bundles pb
 		JOIN products p ON p.id = pb.product_id AND p.deleted_at IS NULL
@@ -141,7 +141,7 @@ func (b *bundleStore) ListBundles(ctx context.Context, sellerID uuid.UUID) ([]Se
 }
 
 func (b *bundleStore) listItemsForBundles(ctx context.Context, executor database.QueryExecutor, bundleIDs []uuid.UUID) ([]BundleItem, error) {
-	rows, err := executor.Query(ctx, `
+	rows, err := executor.QueryContext(ctx, `
 		SELECT bi.id, bi.bundle_id, bi.product_id, bi.variant_id, bi.quantity, bi.created_at,
 		       COALESCE(pv.title, p.title) AS title
 		FROM bundle_items bi
@@ -164,7 +164,7 @@ func (b *bundleStore) UpdateBundle(ctx context.Context, sellerID, bundleID uuid.
 			return err
 		}
 		if bundlePrice != nil || currency != nil {
-			if _, err := tx.Exec(ctx, `
+			if _, err := tx.ExecContext(ctx, `
 				UPDATE product_bundles
 				SET bundle_price = COALESCE($1, bundle_price),
 				    currency = COALESCE($2, currency),
@@ -175,12 +175,12 @@ func (b *bundleStore) UpdateBundle(ctx context.Context, sellerID, bundleID uuid.
 			}
 		}
 		if replaceItems {
-			if _, err := tx.Exec(ctx, `DELETE FROM bundle_items WHERE bundle_id = $1`, bundleID); err != nil {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM bundle_items WHERE bundle_id = $1`, bundleID); err != nil {
 				return fmt.Errorf("replace bundle items: %w", err)
 			}
 			for _, item := range items {
 				item.ID = uuid.New()
-				if _, err := tx.Exec(ctx, `
+				if _, err := tx.ExecContext(ctx, `
 					INSERT INTO bundle_items (id, bundle_id, product_id, variant_id, quantity, created_at)
 					VALUES ($1, $2, $3, $4, $5, now())
 				`, item.ID, bundleID, item.ProductID, item.VariantID, item.Quantity); err != nil {
@@ -198,7 +198,7 @@ func (b *bundleStore) GetBundleProductID(ctx context.Context, sellerID, bundleID
 		return uuid.Nil, err
 	}
 	var productID uuid.UUID
-	if err := executor.QueryRow(ctx, `
+	if err := executor.QueryRowContext(ctx, `
 		SELECT product_id FROM product_bundles WHERE seller_id = $1 AND id = $2
 	`, sellerID, bundleID).Scan(&productID); err != nil {
 		return uuid.Nil, fmt.Errorf("get bundle product: %w", err)
@@ -212,7 +212,7 @@ func (b *bundleStore) IsBundleProduct(ctx context.Context, productID uuid.UUID) 
 		return false, err
 	}
 	var exists bool
-	if err := executor.QueryRow(ctx, `
+	if err := executor.QueryRowContext(ctx, `
 		SELECT EXISTS (SELECT 1 FROM product_bundles WHERE product_id = $1)
 	`, productID).Scan(&exists); err != nil {
 		return false, fmt.Errorf("check bundle product: %w", err)
@@ -227,12 +227,12 @@ func (b *bundleStore) DeleteBundle(ctx context.Context, sellerID, bundleID uuid.
 		if err != nil {
 			return err
 		}
-		if err := tx.QueryRow(ctx, `
+		if err := tx.QueryRowContext(ctx, `
 			SELECT product_id FROM product_bundles WHERE seller_id = $1 AND id = $2
 		`, sellerID, bundleID).Scan(&productID); err != nil {
 			return fmt.Errorf("get bundle product: %w", err)
 		}
-		if _, err := tx.Exec(ctx, `DELETE FROM product_bundles WHERE seller_id = $1 AND id = $2`, sellerID, bundleID); err != nil {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM product_bundles WHERE seller_id = $1 AND id = $2`, sellerID, bundleID); err != nil {
 			return fmt.Errorf("delete bundle: %w", err)
 		}
 		return nil

@@ -212,9 +212,15 @@ func validateAdjustStockInput(in AdjustStockInput) (model.InventoryReason, error
 	return reason, nil
 }
 
+// stockTarget is one variant a stock adjustment lands on.
+type stockTarget struct {
+	variantID uuid.UUID
+	quantity  int
+}
+
 // applyAdjustment executes a stock adjustment inside an already-begun transaction.
-// It row-locks the variant, rejects negative adjustments that would drop on-hand
-// stock below active reservations, and appends a ledger entry.
+// It row-locks each affected variant, rejects negative adjustments that would
+// drop on-hand stock below active reservations, and appends a ledger entry.
 func (s *InventoryService) applyAdjustment(
 	ctx context.Context,
 	in AdjustStockInput,
@@ -224,33 +230,80 @@ func (s *InventoryService) applyAdjustment(
 		return nil, err
 	}
 
-	if err := s.repo.LockVariantForUpdate(ctx, in.VariantID); err != nil {
-		return nil, err
-	}
-
-	currentStock, err := s.repo.GetStock(ctx, in.VariantID)
+	targets, err := s.adjustmentTargets(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 
-	if in.Quantity < 0 && (currentStock.OnHandQuantity+in.Quantity < currentStock.ReservedQuantity) {
-		return nil, apierr.BadRequestError(
+	for _, target := range targets {
+		if err := s.applyTargetAdjustment(ctx, target, reason); err != nil {
+			return nil, err
+		}
+	}
+
+	return s.repo.GetStock(ctx, in.VariantID)
+}
+
+// adjustmentTargets resolves an adjustment onto the variants that actually hold
+// the units. A bundle variant carries no inventory of its own, so adjusting a
+// kit moves the same multiple of units on every component — which is what a
+// cancelled bundle order or a corrected kit must restock.
+func (s *InventoryService) adjustmentTargets(
+	ctx context.Context,
+	in AdjustStockInput,
+) ([]stockTarget, error) {
+	components, err := s.repo.GetBundleComponentsForVariant(ctx, in.VariantID)
+	if err != nil {
+		return nil, err
+	}
+	if len(components) == 0 {
+		return []stockTarget{{variantID: in.VariantID, quantity: in.Quantity}}, nil
+	}
+
+	targets := make([]stockTarget, 0, len(components))
+	for _, component := range components {
+		if component.StockVariantID == nil || component.Quantity <= 0 {
+			return nil, apierr.BadRequestError("A bundle item is no longer stocked").
+				WithCode(errcode.CodeVariantNotFound)
+		}
+		targets = append(targets, stockTarget{
+			variantID: *component.StockVariantID,
+			quantity:  in.Quantity * component.Quantity,
+		})
+	}
+	return targets, nil
+}
+
+// applyTargetAdjustment applies one already-resolved stock adjustment, locking
+// the variant and refusing an adjustment that would break existing holds.
+func (s *InventoryService) applyTargetAdjustment(
+	ctx context.Context,
+	target stockTarget,
+	reason model.InventoryReason,
+) error {
+	if err := s.repo.LockVariantForUpdate(ctx, target.variantID); err != nil {
+		return err
+	}
+
+	currentStock, err := s.repo.GetStock(ctx, target.variantID)
+	if err != nil {
+		return err
+	}
+
+	if target.quantity < 0 && (currentStock.OnHandQuantity+target.quantity < currentStock.ReservedQuantity) {
+		return apierr.BadRequestError(
 			fmt.Sprintf("Insufficient available inventory: negative adjustment (%d) drops on-hand stock (%d) below active reservations (%d)",
-				in.Quantity, currentStock.OnHandQuantity, currentStock.ReservedQuantity),
+				target.quantity, currentStock.OnHandQuantity, currentStock.ReservedQuantity),
 		).WithCode(errcode.CodeInsufficientInventory)
 	}
 
 	ledger := &model.InventoryLedger{
-		VariantID: in.VariantID,
-		Quantity:  in.Quantity,
+		VariantID: target.variantID,
+		Quantity:  target.quantity,
 		Reason:    reason,
 	}
 
-	if err := s.repo.CreateLedger(ctx, ledger); err != nil {
-		return nil, err
-	}
-
-	return s.repo.GetStock(ctx, in.VariantID)
+	return s.repo.CreateLedger(ctx, ledger)
 }
 
 // GetStockByVariantID calculates and returns current stock levels (on-hand, reserved, available) for a variant.

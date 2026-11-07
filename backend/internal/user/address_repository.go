@@ -33,7 +33,7 @@ func (r *AddressRepository) LockUserAddresses(ctx context.Context, userID uuid.U
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String())
+	_, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock((hashtext($1::text))::bigint)`, userID.String())
 	if err != nil {
 		return fmt.Errorf("lock user addresses: %w", err)
 	}
@@ -53,7 +53,7 @@ func (r *AddressRepository) CountByUser(
 
 	query := `SELECT COUNT(*) FROM addresses WHERE user_id = $1 AND deleted_at IS NULL`
 	var count int
-	err = executor.QueryRow(ctx, query, userID).Scan(&count)
+	err = executor.QueryRowContext(ctx, query, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("count addresses by user: %w", err)
 	}
@@ -71,7 +71,7 @@ func (r *AddressRepository) ListByUser(
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			id, user_id, label, full_name, phone, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
@@ -79,7 +79,7 @@ func (r *AddressRepository) ListByUser(
 		WHERE user_id = $1 AND deleted_at IS NULL
 		ORDER BY is_default DESC, updated_at DESC, created_at DESC
 	`
-	rows, err := executor.Query(ctx, query, userID)
+	rows, err := executor.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list addresses by user: %w", err)
 	}
@@ -128,7 +128,7 @@ func (r *AddressRepository) GetByIDAndUser(
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			id, user_id, label, full_name, phone, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
@@ -136,7 +136,7 @@ func (r *AddressRepository) GetByIDAndUser(
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
 	var a model.UserAddress
-	err = executor.QueryRow(ctx, query, id, userID).Scan(
+	err = executor.QueryRowContext(ctx, query, id, userID).Scan(
 		&a.ID,
 		&a.UserID,
 		&a.Label,
@@ -180,7 +180,7 @@ func (r *AddressRepository) ClearDefault(
 		SET is_default = false, updated_at = now()
 		WHERE user_id = $1 AND is_default = true AND deleted_at IS NULL
 	`
-	_, err = tx.Exec(ctx, query, userID)
+	_, err = tx.ExecContext(ctx, query, userID)
 	if err != nil {
 		return fmt.Errorf("clear default address: %w", err)
 	}
@@ -203,7 +203,7 @@ func (r *AddressRepository) SetDefault(
 		SET is_default = true, updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	tag, err := tx.Exec(ctx, query, id, userID)
+	tag, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("set default address: %w", err)
 	}
@@ -237,7 +237,7 @@ func (r *AddressRepository) Create(
 		)
 		RETURNING created_at, updated_at
 	`
-	return tx.QueryRow(
+	return tx.QueryRowContext(
 		ctx,
 		query,
 		a.ID,
@@ -267,7 +267,7 @@ func (r *AddressRepository) Update(
 
 	query := `
 		UPDATE addresses
-		SET 
+		SET
 			label = $1,
 			full_name = $2,
 			phone = $3,
@@ -282,7 +282,7 @@ func (r *AddressRepository) Update(
 		WHERE id = $11 AND user_id = $12 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(
 		ctx,
 		query,
 		a.Label,
@@ -323,7 +323,7 @@ func (r *AddressRepository) SoftDelete(
 		SET deleted_at = now(), is_default = false, updated_at = now()
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
 	`
-	tag, err := tx.Exec(ctx, query, id, userID)
+	tag, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf("soft delete address: %w", err)
 	}
@@ -363,7 +363,7 @@ func (r *AddressRepository) findMostRecentActive(
 	}
 
 	query := `
-		SELECT 
+		SELECT
 			id, user_id, label, full_name, phone, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
@@ -377,7 +377,7 @@ func (r *AddressRepository) findMostRecentActive(
 	}
 	query += ` ORDER BY updated_at DESC, created_at DESC LIMIT 1`
 	var a model.UserAddress
-	err = executor.QueryRow(ctx, query, args...).Scan(
+	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&a.ID,
 		&a.UserID,
 		&a.Label,

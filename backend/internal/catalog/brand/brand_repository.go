@@ -63,7 +63,7 @@ func (br *BrandRepository) Create(
 		RETURNING created_at, updated_at
 	`
 
-	err = executor.QueryRow(
+	err = executor.QueryRowContext(
 		ctx,
 		query,
 		brand.ID,
@@ -103,7 +103,7 @@ func (br *BrandRepository) get(
 		WHERE %s AND deleted_at IS NULL
 	`, whereClause)
 
-	rows, err := executor.Query(ctx, query, args...)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("get brand query: %w", err)
 	}
@@ -183,7 +183,7 @@ func (br *BrandRepository) Update(
 
 	args = append(args, brandID)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("update brand: %w", err)
 	}
@@ -254,7 +254,7 @@ func (br *BrandRepository) List(
 
 		queryArgs := append(slices.Clone(args), q.PageSize+1)
 
-		rows, err := executor.Query(ctx, selectQuery, queryArgs...)
+		rows, err := executor.QueryContext(ctx, selectQuery, queryArgs...)
 		if err != nil {
 			return nil, fmt.Errorf("list brands select: %w", err)
 		}
@@ -273,7 +273,7 @@ func (br *BrandRepository) List(
 	// 1. Total Count Query
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM product_brands WHERE %s", whereStmt)
 	var total int
-	if err := executor.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, fmt.Errorf("list brands count: %w", err)
 	}
 
@@ -320,7 +320,7 @@ func (br *BrandRepository) List(
 
 	queryArgs := append(slices.Clone(args), q.PageSize, q.Offset)
 
-	rows, err := executor.Query(ctx, selectQuery, queryArgs...)
+	rows, err := executor.QueryContext(ctx, selectQuery, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("list brands select: %w", err)
 	}
@@ -347,7 +347,7 @@ func (br *BrandRepository) delete(
 	// First find the ID so we can check if it's used
 	var brandID uuid.UUID
 	selectQuery := fmt.Sprintf("SELECT id FROM product_brands WHERE %s AND deleted_at IS NULL", whereClause)
-	if err := tx.QueryRow(ctx, selectQuery, args...).Scan(&brandID); err != nil {
+	if err := tx.QueryRowContext(ctx, selectQuery, args...).Scan(&brandID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return pgx.ErrNoRows
 		}
@@ -357,7 +357,7 @@ func (br *BrandRepository) delete(
 	// Check if any products are still using this brand
 	var used bool
 	checkQuery := "SELECT EXISTS(SELECT 1 FROM products WHERE brand_id = $1 AND deleted_at IS NULL)"
-	if err := tx.QueryRow(ctx, checkQuery, brandID).Scan(&used); err != nil {
+	if err := tx.QueryRowContext(ctx, checkQuery, brandID).Scan(&used); err != nil {
 		return fmt.Errorf("delete brand check usage: %w", err)
 	}
 	if used {
@@ -370,7 +370,7 @@ func (br *BrandRepository) delete(
 		WHERE %s AND deleted_at IS NULL
 	`, whereClause)
 
-	cmd, err := tx.Exec(ctx, query, args...)
+	cmd, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("delete brand: %w", err)
 	}
