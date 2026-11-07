@@ -261,6 +261,7 @@ func (r *ProductRepository) GetSellerProductStats(
 			COUNT(*) FILTER (WHERE deleted_at IS NULL AND status = 'archived')
 		FROM products
 		WHERE seller_id = $1
+		  AND NOT EXISTS (SELECT 1 FROM product_bundles pb WHERE pb.product_id = products.id)
 	`, sellerID).Scan(
 		&stats.Total,
 		&stats.Published,
@@ -278,6 +279,7 @@ func (r *ProductRepository) GetSellerProductStats(
 		WHERE p.seller_id = $1
 		  AND p.deleted_at IS NULL
 		  AND pv.deleted_at IS NULL
+		  AND NOT EXISTS (SELECT 1 FROM product_bundles pb WHERE pb.product_id = p.id)
 		  AND GREATEST(
 			COALESCE((SELECT SUM(il.quantity) FROM inventory_ledgers il WHERE il.variant_id = pv.id), 0) -
 			COALESCE((SELECT SUM(ir.quantity) FROM inventory_reservations ir WHERE ir.variant_id = pv.id AND ir.released_at IS NULL AND ir.expires_at > now()), 0),
