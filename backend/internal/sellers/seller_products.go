@@ -237,6 +237,7 @@ func (s *Service) ListOwnProducts(
 
 		q.SellerUUIDs = []uuid.UUID{seller.ID}
 		q.IncludeUnpublished = true
+		q.ExcludeBundles = true
 
 		page, err := s.products.List(ctx, q, false)
 		if err != nil {

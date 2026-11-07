@@ -745,6 +745,10 @@ type ListProductsQuery struct {
 	// IncludeUnpublished disables the storefront's published-only filter. It is
 	// set by admin handlers and is never bound from the query string.
 	IncludeUnpublished bool `form:"-" swaggerignore:"true"`
+
+	// ExcludeBundles hides bundle backing products from listings (used by the
+	// seller console, where bundles have their own page).
+	ExcludeBundles bool `form:"-" swaggerignore:"true"`
 }
 
 func parseCommaSeparatedValues(input *string) ([]uuid.UUID, []string) {

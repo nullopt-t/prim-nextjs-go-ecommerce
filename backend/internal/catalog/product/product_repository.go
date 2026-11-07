@@ -399,6 +399,10 @@ func (r *ProductRepository) List(
 		argIdx++
 	}
 
+	if q.ExcludeBundles {
+		whereClauses = append(whereClauses, "NOT EXISTS (SELECT 1 FROM product_bundles pb WHERE pb.product_id = p.id)")
+	}
+
 	if q.IncludeUnpublished {
 		// Admin listings may filter by lifecycle status.
 		if q.Status != nil && strings.TrimSpace(*q.Status) != "" {
