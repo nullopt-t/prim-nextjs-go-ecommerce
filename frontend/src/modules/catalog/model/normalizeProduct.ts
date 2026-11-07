@@ -34,6 +34,24 @@ export interface RawProductVariant {
 	[key: string]: unknown;
 }
 
+export interface RawBundleItem {
+	id?: string;
+	title?: string;
+	slug?: string;
+	thumbnail?: string;
+	quantity?: number;
+	variant?: string;
+	availableQuantity?: number;
+	isInStock?: boolean;
+}
+
+export interface RawBundlePayload {
+	itemCount?: number;
+	availableQuantity?: number;
+	isInStock?: boolean;
+	items?: RawBundleItem[];
+}
+
 export interface RawProductPayload {
 	[key: string]: unknown;
 	id?: string;
@@ -69,6 +87,7 @@ export interface RawProductPayload {
 	variantId?: string;
 	defaultVariantId?: string;
 	brand?: string | { logoUrl?: string; logo?: string; [key: string]: unknown };
+	bundle?: RawBundlePayload;
 }
 
 export function normalizeProduct(raw: RawProductPayload | null) {
@@ -322,6 +341,30 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 			})
 		: [];
 
+	// A bundle's contents and their availability, present only for kits. Each
+	// component thumbnail is normalized so the gallery and the contents list can
+	// use the same URLs as regular product media.
+	const rawBundle = p.bundle ?? raw.bundle;
+	const bundleItems: RawBundleItem[] = Array.isArray(rawBundle?.items) ? rawBundle.items : [];
+	const bundle =
+		rawBundle && bundleItems.length > 0
+			? {
+					itemCount: Number(rawBundle.itemCount ?? bundleItems.length) || bundleItems.length,
+					availableQuantity: Math.max(0, Number(rawBundle.availableQuantity ?? 0) || 0),
+					isInStock: Boolean(rawBundle.isInStock),
+					items: bundleItems.map((item) => ({
+						id: String(item.id ?? ""),
+						title: typeof item.title === "string" ? item.title : "",
+						slug: typeof item.slug === "string" ? item.slug : "",
+						thumbnail: item.thumbnail ? normalizeMediaUrl(item.thumbnail) : undefined,
+						quantity: Math.max(1, Number(item.quantity ?? 1) || 1),
+						variant: item.variant ? String(item.variant) : undefined,
+						availableQuantity: Math.max(0, Number(item.availableQuantity ?? 0) || 0),
+						isInStock: Boolean(item.isInStock),
+					})),
+				}
+			: undefined;
+
 	const variantId = raw.variantId || p.variantId || undefined;
 	const defaultVariantId = raw.defaultVariantId || raw.variantId || p.variantId || undefined;
 
@@ -378,5 +421,6 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 		brandObj,
 		category: categoryName || p.categoryName || "",
 		categoryId,
+		bundle,
 	};
 }

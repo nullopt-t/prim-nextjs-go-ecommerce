@@ -73,11 +73,19 @@ export function SellerProducts() {
   const [stockReason, setStockReason] = useState<"restock" | "return" | "adjustment">("restock");
   const [savingStock, setSavingStock] = useState(false);
 
-  const loadProducts = async (nextPage = page) => {
+  // The status filter is applied by the API so the counts and the pagination
+  // stay consistent with what the merchant sees; a client-side filter over the
+  // current page would report an empty list while later pages still match.
+  const loadProducts = async (nextPage = page, statusOverride?: string) => {
     setLoading(true);
     setLoadError(null);
+    const status = statusOverride ?? statusFilter;
     try {
-      const productResponse = await sellerService.getProducts({ page: nextPage, pageSize: 20 });
+      const productResponse = await sellerService.getProducts({
+        page: nextPage,
+        pageSize: 20,
+        status: status === "all" ? undefined : status,
+      });
       setProducts(productResponse.data);
       const nextMeta = productResponse.meta as { page?: number; totalPages?: number; totalItems?: number } | undefined;
       if (nextMeta && typeof nextMeta.page === "number") {
@@ -349,7 +357,12 @@ export function SellerProducts() {
             </div>
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setStatusFilter(value);
+                setPage(1);
+                void loadProducts(1, value);
+              }}
               className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
               aria-label={t("products.table.status")}
             >

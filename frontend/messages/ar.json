@@ -2085,6 +2085,16 @@
       "selectImage": "اختر صورة المنتج {index}",
       "thumbnailAlt": "الصورة المصغرة {index} لـ {productName}"
     },
+    "bundle": {
+      "hint": "يُحتسب التوفر بناءً على العناصر المضمّنة في هذه الحزمة.",
+      "itemInStock": "متوفر",
+      "itemOutOfStock": "غير متوفر",
+      "items": "تتضمن {count} عنصر",
+      "kitAvailable": "متوفر ({count} حزمة)",
+      "kitUnavailable": "غير متوفر حالياً",
+      "quantity": "×{count}",
+      "title": "محتويات هذه الحزمة"
+    },
     "highlights": {
       "title": "أبرز المزايا"
     },

@@ -2085,6 +2085,16 @@
       "selectImage": "Select product image {index}",
       "thumbnailAlt": "{productName} thumbnail {index}"
     },
+    "bundle": {
+      "hint": "Availability is calculated from the items included in this bundle.",
+      "itemInStock": "In stock",
+      "itemOutOfStock": "Out of stock",
+      "items": "Includes {count} items",
+      "kitAvailable": "Available ({count} kits)",
+      "kitUnavailable": "Currently unavailable",
+      "quantity": "×{count}",
+      "title": "What's in this bundle"
+    },
     "highlights": {
       "title": "Highlights"
     },

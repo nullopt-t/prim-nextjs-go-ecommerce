@@ -17,7 +17,13 @@ import { copyTextToClipboard } from "@/shared/lib/clipboard";
 import { recordRecentlyViewed } from "@/shared/lib/recentlyViewed";
 import { recordProductView } from "@/modules/history/lib/recordProductView";
 
-import type { ProductDetailsEntity, ProductReview, ProductVariant, Review } from "../types";
+import type {
+  ProductBundleItem,
+  ProductDetailsEntity,
+  ProductReview,
+  ProductVariant,
+  Review,
+} from "../types";
 import {
   getProductDisplayName,
   resolveVariantByAttributes,
@@ -28,6 +34,7 @@ import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductHighlights } from "./ui/ProductHighlights";
+import { ProductBundleContents } from "./ui/ProductBundleContents";
 import { ProductReviews } from "./ui/ProductReviews";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
 
@@ -234,7 +241,17 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const productName = getProductDisplayName(product, locale);
   const activeVariant = resolveVariantByAttributes(product, selectedValues);
   const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
-  const imageEntries = resolveProductImageEntries(product, activeVariant);
+  // A kit's own listing usually has a single cover image, so the components'
+  // photos are appended to the gallery. They carry no variant, which keeps a
+  // gallery click from changing the (single) kit selection.
+  const baseImageEntries = resolveProductImageEntries(product, activeVariant);
+  const seenImageUrls = new Set(baseImageEntries.map((entry) => entry.url));
+  const bundleImageEntries = (product.bundle?.items ?? []).flatMap((item: ProductBundleItem) => {
+    if (!item.thumbnail || seenImageUrls.has(item.thumbnail)) return [];
+    seenImageUrls.add(item.thumbnail);
+    return [{ url: item.thumbnail }];
+  });
+  const imageEntries = [...baseImageEntries, ...bundleImageEntries];
   const images = imageEntries.map((image) => image.url);
   const highlights = Array.isArray(product.highlights) ? product.highlights : [];
   const reviewCount = reviews.length || product.reviews || 0;
@@ -568,6 +585,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
           <ProductHighlights highlights={highlights} />
         </div>
       </div>
+
+      {/* Kit contents (bundles only) */}
+      <ProductBundleContents bundle={product.bundle} />
 
       {/* Specifications & Shipping Sections */}
       <ProductSpecs

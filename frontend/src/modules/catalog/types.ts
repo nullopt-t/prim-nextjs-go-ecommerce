@@ -160,6 +160,29 @@ export interface ReviewEligibility {
   canReview: boolean;
 }
 
+/** One product included in a bundle, with its own availability. */
+export interface ProductBundleItem {
+  id: string;
+  title: string;
+  slug: string;
+  thumbnail?: string;
+  quantity: number;
+  variant?: string;
+  availableQuantity: number;
+  isInStock: boolean;
+}
+
+/**
+ * A bundle's contents and the availability derived from them. A bundle keeps no
+ * inventory of its own, so this is the only meaningful stock figure for a kit.
+ */
+export interface ProductBundle {
+  itemCount: number;
+  availableQuantity: number;
+  isInStock: boolean;
+  items: ProductBundleItem[];
+}
+
 /** Legacy / UI normalized product entity */
 export interface ProductDetailsEntity {
   id: string | number;
@@ -192,6 +215,7 @@ export interface ProductDetailsEntity {
   stockCount?: number;
   description?: string;
   highlights?: string[];
+  bundle?: ProductBundle;
 }
 
 /** UI review model */

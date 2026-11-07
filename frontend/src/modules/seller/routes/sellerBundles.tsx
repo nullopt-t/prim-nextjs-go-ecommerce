@@ -255,7 +255,7 @@ export function SellerBundles() {
 					{items.map((item, index) => {
 						const variants = variantsByProduct[item.productId] ?? [];
 						return (
-							<div key={index} className="grid grid-cols-1 items-end gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_24_32px]">
+							<div key={index} className="grid grid-cols-1 items-end gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_5rem_2.5rem]">
 								<div className="space-y-1">
 									<label className="text-xs text-muted-foreground">{t("bundles.product")}</label>
 									<Select
