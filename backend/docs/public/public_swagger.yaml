@@ -1297,6 +1297,12 @@ definitions:
         example: wireless-headphones
         maxLength: 200
         type: string
+      thumbnailUrl:
+        description: |-
+          Optional public product image URL, as returned by POST /seller/media.
+          Required before publishing; drafts may omit it.
+        example: https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc
+        type: string
       title:
         description: Product display title.
         example: Wireless Headphones

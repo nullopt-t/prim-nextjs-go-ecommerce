@@ -3,6 +3,7 @@ package sellers
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,10 +107,12 @@ func (s *Service) requireOwnedProduct(
 }
 
 // CreateProduct creates a merchant-owned draft. Selling rights are checked in
-// the same transaction as the insert.
+// the same transaction as the insert. Drafts may omit the thumbnail;
+// publishing requires one.
 func (s *Service) CreateProduct(
 	ctx context.Context,
 	userID uuid.UUID,
+	thumbnailURL string,
 	input product.CreateProductInput,
 ) (*model.Product, error) {
 	var created *model.Product
@@ -117,6 +120,14 @@ func (s *Service) CreateProduct(
 		seller, err := s.requireActiveSeller(ctx, userID)
 		if err != nil {
 			return err
+		}
+
+		if strings.TrimSpace(thumbnailURL) != "" {
+			thumbnailID, err := s.resolveThumbnailURL(ctx, thumbnailURL)
+			if err != nil {
+				return err
+			}
+			input.ThumbnailObjectID = thumbnailID
 		}
 
 		input.SellerID = &seller.ID

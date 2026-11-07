@@ -72,6 +72,7 @@ func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(conte
 type fakeVariantRepoForInvariants struct {
 	countFunc func() (int, error)
 	getFunc   func(id uuid.UUID) (*model.ProductVariant, error)
+	listFunc  func() ([]*model.ProductVariant, error)
 }
 
 func (f *fakeVariantRepoForInvariants) CountByProductID(ctx context.Context, productID uuid.UUID) (int, error) {
@@ -89,7 +90,14 @@ func (f *fakeVariantRepoForInvariants) GetByID(ctx context.Context, id uuid.UUID
 }
 
 func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error) {
-	return nil, nil
+	if f.listFunc != nil {
+		items, err := f.listFunc()
+		if err != nil {
+			return nil, err
+		}
+		return pagination.NewPagedResult(items, pagination.NewPage(1, 100, len(items))), nil
+	}
+	return &pagination.PagedResult[model.ProductVariant]{Items: nil}, nil
 }
 
 func (f *fakeVariantRepoForInvariants) ListMediaByVariantIDs(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error) {
@@ -104,6 +112,10 @@ func TestAdversarial_PublishProduct_SingleWithTx(t *testing.T) {
 	vRepo := &fakeVariantRepoForInvariants{
 		countFunc: func() (int, error) {
 			return 2, nil
+		},
+		listFunc: func() ([]*model.ProductVariant, error) {
+			thumbID := uuid.New()
+			return []*model.ProductVariant{{ID: uuid.New(), ThumbnailObjectID: &thumbID}}, nil
 		},
 	}
 

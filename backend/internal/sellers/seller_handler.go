@@ -745,6 +745,9 @@ type SellerCreateProductRequest struct {
 	ProductType string `json:"productType" binding:"omitempty,oneof=simple variable" example:"simple"`
 	// Ordered variation axis keys for variable products.
 	VariationAxes []string `json:"variationAxes,omitempty" example:"color,storage"`
+	// Optional public product image URL, as returned by POST /seller/media.
+	// Required before publishing; drafts may omit it.
+	ThumbnailURL string `json:"thumbnailUrl,omitempty" example:"https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"`
 }
 
 // SellerUpdateProductRequest is the merchant product edit payload; omitted
@@ -885,7 +888,7 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 		brandID = parseOptionalUUID(*req.BrandID)
 	}
 
-	created, err := h.service.CreateProduct(c.Request.Context(), userID, product.CreateProductInput{
+	created, err := h.service.CreateProduct(c.Request.Context(), userID, req.ThumbnailURL, product.CreateProductInput{
 		BrandID:       brandID,
 		CategoryID:    categoryID,
 		Slug:          &req.Slug,

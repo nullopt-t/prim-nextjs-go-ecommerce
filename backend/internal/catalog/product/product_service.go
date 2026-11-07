@@ -192,6 +192,9 @@ type CreateProductInput struct {
 	Highlights    []string
 	ProductType   string
 	VariationAxes []string
+	// ThumbnailObjectID is the product's own image. Optional on drafts;
+	// publishing requires a thumbnail on the product or a variant.
+	ThumbnailObjectID *uuid.UUID
 }
 
 // UpdateProductInput defines mutable fields for updating an existing product.
@@ -367,17 +370,18 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 
 		product = &model.Product{
-			ID:            uuid.New(),
-			SellerID:      input.SellerID,
-			Slug:          finalSlug,
-			BrandID:       input.BrandID,
-			CategoryID:    input.CategoryID,
-			Title:         input.Title,
-			Description:   input.Description,
-			Highlights:    input.Highlights,
-			Status:        model.PublicationStatusDraft,
-			ProductType:   pt,
-			VariationAxes: axes,
+			ID:                uuid.New(),
+			SellerID:          input.SellerID,
+			Slug:              finalSlug,
+			BrandID:           input.BrandID,
+			CategoryID:        input.CategoryID,
+			Title:             input.Title,
+			Description:       input.Description,
+			Highlights:        input.Highlights,
+			Status:            model.PublicationStatusDraft,
+			ProductType:       pt,
+			VariationAxes:     axes,
+			ThumbnailObjectID: input.ThumbnailObjectID,
 		}
 
 		return s.productRepo.Create(ctx, product)
@@ -840,6 +844,37 @@ func (s *ProductService) PublishProduct(
 		if count == 0 {
 			return apierr.BadRequestError("Product must have at least one variant before publishing").
 				WithCode(errcode.CodePublishFailed)
+		}
+
+		// A publishable product must carry an image: its own thumbnail, or
+		// one on any variant (variant images are adopted onto the product
+		// when set, so this also covers data created before that adoption).
+		variantRes, err := s.variantReader.ListByProductID(ctx, variant.ListVariantOptions{
+			ProductID:      productID,
+			Query:          &pagination.ListQuery{PageSize: 100},
+			IncludeDeleted: false,
+		})
+		if err != nil {
+			return err
+		}
+		hasThumbnail := false
+		if variantRes != nil {
+			for _, v := range variantRes.Items {
+				if v.ThumbnailObjectID != nil {
+					hasThumbnail = true
+					break
+				}
+			}
+		}
+		if !hasThumbnail {
+			product, err := s.productRepo.GetByID(ctx, productID)
+			if err != nil {
+				return err
+			}
+			if product.ThumbnailObjectID == nil {
+				return apierr.BadRequestError("Product must have a thumbnail image before publishing").
+					WithCode(errcode.CodePublishFailed)
+			}
 		}
 		return s.productRepo.UpdateStatus(ctx, productID, model.PublicationStatusPublished)
 	})

@@ -118,6 +118,7 @@ type SellerServiceSuite struct {
 	variants   *fakeVariantCatalog
 	coupons    *fakeCouponCatalog
 	stock      *fakeStockAdjuster
+	runner     database.Runner
 }
 
 // fakeVariantCatalog is an in-memory VariantCatalog double used to prove the
@@ -400,6 +401,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	}
 
 	runner := database.NewTxRunner(s.db)
+	s.runner = runner
 	logger := log.NewConsoleLogger()
 
 	// Seed one seller-facing user; the service registers their profile.
@@ -970,11 +972,30 @@ func (s *SellerServiceSuite) assertAPIError(err error) *apierr.APIError {
 	return apiErr
 }
 
+// seedThumbnailURL inserts a storage object row and returns the public URL
+// the Noop storage provider computes for it.
+func (s *SellerServiceSuite) seedThumbnailURL() string {
+	key := uuid.New().String()
+	obj := &model.Object{
+		ID:          uuid.New(),
+		ContentType: "image/png",
+		FileSize:    1024,
+		Status:      model.ObjectStatusUploaded,
+		Key:         key,
+		Bucket:      "catalog",
+	}
+	err := s.runner.WithTx(s.ctx, func(ctx context.Context) error {
+		return object.NewRepository().Create(ctx, obj)
+	})
+	s.Require().NoError(err)
+	return storage.NoopProvider{}.GetPublicURL(obj.Bucket, obj.Key)
+}
+
 // ---- Merchant-owned catalog -------------------------------------------------
 
 func (s *SellerServiceSuite) TestSellerCreatesOwnedDraftAndListsIt() {
 	slug := "seller-headphones"
-	created, err := s.service.CreateProduct(s.ctx, s.sellerUID, product.CreateProductInput{
+	created, err := s.service.CreateProduct(s.ctx, s.sellerUID, s.seedThumbnailURL(), product.CreateProductInput{
 		CategoryID: s.categoryID,
 		Slug:       &slug,
 		Title:      "Seller Headphones",
@@ -1048,7 +1069,7 @@ func (s *SellerServiceSuite) TestSuspendedSellerCannotCreateProduct() {
 	s.Require().NoError(err)
 
 	slug := "suspended-listing"
-	_, err = s.service.CreateProduct(s.ctx, s.sellerUID, product.CreateProductInput{
+	_, err = s.service.CreateProduct(s.ctx, s.sellerUID, s.seedThumbnailURL(), product.CreateProductInput{
 		CategoryID: s.categoryID,
 		Slug:       &slug,
 		Title:      "Suspended Listing",
@@ -1062,7 +1083,7 @@ func (s *SellerServiceSuite) TestSuspendedSellerCannotCreateProduct() {
 
 func (s *SellerServiceSuite) TestSellerCreatesVariantUnderOwnedProduct() {
 	slug := "variant-owner-product"
-	created, err := s.service.CreateProduct(s.ctx, s.sellerUID, product.CreateProductInput{
+	created, err := s.service.CreateProduct(s.ctx, s.sellerUID, s.seedThumbnailURL(), product.CreateProductInput{
 		CategoryID: s.categoryID,
 		Slug:       &slug,
 		Title:      "Variant Owner",
@@ -1142,7 +1163,7 @@ func (s *SellerServiceSuite) TestDashboardReportsMoneyAndCatalog() {
 
 	for _, slug := range []string{"dash-a", "dash-b"} {
 		slug := slug
-		_, err := s.service.CreateProduct(s.ctx, uid, product.CreateProductInput{
+		_, err := s.service.CreateProduct(s.ctx, uid, s.seedThumbnailURL(), product.CreateProductInput{
 			CategoryID: s.categoryID,
 			Slug:       &slug,
 			Title:      "Dash Product " + slug,

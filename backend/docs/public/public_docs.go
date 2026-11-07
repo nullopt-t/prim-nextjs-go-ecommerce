@@ -7270,6 +7270,11 @@ const docTemplatepublic = `{
                     "maxLength": 200,
                     "example": "wireless-headphones"
                 },
+                "thumbnailUrl": {
+                    "description": "Optional public product image URL, as returned by POST /seller/media.\nRequired before publishing; drafts may omit it.",
+                    "type": "string",
+                    "example": "https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"
+                },
                 "title": {
                     "description": "Product display title.",
                     "type": "string",
