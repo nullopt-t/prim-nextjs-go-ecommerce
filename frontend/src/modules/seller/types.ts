@@ -178,6 +178,36 @@ export interface SellerMediaUpload {
   url: string;
 }
 
+export interface SellerBundleItem {
+  id: string;
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  title?: string;
+}
+
+export interface SellerBundle {
+  id: string;
+  productId: string;
+  productSlug: string;
+  productTitle: string;
+  status: string;
+  bundlePrice: number;
+  currency: string;
+  items: SellerBundleItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSellerBundlePayload {
+  title: string;
+  description?: string;
+  bundlePrice: number;
+  currency?: string;
+  thumbnailUrl?: string;
+  items: { productId: string; variantId?: string; quantity: number }[];
+}
+
 export interface SellerCustomAttribute {
   id: string;
   categoryId?: string;

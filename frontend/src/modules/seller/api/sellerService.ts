@@ -16,6 +16,8 @@ import type {
   SellerMediaUpload,
   SellerCustomAttribute,
   CreateSellerAttributePayload,
+  SellerBundle,
+  CreateSellerBundlePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,
@@ -127,6 +129,10 @@ export const sellerService = {
   setPromotionStatus: (id: string, status: "active" | "disabled" | "archived") =>
     api.patch<ApiMessageResponse, { status: string }>(`/api/v1/seller/promotions/${id}/status`, { status }),
   deletePromotion: (id: string) => api.delete<ApiMessageResponse>(`/api/v1/seller/promotions/${id}`),
+  getBundles: () => api.get<{ data: SellerBundle[] }>("/api/v1/seller/bundles"),
+  createBundle: (payload: CreateSellerBundlePayload) =>
+    invalidates(api.post<ApiResponse<SellerBundle>, CreateSellerBundlePayload>("/api/v1/seller/bundles", payload)),
+  deleteBundle: (id: string) => invalidates(api.delete<ApiMessageResponse>(`/api/v1/seller/bundles/${id}`)),
 };
 
 export type {
@@ -144,6 +150,8 @@ export type {
   SellerMediaUpload,
   SellerCustomAttribute,
   CreateSellerAttributePayload,
+  SellerBundle,
+  CreateSellerBundlePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,

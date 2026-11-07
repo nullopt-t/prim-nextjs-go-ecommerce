@@ -2462,6 +2462,7 @@
         "orders": "Orders",
         "payouts": "Payouts & Earnings",
         "promotions": "Promotions",
+        "bundles": "Bundles",
         "products": "My Products",
         "settings": "Settings"
       },
@@ -2603,7 +2604,28 @@
       "statusUpdated": "Coupon updated",
       "loadFailed": "Promotions could not be loaded."
     },
-    "register": {
+    "bundles": {
+    "title": "Product bundles",
+    "subtitle": "Combine your existing products into a kit with its own price. The bundle sells as a single product.",
+    "createTitle": "Create a bundle",
+    "bundleTitle": "Bundle title",
+    "bundlePrice": "Bundle price",
+    "currency": "Currency",
+    "thumbnail": "Cover image (optional)",
+    "itemsTitle": "Kit contents",
+    "addItem": "Add item",
+    "product": "Product",
+    "variant": "Variant (optional)",
+    "wholeProduct": "Whole product",
+    "quantity": "Qty",
+    "create": "Create bundle",
+    "created": "Bundle created",
+    "deleted": "Bundle deleted",
+    "price": "Price",
+    "empty": "No bundles yet. Create your first kit above.",
+    "loadFailed": "Bundles could not be loaded."
+  },
+  "register": {
       "description": "Description",
       "descriptionPlaceholder": "Tell buyers what your store sells (optional).",
       "pendingNote": "Your application is pending admin approval. You can start listing products once approved.",

@@ -8,6 +8,7 @@ import {
   Boxes,
   ShoppingBag,
   BadgePercent,
+  PackagePlus,
   DollarSign,
   Settings2,
   Menu,
@@ -33,6 +34,7 @@ export function SellerLayout({ children }: { children?: React.ReactNode }) {
       key: "catalog",
       items: [
         { label: t("layout.nav.products"), path: "/seller/products", icon: Package },
+        { label: t("layout.nav.bundles"), path: "/seller/bundles", icon: PackagePlus },
         { label: t("layout.nav.inventory"), path: "/seller/inventory", icon: Boxes },
       ],
     },

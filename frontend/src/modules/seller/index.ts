@@ -14,3 +14,4 @@ export { SellerOrderDetail } from "./routes/sellerOrderDetail";
 export { SellerSettings } from "./routes/sellerSettings";
 export { SellerPayouts } from "./routes/sellerPayouts";
 export { SellerPromotions } from "./routes/sellerPromotions";
+export { SellerBundles } from "./routes/sellerBundles";
