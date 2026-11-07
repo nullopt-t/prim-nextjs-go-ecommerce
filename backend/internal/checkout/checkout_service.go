@@ -691,7 +691,7 @@ func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, pr
 	snapshotMap["variantId"] = item.VariantID.String()
 	snapshotMap["sku"] = variant.SKU
 	snapshotMap["title"] = variant.Title
-	if product.Title != "" {
+	if product.Title != "" && !strings.HasPrefix(variant.Title, product.Title) {
 		snapshotMap["title"] = product.Title + " - " + variant.Title
 	}
 	snapshotMap["price"] = unitPrice
