@@ -2623,6 +2623,7 @@
     "currency": "Currency",
     "thumbnail": "Cover image (optional)",
     "itemsTitle": "Kit contents",
+    "itemsTotal": "Items total",
     "addItem": "Add item",
     "product": "Product",
     "variant": "Variant (optional)",

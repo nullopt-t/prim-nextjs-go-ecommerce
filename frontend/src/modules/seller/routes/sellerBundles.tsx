@@ -240,7 +240,8 @@ export function SellerBundles() {
 					</div>
 				</div>
 
-				<div className="space-y-2">
+
+				<div className="space-y-3">
 					<div className="flex items-center justify-between">
 						<p className="text-xs font-semibold text-foreground">{t("bundles.itemsTitle")}</p>
 						<button
@@ -252,77 +253,105 @@ export function SellerBundles() {
 							{t("bundles.addItem")}
 						</button>
 					</div>
-					{items.map((item, index) => {
-						const variants = variantsByProduct[item.productId] ?? [];
-						return (
-							<div key={index} className="grid grid-cols-1 items-end gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_5rem_2.5rem]">
-								<div className="space-y-1">
-									<label className="text-xs text-muted-foreground">{t("bundles.product")}</label>
-									<Select
-										value={item.productId}
-										onValueChange={(value) => {
-											void loadVariants(value);
-											setItems((current) =>
-												current.map((entry, i) => (i === index ? { ...entry, productId: value, variantId: "" } : entry)),
-											);
-										}}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder={t("bundles.product")} />
-										</SelectTrigger>
-										<SelectContent>
-											{products.map((product) => (
-												<SelectItem key={product.id} value={product.id}>{product.title}</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+					<div className="flex flex-wrap items-start gap-2">
+						{items.map((item, index) => {
+							const product = products.find((p) => p.id === item.productId);
+							const variants = variantsByProduct[item.productId] ?? [];
+							const selectedVariant = variants.find((v) => v.id === item.variantId);
+							const unitPrice = (selectedVariant?.price ?? product?.price ?? 0) / 100;
+							return (
+								<div key={index} className="flex items-start gap-2">
+									{index > 0 && <Plus className="mt-10 size-4 shrink-0 text-muted-foreground" />}
+									<div className="w-44 space-y-2 rounded-lg border border-border p-3">
+										<div className="flex aspects-[4/3] w-full items-center justify-center overflow-hidden rounded-md bg-secondary/40">
+											{product?.thumbnailUrl ? (
+												<img src={product.thumbnailUrl} alt={product.title} className="size-full object-cover" />
+											) : (
+												<span className="text-xs text-muted-foreground">{t("bundles.product")}</span>
+											)}
+										</div>
+										<p className="line-clamp-2 text-xs font-medium text-foreground">{product?.title ?? t("bundles.product")}</p>
+										<p className="text-sm font-semibold tabular-nums text-foreground">{currency} {unitPrice.toFixed(2)}</p>
+										<Select
+											value={item.productId}
+											onValueChange={(value) => {
+												void loadVariants(value);
+												setItems((current) =>
+													current.map((entry, i) => (i === index ? { ...entry, productId: value, variantId: "" } : entry)),
+												);
+											}}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder={t("bundles.product")} />
+											</SelectTrigger>
+											<SelectContent>
+												{products.map((p) => (
+													<SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Select
+											value={item.variantId}
+											onValueChange={(value) =>
+												setItems((current) =>
+													current.map((entry, i) => (i === index ? { ...entry, variantId: value } : entry)),
+												)
+											}
+										>
+											<SelectTrigger>
+												<SelectValue placeholder={t("bundles.wholeProduct")} />
+											</SelectTrigger>
+											<SelectContent>
+												{variants.map((variant) => (
+													<SelectItem key={variant.id} value={variant.id}>{variant.title}</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<div className="flex items-center justify-between gap-2">
+											<div className="flex items-center gap-1">
+												<button
+													type="button"
+													disabled={Number(item.quantity) <= 1}
+													onClick={() => setItems((current) => current.map((entry, i) => (i === index ? { ...entry, quantity: String(Math.max(Number(entry.quantity || "1") - 1, 1)) } : entry)))}
+													className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground disabled:opacity-50"
+												>
+													−
+												</button>
+												<span className="min-w-6 text-center text-sm font-medium tabular-nums text-foreground">{item.quantity}</span>
+												<button
+													type="button"
+													onClick={() => setItems((current) => current.map((entry, i) => (i === index ? { ...entry, quantity: String(Number(entry.quantity || "1") + 1) } : entry)))}
+													className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground"
+												>
+													+
+												</button>
+											</div>
+											<button
+												type="button"
+												disabled={items.length <= 1}
+												onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
+												className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+												aria-label={t("bundles.deleted")}
+											>
+												<Trash2 className="size-3.5" />
+											</button>
+										</div>
+									</div>
 								</div>
-								<div className="space-y-1">
-									<label className="text-xs text-muted-foreground">{t("bundles.variant")}</label>
-									<Select
-										value={item.variantId}
-										onValueChange={(value) =>
-											setItems((current) =>
-												current.map((entry, i) => (i === index ? { ...entry, variantId: value } : entry)),
-											)
-										}
-									>
-										<SelectTrigger>
-											<SelectValue placeholder={t("bundles.wholeProduct")} />
-										</SelectTrigger>
-										<SelectContent>
-											{variants.map((variant) => (
-												<SelectItem key={variant.id} value={variant.id}>{variant.title}</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-								<div className="space-y-1">
-									<label className="text-xs text-muted-foreground">{t("bundles.quantity")}</label>
-									<input
-										type="number"
-										min="1"
-										value={item.quantity}
-										onChange={(e) =>
-											setItems((current) =>
-												current.map((entry, i) => (i === index ? { ...entry, quantity: e.target.value } : entry)),
-											)
-										}
-										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-									/>
-								</div>
-								<button
-									type="button"
-									disabled={items.length <= 1}
-									onClick={() => setItems((current) => current.filter((_, i) => i !== index))}
-									className="rounded-md border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-									aria-label={t("bundles.deleted")}
-								>
-									<Trash2 className="size-4" />
-								</button>
-							</div>
-						);
-					})}
+							);
+						})}
+					</div>
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-secondary/40 px-3 py-2 text-sm">
+						<span className="text-muted-foreground">{t("bundles.itemsTotal")}</span>
+						<span className="font-semibold tabular-nums text-foreground">{currency} {(items.reduce((sum, item) => sum + (products.find((p) => p.id === item.productId)?.price ?? 0) * Number(item.quantity || 1), 0) / 100).toFixed(2)}</span>
+						<span className="text-muted-foreground">{t("bundles.bundlePrice")}</span>
+						<span className="font-semibold tabular-nums text-foreground">{currency} {(Number(price) || 0).toFixed(2)}</span>
+						{Number(price) > 0 && items.reduce((sum, item) => sum + (products.find((p) => p.id === item.productId)?.price ?? 0) * Number(item.quantity || 1), 0) / 100 > Number(price) && (
+							<span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+								-{Math.round((1 - Number(price) / (items.reduce((sum, item) => sum + (products.find((p) => p.id === item.productId)?.price ?? 0) * Number(item.quantity || 1), 0) / 100)) * 100)}%
+							</span>
+						)}
+					</div>
 				</div>
 
 				<div className="flex flex-wrap gap-2">
@@ -344,6 +373,7 @@ export function SellerBundles() {
 						</button>
 					)}
 				</div>
+
 			</section>
 
 			{bundles.length === 0 ? (
