@@ -202,16 +202,6 @@ func (f *fakeBundleStore) DeleteBundle(_ context.Context, sellerID, bundleID uui
 	return bundle.ProductID, nil
 }
 
-func (f *fakeBundleStore) GetBundleProductID(_ context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	bundle, ok := f.bundles[bundleID]
-	if !ok {
-		return uuid.Nil, database.ErrNotFound
-	}
-	return bundle.ProductID, nil
-}
-
 type SellerServiceSuite struct {
 	suite.Suite
 

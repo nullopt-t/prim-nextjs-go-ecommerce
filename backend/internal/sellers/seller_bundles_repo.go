@@ -40,7 +40,6 @@ type BundleStore interface {
 	CreateBundle(ctx context.Context, sellerID uuid.UUID, bundlePrice int64, currency string, productID uuid.UUID, items []BundleItem) (*SellerBundle, error)
 	ListBundles(ctx context.Context, sellerID uuid.UUID) ([]SellerBundle, error)
 	DeleteBundle(ctx context.Context, sellerID, bundleID uuid.UUID) (productID uuid.UUID, err error)
-	GetBundleProductID(ctx context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error)
 }
 
 type bundleStore struct {
@@ -117,26 +116,37 @@ func (b *bundleStore) ListBundles(ctx context.Context, sellerID uuid.UUID) ([]Se
 	if err != nil {
 		return nil, fmt.Errorf("scan bundles: %w", err)
 	}
+	if len(bundles) == 0 {
+		return bundles, nil
+	}
+	// Batch-load every bundle's composition in one query instead of one
+	// round trip per bundle.
+	bundleIDs := make([]uuid.UUID, len(bundles))
+	indexByID := make(map[uuid.UUID]int, len(bundles))
 	for i := range bundles {
-		items, err := b.listItems(ctx, executor, bundles[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		bundles[i].Items = items
+		bundleIDs[i] = bundles[i].ID
+		indexByID[bundles[i].ID] = i
+	}
+	items, err := b.listItemsForBundles(ctx, executor, bundleIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		bundles[indexByID[item.BundleID]].Items = append(bundles[indexByID[item.BundleID]].Items, item)
 	}
 	return bundles, nil
 }
 
-func (b *bundleStore) listItems(ctx context.Context, executor database.QueryExecutor, bundleID uuid.UUID) ([]BundleItem, error) {
+func (b *bundleStore) listItemsForBundles(ctx context.Context, executor database.QueryExecutor, bundleIDs []uuid.UUID) ([]BundleItem, error) {
 	rows, err := executor.Query(ctx, `
-		SELECT bi.id, bi.product_id, bi.variant_id, bi.quantity,
+		SELECT bi.id, bi.bundle_id, bi.product_id, bi.variant_id, bi.quantity, bi.created_at,
 		       COALESCE(pv.title, p.title) AS title
 		FROM bundle_items bi
 		JOIN products p ON p.id = bi.product_id
 		LEFT JOIN product_variants pv ON pv.id = bi.variant_id
-		WHERE bi.bundle_id = $1
+		WHERE bi.bundle_id = ANY($1)
 		ORDER BY bi.created_at ASC
-	`, bundleID)
+	`, bundleIDs)
 	if err != nil {
 		return nil, fmt.Errorf("list bundle items: %w", err)
 	}
@@ -163,20 +173,6 @@ func (b *bundleStore) DeleteBundle(ctx context.Context, sellerID, bundleID uuid.
 	})
 	if err != nil {
 		return uuid.Nil, err
-	}
-	return productID, nil
-}
-
-func (b *bundleStore) GetBundleProductID(ctx context.Context, sellerID, bundleID uuid.UUID) (uuid.UUID, error) {
-	executor, err := database.Executor(ctx)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	var productID uuid.UUID
-	if err := executor.QueryRow(ctx, `
-		SELECT product_id FROM product_bundles WHERE seller_id = $1 AND id = $2
-	`, sellerID, bundleID).Scan(&productID); err != nil {
-		return uuid.Nil, fmt.Errorf("get bundle product: %w", err)
 	}
 	return productID, nil
 }

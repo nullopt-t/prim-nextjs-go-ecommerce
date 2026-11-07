@@ -165,7 +165,8 @@ func (s *Service) CreateBundle(
 	return created, nil
 }
 
-// DeleteBundle removes a bundle and its backing draft/archive product.
+// DeleteBundle removes a bundle. A published bundle is archived (hidden from
+// the storefront) instead of soft-deleted, so live listings are never yanked.
 func (s *Service) DeleteBundle(ctx context.Context, userID, bundleID uuid.UUID) error {
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		seller, err := s.requireActiveSeller(ctx, userID)
@@ -178,6 +179,13 @@ func (s *Service) DeleteBundle(ctx context.Context, userID, bundleID uuid.UUID) 
 				return apierr.NotFoundError("Bundle not found").WithCode(errcode.CodeProductNotFound)
 			}
 			return err
+		}
+		product, err := s.products.GetByID(ctx, productID)
+		if err != nil {
+			return s.handleError(err, "Failed to load bundle product")
+		}
+		if product.Status == model.PublicationStatusPublished {
+			return s.products.ArchiveProduct(ctx, productID)
 		}
 		return s.products.SoftDeleteProduct(ctx, productID)
 	})
