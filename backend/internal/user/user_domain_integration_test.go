@@ -71,7 +71,7 @@ func (s *UserDomainSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 
 	logger := log.NewNoopLogger()
-	s.runner = database.NewTxRunner(db)
+	s.runner = database.NewTxRunner(db, logger)
 	s.addresses = user.NewAddressService(s.runner, user.NewAddressRepository(), logger)
 	s.notifs = user.NewNotificationService(s.runner, user.NewNotificationRepository(), logger)
 }

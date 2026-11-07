@@ -78,6 +78,10 @@ func (m *mockConnectionTrackingRunner) WithTx(ctx context.Context, fn func(conte
 	return fn(ctx)
 }
 
+func (m *mockConnectionTrackingRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return m.WithTx(ctx, fn)
+}
+
 type fakeVariantRepoForInvariants struct {
 	countFunc func() (int, error)
 	getFunc   func(id uuid.UUID) (*model.ProductVariant, error)

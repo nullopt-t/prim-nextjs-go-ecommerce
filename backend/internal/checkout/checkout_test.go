@@ -259,7 +259,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 
 	// ---- Wiring -----------------------------------------------------------
 	logger := log.NewConsoleLogger()
-	s.txRunner = database.NewTxRunner(s.db)
+	s.txRunner = database.NewTxRunner(s.db, logger)
 
 	inventoryRepo := inventory.NewRepository()
 	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, storage.NoopProvider{}, nil)

@@ -192,6 +192,10 @@ func (m *mockObjectRunner) WithTx(ctx context.Context, fn func(ctx context.Conte
 	return fn(database.WithTx(ctx, database.NewTx(&mockObjTx{mockObjQE: m.qe})))
 }
 
+func (m *mockObjectRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return m.WithTx(ctx, fn)
+}
+
 type mockObjStorageForInvariants struct{}
 
 func (m *mockObjStorageForInvariants) Upload(ctx context.Context, bucket, key string, file io.Reader, size int64, contentType string) error {

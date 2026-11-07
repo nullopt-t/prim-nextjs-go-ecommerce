@@ -83,7 +83,7 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-	s.txRunner = database.NewTxRunner(s.db)
+	s.txRunner = database.NewTxRunner(s.db, log.NewNoopLogger())
 	s.reviewRepo = review.NewReviewRepository()
 	s.service = review.NewService(s.txRunner, s.reviewRepo)
 	s.handler = review.NewHandler(s.service)

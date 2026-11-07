@@ -21,6 +21,10 @@ func (fakeReviewRunner) WithExecutor(ctx context.Context, fn func(ctx context.Co
 	return fn(ctx)
 }
 
+func (fakeReviewRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return fn(ctx)
+}
+
 func TestReviewService_ConstructorsFailFast(t *testing.T) {
 	assert.Panics(t, func() {
 		review.NewService(nil, review.NewReviewRepository())

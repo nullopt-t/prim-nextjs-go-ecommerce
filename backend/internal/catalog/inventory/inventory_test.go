@@ -74,8 +74,8 @@ func (s *InventoryTestSuite) SetupSuite() {
 		require.NoError(s.T(), execErr)
 	}
 
-	txRunner := database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
+	txRunner := database.NewTxRunner(s.db, logger)
 	s.repo = inventory.NewRepository()
 	s.service = inventory.NewService(logger, txRunner, s.repo, storage.NoopProvider{}, nil)
 
@@ -672,7 +672,7 @@ func (s *InventoryTestSuite) Test08_OrderReservationCommitAndRelease() {
 	s.Equal(3, stock.ReservedQuantity)
 	s.Equal(7, stock.AvailableQuantity)
 
-	txRunner := database.NewTxRunner(s.db)
+	txRunner := database.NewTxRunner(s.db, log.NewNoopLogger())
 	err = txRunner.WithTx(ctx, func(ctx context.Context) error {
 		return s.service.CommitReservationsForOrder(ctx, orderID)
 	})

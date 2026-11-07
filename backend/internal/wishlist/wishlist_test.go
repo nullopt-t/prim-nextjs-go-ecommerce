@@ -116,14 +116,14 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
-	s.txRunner = database.NewTxRunner(s.db)
+	logger := log.NewConsoleLogger()
+	s.txRunner = database.NewTxRunner(s.db, logger)
 	s.repo = wishlist.NewWishlistRepository()
 
 	s.prodMock = &mockProductRepository{
 		products: make(map[uuid.UUID]*model.Product),
 	}
 
-	logger := log.NewConsoleLogger()
 	s.service = wishlist.NewService(s.txRunner, s.repo, s.prodMock, &mockStorageProvider{}, logger)
 	s.handler = wishlist.NewHandler(s.service)
 

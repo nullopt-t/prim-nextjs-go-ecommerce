@@ -49,6 +49,10 @@ func (m *mockRunner) WithExecutor(ctx context.Context, fn func(ctx context.Conte
 	return fn(database.WithExecutor(ctx, qe))
 }
 
+func (m *mockRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return m.WithTx(ctx, fn)
+}
+
 type fakeAuditTx struct {
 	fakeAuditExecutor
 }

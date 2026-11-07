@@ -124,7 +124,7 @@ func (s *AuthTestSuite) SetupSuite() {
 	challengeService := auth.NewChallengeService(s.redisClient, s.notifier, logger, challengeTTL, false, "test-otp-pepper")
 	sessionService := auth.NewSessionService(s.redisClient, logger, sessionTTL)
 
-	txRunner := database.NewTxRunner(s.db)
+	txRunner := database.NewTxRunner(s.db, logger)
 	userRepo := user.NewPostgresRepository()
 	userService := user.NewService(txRunner, userRepo, logger)
 

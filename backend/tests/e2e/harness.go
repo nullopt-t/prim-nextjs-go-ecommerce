@@ -304,6 +304,10 @@ func (r *MockRunner) WithExecutor(ctx context.Context, fn func(ctx context.Conte
 	return fn(ctx)
 }
 
+func (r *MockRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return r.WithTx(ctx, fn)
+}
+
 func (r *MockRunner) SetTxError(err error) {
 	r.mu.Lock()
 	r.txErr = err

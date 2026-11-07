@@ -22,6 +22,10 @@ func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(context.Context) 
 	return fn(ctx)
 }
 
+func (f *fakeRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return fn(ctx)
+}
+
 func TestCreateCouponValidation(t *testing.T) {
 	svc := coupon.NewService(&fakeRunner{}, coupon.NewRepository())
 	ctx := context.Background()

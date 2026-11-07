@@ -132,8 +132,8 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 		require.NoError(s.T(), execErr)
 	}
 
-	s.txRunner = database.NewTxRunner(s.db)
 	logger := log.NewConsoleLogger()
+	s.txRunner = database.NewTxRunner(s.db, logger)
 
 	s.inventoryRepo = inventory.NewRepository()
 	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, storage.NoopProvider{}, nil)

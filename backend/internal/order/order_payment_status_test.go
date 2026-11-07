@@ -90,6 +90,10 @@ func (r paymentStatusRunner) WithExecutor(ctx context.Context, fn func(context.C
 	return fn(database.WithExecutor(ctx, exec))
 }
 
+func (r paymentStatusRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return r.WithTx(ctx, fn)
+}
+
 func TestUpdatePaymentStatusValidation(t *testing.T) {
 	updated := pgconn.NewCommandTag("UPDATE 1")
 	missing := pgconn.NewCommandTag("UPDATE 0")

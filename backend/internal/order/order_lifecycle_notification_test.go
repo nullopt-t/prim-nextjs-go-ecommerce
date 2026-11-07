@@ -152,6 +152,10 @@ func (r lifecycleRunner) WithExecutor(ctx context.Context, fn func(context.Conte
 	return fn(database.WithExecutor(ctx, exec))
 }
 
+func (r lifecycleRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return r.WithTx(ctx, fn)
+}
+
 func lifecycleService(r lifecycleRunner, settings *fakeSettingsProvider, notifier *fakeOrderNotifier, userReader ...*fakeUserReader) *order.OrderService {
 	if settings == nil {
 		settings = &fakeSettingsProvider{}

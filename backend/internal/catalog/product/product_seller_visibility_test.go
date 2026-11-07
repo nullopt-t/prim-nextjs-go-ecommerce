@@ -23,6 +23,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 type ProductSellerVisibilitySuite struct {
@@ -72,7 +73,7 @@ func (s *ProductSellerVisibilitySuite) SetupSuite() {
 		require.NoError(s.T(), execErr)
 	}
 
-	s.runner = database.NewTxRunner(s.db)
+	s.runner = database.NewTxRunner(s.db, log.NewNoopLogger())
 	s.repo = product.NewProductRepository()
 	s.categoryID = uuid.New()
 	_, err = db.ExecContext(ctx, `INSERT INTO product_categories (id, name) VALUES ($1, $2)`, s.categoryID, "Visibility")

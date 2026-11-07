@@ -112,7 +112,7 @@ func (s *HistoryTestSuite) SetupSuite() {
 		require.NoError(s.T(), err)
 	}
 
-	s.runner = database.NewTxRunner(db)
+	s.runner = database.NewTxRunner(db, log.NewNoopLogger())
 	repo := history.NewRepository()
 	s.service = history.NewService(s.runner, repo, storage.NoopProvider{})
 

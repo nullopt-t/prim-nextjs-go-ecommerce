@@ -122,6 +122,10 @@ func (f *fakeRunner) WithExecutor(ctx context.Context, fn func(context.Context) 
 	return fn(database.WithExecutor(ctx, exec))
 }
 
+func (f *fakeRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return f.WithTx(ctx, fn)
+}
+
 func TestSettingService_HandleError(t *testing.T) {
 	svc := NewService(&fakeRunner{}, NewRepository())
 
@@ -310,4 +314,8 @@ func (c *testCountingRunner) WithExecutor(ctx context.Context, fn func(context.C
 		c.onWithExecutor()
 	}
 	return c.runner.WithExecutor(ctx, fn)
+}
+
+func (c *testCountingRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return c.runner.WithRetry(ctx, fn, n)
 }

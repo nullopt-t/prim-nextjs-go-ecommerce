@@ -148,6 +148,10 @@ func (f fakeRunner) WithExecutor(ctx context.Context, fn func(context.Context) e
 	return fn(database.WithExecutor(ctx, exec))
 }
 
+func (f fakeRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return f.WithTx(ctx, fn)
+}
+
 type fakeStorageProvider struct {
 	uploadErr   error
 	deleteErr   error

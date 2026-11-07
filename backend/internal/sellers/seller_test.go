@@ -551,9 +551,9 @@ func (s *SellerServiceSuite) SetupSuite() {
 		require.NoError(err)
 	}
 
-	runner := database.NewTxRunner(s.db)
-	s.runner = runner
 	logger := log.NewConsoleLogger()
+	runner := database.NewTxRunner(s.db, logger)
+	s.runner = runner
 
 	// Seed one seller-facing user; the service registers their profile.
 	db := s.db

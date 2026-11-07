@@ -22,6 +22,10 @@ func (fakeRunner) WithExecutor(ctx context.Context, fn func(ctx context.Context)
 	return fn(ctx)
 }
 
+func (fakeRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return fn(ctx)
+}
+
 func TestUserService_ConstructorsFailFast(t *testing.T) {
 	assert.Panics(t, func() {
 		user.NewService(nil, user.NewPostgresRepository(), log.NewNoopLogger())

@@ -50,6 +50,10 @@ func (m *mockReportRunner) WithExecutor(ctx context.Context, fn func(ctx context
 	return fn(ctx)
 }
 
+func (m *mockReportRunner) WithRetry(ctx context.Context, fn func(ctx context.Context) error, n int) error {
+	return m.WithTx(ctx, fn)
+}
+
 type fakeReportTx struct {
 	fakeReportExecutor
 }

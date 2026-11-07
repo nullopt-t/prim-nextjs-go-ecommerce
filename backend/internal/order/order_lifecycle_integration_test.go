@@ -80,8 +80,8 @@ func (s *OrderLifecycleSuite) SetupSuite() {
 		require.NoError(s.T(), execErr)
 	}
 
-	s.runner = database.NewTxRunner(db)
 	logger := log.NewNoopLogger()
+	s.runner = database.NewTxRunner(db, logger)
 	inventoryRepo := inventory.NewRepository()
 	s.inventory = inventory.NewService(logger, s.runner, inventoryRepo, storage.NoopProvider{}, nil)
 	s.service = order.NewService(

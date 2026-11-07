@@ -81,6 +81,10 @@ func (r refundRunner) WithExecutor(ctx context.Context, fn func(context.Context)
 	return fn(database.WithExecutor(ctx, exec))
 }
 
+func (r refundRunner) WithRetry(ctx context.Context, fn func(context.Context) error, n int) error {
+	return r.WithTx(ctx, fn)
+}
+
 func TestRefundPaymentStateValidation(t *testing.T) {
 	cases := []struct {
 		name       string
