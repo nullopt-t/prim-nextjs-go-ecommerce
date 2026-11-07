@@ -122,6 +122,29 @@ func (vr *VariantRepository) Create(
 }
 
 // GetByID fetches a single variant by ID.
+// SetProductThumbnailIfMissing assigns the product's own thumbnail from a
+// variant's image when the product has none yet. A product whose variants
+// carry images must carry one itself; the first variant image wins.
+func (vr *VariantRepository) SetProductThumbnailIfMissing(
+	ctx context.Context,
+	productID, objectID uuid.UUID,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE products
+		SET thumbnail_object_id = $2, updated_at = now()
+		WHERE id = $1 AND deleted_at IS NULL AND thumbnail_object_id IS NULL
+	`, productID, objectID)
+	if err != nil {
+		return fmt.Errorf("set product thumbnail: %w", err)
+	}
+	return nil
+}
+
 func (vr *VariantRepository) GetByID(
 	ctx context.Context,
 	id uuid.UUID,

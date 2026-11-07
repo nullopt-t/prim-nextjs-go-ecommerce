@@ -495,6 +495,13 @@ func (vs *VariantService) CreateVariant(
 			return err
 		}
 
+		// If the variant carries an image, the product carries it too.
+		if variant.ThumbnailObjectID != nil {
+			if err := vs.vr.SetProductThumbnailIfMissing(ctx, variant.ProductID, *variant.ThumbnailObjectID); err != nil {
+				return err
+			}
+		}
+
 		if variant.IsDefault {
 			if err := vs.vr.SetDefaultVariant(ctx, variant.ProductID, variant.ID); err != nil {
 				return err
@@ -862,6 +869,13 @@ func (vs *VariantService) UpdateVariant(
 
 		if err := vs.vr.Update(ctx, variantID, fields); err != nil {
 			return err
+		}
+
+		// If the variant carries an image, the product carries it too.
+		if fields.ThumbnailObjectID != nil {
+			if err := vs.vr.SetProductThumbnailIfMissing(ctx, existing.ProductID, *fields.ThumbnailObjectID); err != nil {
+				return err
+			}
 		}
 
 		if in.IsDefault != nil {
