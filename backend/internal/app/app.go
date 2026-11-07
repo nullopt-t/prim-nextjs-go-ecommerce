@@ -381,6 +381,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		productService,
 		variantService,
 		couponService,
+		attributeRepo,
 		inventoryService,
 		sellers.NewStaticCommissionDefaults(),
 		app.storageProvider,

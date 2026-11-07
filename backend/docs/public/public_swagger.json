@@ -2270,6 +2270,227 @@
                 }
             }
         },
+        "/seller/attributes": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated seller's custom attribute definitions for a category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my custom attributes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Category UUID",
+                        "name": "categoryId",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerAttributeResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Creates a seller-scoped attribute definition for a category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Define a custom attribute",
+                "parameters": [
+                    {
+                        "description": "Attribute payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerAttributeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerAttributeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seller/attributes/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Removes a seller-scoped attribute definition.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Delete a custom attribute",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Attribute UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Attribute not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Edits a seller-scoped attribute definition.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Edit a custom attribute",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Attribute UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Attribute edit payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SellerAttributeUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Seller not active",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Attribute not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/seller/dashboard": {
             "get": {
                 "security": [
@@ -7213,6 +7434,109 @@
                     "description": "Whether requesting user voted this review helpful",
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "SellerAttributeRequest": {
+            "type": "object",
+            "required": [
+                "categoryId",
+                "key",
+                "label"
+            ],
+            "properties": {
+                "allowedValues": {
+                    "description": "Option set for enum attributes.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "categoryId": {
+                    "description": "Category the attribute applies to.",
+                    "type": "string"
+                },
+                "key": {
+                    "description": "Machine key, e.g. \"fabric\".",
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "label": {
+                    "description": "Display label.",
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "valueType": {
+                    "description": "Value kind; defaults to enum.",
+                    "type": "string",
+                    "enum": [
+                        "enum",
+                        "text",
+                        "number",
+                        "boolean"
+                    ]
+                }
+            }
+        },
+        "SellerAttributeResponse": {
+            "type": "object",
+            "properties": {
+                "allowedValues": {
+                    "description": "Option set for enum attributes.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "categoryId": {
+                    "description": "Category the attribute applies to.",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "id": {
+                    "description": "Attribute id.",
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "isFilterable": {
+                    "description": "Whether the attribute is filterable on the storefront.",
+                    "type": "boolean"
+                },
+                "key": {
+                    "description": "Machine key.",
+                    "type": "string",
+                    "example": "fabric"
+                },
+                "label": {
+                    "description": "Display label.",
+                    "type": "string",
+                    "example": "Fabric"
+                },
+                "sortOrder": {
+                    "description": "Display order.",
+                    "type": "integer"
+                },
+                "valueType": {
+                    "description": "Value kind.",
+                    "type": "string",
+                    "example": "enum"
+                }
+            }
+        },
+        "SellerAttributeUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "allowedValues": {
+                    "description": "Updated option set.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "label": {
+                    "description": "Updated display label.",
+                    "type": "string",
+                    "maxLength": 200
                 }
             }
         },

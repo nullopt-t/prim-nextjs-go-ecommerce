@@ -172,6 +172,13 @@ func (vs *VariantService) validateVariantAttributes(
 	if err != nil {
 		return nil, nil, err
 	}
+	if context.SellerID != nil && *context.SellerID != uuid.Nil {
+		sellerDefs, err := attribute.NewRepository().ListBySellerCategory(ctx, *context.SellerID, context.CategoryID)
+		if err != nil {
+			return nil, nil, err
+		}
+		defs = append(defs, sellerDefs...)
+	}
 	defByKey := make(map[string]attribute.AttributeItem, len(defs))
 	for _, def := range defs {
 		defByKey[def.Key] = def

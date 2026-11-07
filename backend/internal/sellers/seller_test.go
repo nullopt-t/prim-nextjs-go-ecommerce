@@ -28,6 +28,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -104,6 +105,58 @@ func (f *fakeCouponCatalog) DeleteSellerCoupon(_ context.Context, sellerID, coup
 	return nil
 }
 
+// fakeSellerAttributeStore is an in-memory SellerAttributeStore double.
+type fakeSellerAttributeStore struct {
+	mu    sync.Mutex
+	items map[uuid.UUID]*attribute.AttributeItem
+}
+
+func newFakeSellerAttributeStore() *fakeSellerAttributeStore {
+	return &fakeSellerAttributeStore{items: map[uuid.UUID]*attribute.AttributeItem{}}
+}
+
+func (f *fakeSellerAttributeStore) ListBySellerCategory(_ context.Context, sellerID, categoryID uuid.UUID) ([]attribute.AttributeItem, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var list []attribute.AttributeItem
+	for _, item := range f.items {
+		if item.CategoryID != nil && *item.CategoryID == categoryID {
+			list = append(list, *item)
+		}
+	}
+	return list, nil
+}
+
+func (f *fakeSellerAttributeStore) CreateSellerAttribute(_ context.Context, sellerID uuid.UUID, ai *attribute.AttributeItem) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.items[ai.ID] = ai
+	return nil
+}
+
+func (f *fakeSellerAttributeStore) UpdateSellerAttribute(_ context.Context, sellerID, id uuid.UUID, fields attribute.UpdateAttributeFields) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	item, ok := f.items[id]
+	if !ok {
+		return database.ErrNotFound
+	}
+	if fields.Label != nil {
+		item.Label = *fields.Label
+	}
+	return nil
+}
+
+func (f *fakeSellerAttributeStore) DeleteSellerAttribute(_ context.Context, sellerID, id uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.items[id]; !ok {
+		return database.ErrNotFound
+	}
+	delete(f.items, id)
+	return nil
+}
+
 type SellerServiceSuite struct {
 	suite.Suite
 
@@ -117,6 +170,7 @@ type SellerServiceSuite struct {
 	catalog    *fakeProductCatalog
 	variants   *fakeVariantCatalog
 	coupons    *fakeCouponCatalog
+	attrs      *fakeSellerAttributeStore
 	stock      *fakeStockAdjuster
 	runner     database.Runner
 }
@@ -393,6 +447,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 		"../../migrations/000001_init_sechema.up.sql",
 		"../../migrations/000003_seller_domain.up.sql",
 		"../../migrations/000004_merchant_lifecycle.up.sql",
+		"../../migrations/000007_seller_attributes.up.sql",
 	} {
 		migration, err := os.ReadFile(f)
 		require.NoError(err)
@@ -416,6 +471,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	s.catalog = newFakeProductCatalog()
 	s.variants = newFakeVariantCatalog()
 	s.coupons = newFakeCouponCatalog()
+	s.attrs = newFakeSellerAttributeStore()
 	s.stock = &fakeStockAdjuster{}
 
 	s.service = sellers.NewService(
@@ -427,6 +483,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 		s.catalog,
 		s.variants,
 		s.coupons,
+		s.attrs,
 		s.stock,
 		sellers.NewStaticCommissionDefaults(),
 		storage.NoopProvider{},

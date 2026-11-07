@@ -248,6 +248,7 @@ func normalizeVariationAxes(axes []string) ([]string, error) {
 func (s *ProductService) validateVariationAxes(
 	ctx context.Context,
 	categoryID uuid.UUID,
+	sellerID *uuid.UUID,
 	axes []string,
 ) ([]string, error) {
 	normalized, err := normalizeVariationAxes(axes)
@@ -261,6 +262,13 @@ func (s *ProductService) validateVariationAxes(
 	defs, err := attribute.NewRepository().ListByCategory(ctx, categoryID)
 	if err != nil {
 		return nil, err
+	}
+	if sellerID != nil && *sellerID != uuid.Nil {
+		sellerDefs, err := attribute.NewRepository().ListBySellerCategory(ctx, *sellerID, categoryID)
+		if err != nil {
+			return nil, err
+		}
+		defs = append(defs, sellerDefs...)
 	}
 	available := make(map[string]struct{}, len(defs))
 	for _, def := range defs {
@@ -334,7 +342,7 @@ func (s *ProductService) CreateProductAsDraft(
 			}
 		}
 
-		axes, err := s.validateVariationAxes(ctx, input.CategoryID, input.VariationAxes)
+		axes, err := s.validateVariationAxes(ctx, input.CategoryID, input.SellerID, input.VariationAxes)
 		if err != nil {
 			return err
 		}
@@ -449,7 +457,7 @@ func (s *ProductService) UpdateProduct(
 		}
 
 		if input.VariationAxes != nil {
-			axes, err := s.validateVariationAxes(ctx, product.CategoryID, *input.VariationAxes)
+			axes, err := s.validateVariationAxes(ctx, product.CategoryID, product.SellerID, *input.VariationAxes)
 			if err != nil {
 				return err
 			}
@@ -478,7 +486,7 @@ func (s *ProductService) UpdateProduct(
 		} else if input.CategoryID != nil && len(product.VariationAxes) > 0 {
 			// A category change must not silently leave axes that the new
 			// category cannot describe.
-			if _, err := s.validateVariationAxes(ctx, product.CategoryID, product.VariationAxes); err != nil {
+			if _, err := s.validateVariationAxes(ctx, product.CategoryID, product.SellerID, product.VariationAxes); err != nil {
 				return err
 			}
 		}

@@ -1264,6 +1264,83 @@ definitions:
         example: false
         type: boolean
     type: object
+  SellerAttributeRequest:
+    properties:
+      allowedValues:
+        description: Option set for enum attributes.
+        items:
+          type: string
+        type: array
+      categoryId:
+        description: Category the attribute applies to.
+        type: string
+      key:
+        description: Machine key, e.g. "fabric".
+        maxLength: 100
+        type: string
+      label:
+        description: Display label.
+        maxLength: 200
+        type: string
+      valueType:
+        description: Value kind; defaults to enum.
+        enum:
+        - enum
+        - text
+        - number
+        - boolean
+        type: string
+    required:
+    - categoryId
+    - key
+    - label
+    type: object
+  SellerAttributeResponse:
+    properties:
+      allowedValues:
+        description: Option set for enum attributes.
+        items:
+          type: string
+        type: array
+      categoryId:
+        description: Category the attribute applies to.
+        format: uuid
+        type: string
+      id:
+        description: Attribute id.
+        format: uuid
+        type: string
+      isFilterable:
+        description: Whether the attribute is filterable on the storefront.
+        type: boolean
+      key:
+        description: Machine key.
+        example: fabric
+        type: string
+      label:
+        description: Display label.
+        example: Fabric
+        type: string
+      sortOrder:
+        description: Display order.
+        type: integer
+      valueType:
+        description: Value kind.
+        example: enum
+        type: string
+    type: object
+  SellerAttributeUpdateRequest:
+    properties:
+      allowedValues:
+        description: Updated option set.
+        items:
+          type: string
+        type: array
+      label:
+        description: Updated display label.
+        maxLength: 200
+        type: string
+    type: object
   SellerCreateProductRequest:
     properties:
       brandId:
@@ -3816,6 +3893,143 @@ paths:
       summary: List current user's reviews
       tags:
       - Reviews
+  /seller/attributes:
+    get:
+      description: Returns the authenticated seller's custom attribute definitions
+        for a category.
+      parameters:
+      - description: Category UUID
+        format: uuid
+        in: query
+        name: categoryId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerAttributeResponse'
+                  type: array
+              type: object
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my custom attributes
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Creates a seller-scoped attribute definition for a category.
+      parameters:
+      - description: Attribute payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerAttributeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerAttributeResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/BadReqResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Define a custom attribute
+      tags:
+      - Seller
+  /seller/attributes/{id}:
+    delete:
+      description: Removes a seller-scoped attribute definition.
+      parameters:
+      - description: Attribute UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Attribute not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete a custom attribute
+      tags:
+      - Seller
+    patch:
+      consumes:
+      - application/json
+      description: Edits a seller-scoped attribute definition.
+      parameters:
+      - description: Attribute UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attribute edit payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SellerAttributeUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MessageResponse'
+        "403":
+          description: Seller not active
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "404":
+          description: Attribute not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Edit a custom attribute
+      tags:
+      - Seller
   /seller/dashboard:
     get:
       description: Returns the merchant's money position (settled, pending, outstanding)

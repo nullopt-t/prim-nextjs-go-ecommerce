@@ -585,6 +585,7 @@ type ProductVariationContext struct {
 	ProductID     uuid.UUID
 	Title         string
 	CategoryID    uuid.UUID
+	SellerID      *uuid.UUID
 	ProductType   model.ProductType
 	VariationAxes []string
 }
@@ -613,7 +614,7 @@ func (vr *VariantRepository) GetVariationContext(
 	}
 
 	query := `
-		SELECT id, title, category_id, product_type, variation_axes
+		SELECT id, title, category_id, seller_id, product_type, variation_axes
 		FROM products
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -626,6 +627,7 @@ func (vr *VariantRepository) GetVariationContext(
 		&out.ProductID,
 		&out.Title,
 		&out.CategoryID,
+		&out.SellerID,
 		&out.ProductType,
 		&out.VariationAxes,
 	); err != nil {
