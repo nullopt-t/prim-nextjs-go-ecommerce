@@ -586,8 +586,8 @@ func (r *ProductRepository) List(
 		FROM products p
 		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
 		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
-		LEFT JOIN storage_objects so ON p.thumbnail_object_id = so.id
 		LEFT JOIN product_variants pv ON p.default_variant_id = pv.id AND pv.deleted_at IS NULL
+		LEFT JOIN storage_objects so ON so.id = COALESCE(p.thumbnail_object_id, pv.thumbnail_object_id)
 		%s
 		%s
 		%s
