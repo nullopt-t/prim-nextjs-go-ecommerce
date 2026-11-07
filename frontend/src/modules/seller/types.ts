@@ -208,6 +208,13 @@ export interface CreateSellerBundlePayload {
   items: { productId: string; variantId?: string; quantity: number }[];
 }
 
+export interface UpdateSellerBundlePayload {
+  title?: string;
+  bundlePrice?: number;
+  currency?: string;
+  items?: { productId: string; variantId?: string; quantity: number }[];
+}
+
 export interface SellerCustomAttribute {
   id: string;
   categoryId?: string;

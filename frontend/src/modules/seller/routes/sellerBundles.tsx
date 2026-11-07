@@ -32,6 +32,7 @@ export function SellerBundles() {
 	const [uploading, setUploading] = useState(false);
 	const [items, setItems] = useState<BundleItemDraft[]>([{ productId: "", variantId: "", quantity: "1" }]);
 	const [creating, setCreating] = useState(false);
+	const [editingId, setEditingId] = useState<string | null>(null);
 
 	const load = async () => {
 		setLoading(true);
@@ -78,6 +79,30 @@ export function SellerBundles() {
 		}
 	};
 
+	const startEdit = (bundle: SellerBundle) => {
+		setEditingId(bundle.id);
+		setTitle(bundle.productTitle);
+		setPrice(String(bundle.bundlePrice / 100));
+		setCurrency(bundle.currency);
+		setThumbnailUrl("");
+		setItems(
+			bundle.items.map((item) => ({
+				productId: item.productId,
+				variantId: item.variantId ?? "",
+				quantity: String(item.quantity),
+			})),
+		);
+		for (const item of bundle.items) void loadVariants(item.productId);
+	};
+
+	const cancelEdit = () => {
+		setEditingId(null);
+		setTitle("");
+		setPrice("");
+		setThumbnailUrl("");
+		setItems([{ productId: "", variantId: "", quantity: "1" }]);
+	};
+
 	const createBundle = async () => {
 		const priceMinor = Math.round(Number(price) * 100);
 		if (!title.trim() || !Number.isFinite(priceMinor) || priceMinor <= 0) return;
@@ -91,23 +116,40 @@ export function SellerBundles() {
 		if (payloadItems.length === 0) return;
 		setCreating(true);
 		try {
-			await sellerService.createBundle({
-				title: title.trim(),
-				bundlePrice: priceMinor,
-				currency: currency.trim().toUpperCase() || "EGP",
-				thumbnailUrl: thumbnailUrl || undefined,
-				items: payloadItems,
-			});
-			notify.success(t("bundles.created"));
-			setTitle("");
-			setPrice("");
-			setThumbnailUrl("");
-			setItems([{ productId: "", variantId: "", quantity: "1" }]);
+			if (editingId) {
+				await sellerService.updateBundle(editingId, {
+					title: title.trim(),
+					bundlePrice: priceMinor,
+					currency: currency.trim().toUpperCase() || "EGP",
+					items: payloadItems,
+				});
+				notify.success(t("bundles.updated"));
+			} else {
+				await sellerService.createBundle({
+					title: title.trim(),
+					bundlePrice: priceMinor,
+					currency: currency.trim().toUpperCase() || "EGP",
+					thumbnailUrl: thumbnailUrl || undefined,
+					items: payloadItems,
+				});
+				notify.success(t("bundles.created"));
+			}
+			cancelEdit();
 			await load();
 		} catch (error) {
 			notify.error(apiErrorMessage(error, t("products.saveFailed")));
 		} finally {
 			setCreating(false);
+		}
+	};
+
+	const publishBundle = async (bundle: SellerBundle) => {
+		try {
+			await sellerService.publishProduct(bundle.productId);
+			notify.success(t("bundles.published"));
+			await load();
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("products.saveFailed")));
 		}
 	};
 
@@ -283,14 +325,25 @@ export function SellerBundles() {
 					})}
 				</div>
 
-				<button
-					type="button"
-					disabled={creating || !title.trim() || !price || items.some((item) => !item.productId)}
-					onClick={() => void createBundle()}
-					className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-				>
-					{t("bundles.create")}
-				</button>
+				<div className="flex flex-wrap gap-2">
+					<button
+						type="button"
+						disabled={creating || !title.trim() || !price || items.some((item) => !item.productId)}
+						onClick={() => void createBundle()}
+						className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+					>
+						{editingId ? t("bundles.save") : t("bundles.create")}
+					</button>
+					{editingId && (
+						<button
+							type="button"
+							onClick={cancelEdit}
+							className="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+						>
+							{t("actions.cancel")}
+						</button>
+					)}
+				</div>
 			</section>
 
 			{bundles.length === 0 ? (
@@ -309,6 +362,22 @@ export function SellerBundles() {
 								{bundle.currency} {(bundle.bundlePrice / 100).toFixed(2)}
 							</span>
 							<StatusPill tone={statusTone(bundle.status)}>{bundle.status}</StatusPill>
+							{bundle.status !== "published" && (
+								<button
+									type="button"
+									onClick={() => void publishBundle(bundle)}
+									className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+								>
+									{t("bundles.publish")}
+								</button>
+							)}
+							<button
+								type="button"
+								onClick={() => startEdit(bundle)}
+								className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-secondary"
+							>
+								{t("bundles.edit")}
+							</button>
 							<button
 								type="button"
 								onClick={() => void removeBundle(bundle)}

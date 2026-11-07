@@ -18,6 +18,7 @@ import type {
   CreateSellerAttributePayload,
   SellerBundle,
   CreateSellerBundlePayload,
+  UpdateSellerBundlePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,
@@ -132,6 +133,8 @@ export const sellerService = {
   getBundles: () => api.get<{ data: SellerBundle[] }>("/api/v1/seller/bundles"),
   createBundle: (payload: CreateSellerBundlePayload) =>
     invalidates(api.post<ApiResponse<SellerBundle>, CreateSellerBundlePayload>("/api/v1/seller/bundles", payload)),
+  updateBundle: (id: string, payload: UpdateSellerBundlePayload) =>
+    invalidates(api.patch<ApiMessageResponse, UpdateSellerBundlePayload>(`/api/v1/seller/bundles/${id}`, payload)),
   deleteBundle: (id: string) => invalidates(api.delete<ApiMessageResponse>(`/api/v1/seller/bundles/${id}`)),
 };
 
@@ -152,6 +155,7 @@ export type {
   CreateSellerAttributePayload,
   SellerBundle,
   CreateSellerBundlePayload,
+  UpdateSellerBundlePayload,
   SellerOrder,
   SellerOrderItem,
   SellerPayout,
