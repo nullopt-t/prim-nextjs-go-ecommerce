@@ -12,13 +12,13 @@ import (
 
 // BundleItem is one component of a product bundle.
 type BundleItem struct {
-	ID        uuid.UUID  `json:"id"`
-	BundleID  uuid.UUID  `json:"-"`
-	ProductID uuid.UUID  `json:"productId"`
-	VariantID *uuid.UUID `json:"variantId,omitempty"`
-	Quantity  int        `json:"quantity"`
-	Title     string     `json:"title,omitempty"`
-	CreatedAt time.Time  `json:"-"`
+	ID        uuid.UUID  `db:"id" json:"id"`
+	BundleID  uuid.UUID  `db:"bundle_id" json:"-"`
+	ProductID uuid.UUID  `db:"product_id" json:"productId"`
+	VariantID *uuid.UUID `db:"variant_id" json:"variantId,omitempty"`
+	Quantity  int        `db:"quantity" json:"quantity"`
+	Title     string     `db:"title" json:"title,omitempty"`
+	CreatedAt time.Time  `db:"created_at" json:"-"`
 }
 
 // SellerBundle is the merchant-facing bundle projection.
