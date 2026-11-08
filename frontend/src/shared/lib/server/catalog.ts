@@ -35,6 +35,7 @@ async function fetchJson<T = unknown>(path: string, tags: string[] = []): Promis
 		const response = await fetch(`${baseUrl}${path}`, {
 			next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags },
 			headers: { Accept: "application/json" },
+			signal: AbortSignal.timeout(3000),
 		});
 		if (!response.ok) return null;
 		const payload = await response.json();
@@ -52,6 +53,7 @@ async function fetchEnvelope<T = unknown>(path: string, tags: string[] = []): Pr
 		const response = await fetch(`${baseUrl}${path}`, {
 			next: { revalidate: CATALOG_REVALIDATE_SECONDS, tags },
 			headers: { Accept: "application/json" },
+			signal: AbortSignal.timeout(3000),
 		});
 		if (!response.ok) return { data: null, meta: null };
 		const payload = (await response.json()) as { data?: T | null; meta?: Record<string, unknown> };

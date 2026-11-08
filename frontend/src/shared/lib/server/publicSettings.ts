@@ -17,6 +17,7 @@ export async function getPublicSettings(): Promise<PublicSettings | null> {
       {
         next: { revalidate: 60, tags: [PUBLIC_SETTINGS_TAG] },
         headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(3000),
       },
     );
     if (!response.ok) return null;
