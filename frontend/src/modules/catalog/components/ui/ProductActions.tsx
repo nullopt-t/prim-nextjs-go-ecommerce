@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { Bell } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
@@ -21,12 +22,17 @@ interface ProductActionsProps {
   isVariantInStock: boolean;
   quantity: number;
   onQuantityChange: (val: number) => void;
+  /** Per-unit volume-discount saving (0 when no tier applies). */
+  tierSavingsPerUnit?: number;
+  tierMinQuantity?: number;
   isAdding: boolean;
   isWishlisted: boolean;
   onAddToCart: () => void;
   onBuyNow: () => void;
   onToggleWishlist: () => void;
   onShare: () => void;
+  /** Opens the notify-me dialog. Rendered only when the variant is out of stock. */
+  onNotifyMe?: () => void;
 }
 
 export function ProductActions({
@@ -44,12 +50,15 @@ export function ProductActions({
   isVariantInStock,
   quantity,
   onQuantityChange,
+  tierSavingsPerUnit = 0,
+  tierMinQuantity,
   isAdding,
   isWishlisted,
   onAddToCart,
   onBuyNow,
   onToggleWishlist,
   onShare,
+  onNotifyMe,
 }: ProductActionsProps) {
   const t = useTranslations("products");
   const { settings } = usePublicSettings();
@@ -122,6 +131,15 @@ export function ProductActions({
             : t("actions.outOfStock")}
         </span>
       </div>
+
+      {tierSavingsPerUnit > 0 && (
+        <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          {t("tierPricing.activeSavings", {
+            amount: formatPrice(tierSavingsPerUnit),
+            minQuantity: tierMinQuantity ?? quantity,
+          })}
+        </p>
+      )}
 
       {/* Variation axes (one selector per theme attribute) */}
       {variationAxes.map((axis) => {
@@ -196,6 +214,17 @@ export function ProductActions({
             {t("actions.buyNow")}
           </button>
         </div>
+
+        {!isVariantInStock && onNotifyMe && (
+          <button
+            type="button"
+            onClick={onNotifyMe}
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-brand px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <Bell className="size-3.5" aria-hidden="true" />
+            {t("notifyMe.open")}
+          </button>
+        )}
 
         <div className="flex gap-3">
           <button

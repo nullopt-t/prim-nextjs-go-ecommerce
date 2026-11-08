@@ -16,6 +16,8 @@ interface CatalogFilters {
   minPrice: number | null;
   maxPrice: number | null;
   sort: string | null;
+  /** Selected variant attribute facets, one value per key: { color: "black" }. */
+  attributes: Record<string, string>;
 }
 
 interface CatalogContextType {
@@ -63,6 +65,7 @@ export function CatalogProvider({
     minPrice: null,
     maxPrice: null,
     sort: null,
+    attributes: {},
   });
 
   const setFilter = (
@@ -81,6 +84,7 @@ export function CatalogProvider({
       minPrice: null,
       maxPrice: null,
       sort: null,
+      attributes: {},
     });
   };
 

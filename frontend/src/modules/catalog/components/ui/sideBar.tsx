@@ -7,6 +7,7 @@ import SideBarRatings from "@/modules/catalog/components/ui/sideBarRatings";
 import SideBarFilters from "@/modules/catalog/components/ui/sideBarFilters";
 import SideBarAvailability from "@/modules/catalog/components/ui/sideBarAvailability";
 import SideBarBrands from "@/modules/catalog/components/ui/sideBarBrands";
+import SideBarAttributes from "@/modules/catalog/components/ui/sideBarAttributes";
 import { PanelLeftOpen, PanelLeftClose, SlidersHorizontal, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -35,6 +36,7 @@ export default function SideBar() {
       <SideBarPrice />
       <SideBarCategories />
       <SideBarBrands />
+      <SideBarAttributes />
       <SideBarRatings />
       <SideBarAvailability />
       <SideBarDiscount />

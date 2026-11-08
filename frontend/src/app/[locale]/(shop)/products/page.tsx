@@ -12,6 +12,8 @@ type ProductsSearchParams = {
   maxPrice?: string;
   sort?: string;
   page?: string;
+  /** Comma-separated "key:value" facet pairs, e.g. color:black,size:XL. */
+  attribute?: string;
 };
 
 function parseNumber(value?: string): number | undefined {
@@ -23,6 +25,19 @@ function parseNumber(value?: string): number | undefined {
 function parsePage(value?: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+}
+
+function parseAttributes(value?: string): Record<string, string> | undefined {
+  if (!value) return undefined;
+  const out: Record<string, string> = {};
+  for (const part of value.split(",")) {
+    const colon = part.indexOf(":");
+    if (colon <= 0 || colon >= part.length - 1) continue;
+    const k = part.slice(0, colon).trim();
+    const v = part.slice(colon + 1).trim();
+    if (k && v) out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function resolveCategoryName(
@@ -75,6 +90,7 @@ export default async function ProductsPage({
     minPrice: parseNumber(params.minPrice),
     maxPrice: parseNumber(params.maxPrice),
     sort: params.sort?.trim() ? params.sort.trim() : undefined,
+    attributes: parseAttributes(params.attribute),
     page,
     pageSize: 24,
   });

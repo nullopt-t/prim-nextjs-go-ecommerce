@@ -50,6 +50,18 @@ export default function Content({ products, category }: ContentProps) {
     if (maxPrice !== null) setFilter("maxPrice", maxPrice);
     const sort = params.get("sort");
     if (sort) setFilter("sort", sort);
+    const attributeParam = params.get("attribute");
+    if (attributeParam) {
+      const attributes: Record<string, string> = {};
+      for (const part of attributeParam.split(",")) {
+        const colon = part.indexOf(":");
+        if (colon <= 0 || colon >= part.length - 1) continue;
+        const k = part.slice(0, colon).trim();
+        const v = part.slice(colon + 1).trim();
+        if (k && v) attributes[k] = v;
+      }
+      if (Object.keys(attributes).length > 0) setFilter("attributes", attributes);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -71,6 +83,10 @@ export default function Content({ products, category }: ContentProps) {
       apply("minPrice", current.minPrice !== null ? String(current.minPrice) : null);
       apply("maxPrice", current.maxPrice !== null ? String(current.maxPrice) : null);
       apply("sort", current.sort);
+      const facetPairs = Object.entries(current.attributes || {})
+        .filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
+        .map(([k, v]) => `${k.trim()}:${v.trim()}`);
+      apply("attribute", facetPairs.length > 0 ? facetPairs.join(",") : null);
       next.delete("page");
       const query = next.toString();
       if (query !== searchParamsString) {
@@ -167,6 +183,20 @@ export default function Content({ products, category }: ContentProps) {
     if (filters.maxPrice !== null) {
       const priceVal = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
       if (priceVal > filters.maxPrice) return false;
+    }
+
+    // Attribute facet filter: one variant must match every selected key:value
+    // (mirrors the backend EXISTS clause on /api/v1/products?attribute=).
+    const selectedFacets = Object.entries(filters.attributes || {});
+    if (selectedFacets.length > 0) {
+      const variants = (p.variants ?? []) as Array<{ attributes?: Record<string, unknown> }>;
+      const matchesSomeVariant = variants.some((v) =>
+        selectedFacets.every(([key, value]) => {
+          const attr = v.attributes?.[key];
+          return attr !== undefined && attr !== null && String(attr) === value;
+        }),
+      );
+      if (!matchesSomeVariant) return false;
     }
 
     return true;

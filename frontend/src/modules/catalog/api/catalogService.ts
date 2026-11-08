@@ -27,6 +27,8 @@ export interface GetProductsParams {
   minPrice?: number;
   maxPrice?: number;
   sort?: string;
+  /** Selected variant attribute facets, e.g. { color: "black", size: "XL" }. */
+  attributes?: Record<string, string>;
 }
 
 type CatalogListParams = number | { pageSize?: number; cursor?: string; search?: string; keyset?: boolean };
@@ -62,6 +64,12 @@ export const catalogService = {
     if (params?.minPrice !== undefined) query.append("min_price", String(params.minPrice));
     if (params?.maxPrice !== undefined) query.append("max_price", String(params.maxPrice));
     if (params?.sort) query.append("sort", params.sort);
+    if (params?.attributes) {
+      const pairs = Object.entries(params.attributes)
+        .filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
+        .map(([k, v]) => `${k.trim()}:${v.trim()}`);
+      if (pairs.length > 0) query.append("attribute", pairs.join(","));
+    }
 
     const qs = query.toString();
     return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${qs ? `?${qs}` : ""}`);

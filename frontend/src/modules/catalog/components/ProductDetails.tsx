@@ -30,16 +30,22 @@ import {
   resolveVariantStock,
   resolveProductImageEntries,
 } from "../utils/productHelpers";
+import { selectRelatedProducts, type RelatedCandidate } from "../utils/relatedProducts";
+import { normalizeTiers, resolveTier } from "../utils/tierPricing";
 import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductHighlights } from "./ui/ProductHighlights";
 import { ProductBundleContents } from "./ui/ProductBundleContents";
 import { ProductReviews } from "./ui/ProductReviews";
+import { AddToCompareButton } from "@/modules/compare/components/ui/AddToCompareButton";
+import { NotifyMeDialog } from "./ui/NotifyMeDialog";
+import { TierPricingTable } from "./ui/TierPricingTable";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
-import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { convertCurrency } from "@/shared/lib/currency";
 import { formatMoney } from "@/shared/lib/money";
 
 export function ProductDetails({ initialProduct = null }: { initialProduct?: ProductDetailsEntity | null }) {
@@ -48,7 +54,8 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const navigate = useRouter();
   const locale = useLocale();
   const t = useTranslations("common");
-  const currency = useCurrency();
+  const baseCurrency = useCurrency();
+  const displayCurrency = useDisplayCurrency();
   const tReviews = useTranslations("reviews");
   const tProducts = useTranslations("products");
   const { user } = useAuthContext();
@@ -63,6 +70,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
 
   // Listen for real-time stock updates to immediately update availableStock & isVariantInStock
@@ -209,9 +217,12 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
 
   const similarProducts = useMemo(() => {
     if (!product || !allProducts) return [];
-    return allProducts
-      .filter((p) => Boolean(product.category) && p.category === product.category && p.id !== product.id)
-      .slice(0, 5);
+    return selectRelatedProducts(
+      product as unknown as RelatedCandidate,
+      allProducts as unknown as RelatedCandidate[],
+      [product.id],
+      5,
+    );
   }, [product, allProducts]);
 
   if ((allLoading && !initialProduct) || productLoading) {
@@ -329,8 +340,26 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
     ? (numVariantOldPrice > 0 ? numVariantOldPrice : undefined)
     : (numProductOldPrice > 0 ? numProductOldPrice : undefined);
 
+  // Volume/tier pricing: thresholds arrive on the variant/product payload when
+  // the backend provides them; display-only, charged price stays server-side.
+  const tierPricing = normalizeTiers(
+    (activeVariant as unknown as { tierPricing?: unknown } | null)?.tierPricing ??
+      (product as unknown as { tierPricing?: unknown }).tierPricing,
+  );
+  const tier = resolveTier(currentPrice, tierPricing, quantity);
+  const hasTierDiscount = tier.activeTier !== null && tier.savingsPerUnit > 0;
+  const displayPrice = hasTierDiscount ? tier.unitPrice : currentPrice;
+
   // Render old price whenever a valid positive old price is configured and differs from current price
   const currentOldPrice = rawOldPrice && rawOldPrice > 0 && rawOldPrice !== currentPrice ? rawOldPrice : undefined;
+
+  // Display currency conversion (base settings currency → visitor selection).
+  // The charged price is computed server-side; this only re-renders the amount.
+  const displayPriceConverted = convertCurrency(displayPrice, baseCurrency, displayCurrency);
+  const convertedBasePrice = convertCurrency(currentPrice, baseCurrency, displayCurrency);
+  const convertedOldPrice = currentOldPrice
+    ? convertCurrency(currentOldPrice, baseCurrency, displayCurrency)
+    : undefined;
 
   const calculatedDiscount = currentOldPrice && currentOldPrice > currentPrice
     ? `${Math.round(((currentOldPrice - currentPrice) / currentOldPrice) * 100)}%`
@@ -354,7 +383,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       slug: product.slug,
       variantId: resolvedVariantId,
       productName: product.product,
-      productPrice: formatMoney(currentPrice, currency),
+      productPrice: formatMoney(convertCurrency(currentPrice, baseCurrency, displayCurrency), displayCurrency),
       img: images[0],
       quantity,
       color: selectedColorLabel,
@@ -382,7 +411,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       slug: product.slug,
       variantId: resolvedVariantId,
       productName: product.product,
-      productPrice: formatMoney(currentPrice, currency),
+      productPrice: formatMoney(convertCurrency(currentPrice, baseCurrency, displayCurrency), displayCurrency),
       img: images[0],
       quantity,
       color: selectedColorLabel,
@@ -563,9 +592,9 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               productName={productName}
               stars={averageRating}
               reviewsCount={reviewCount}
-              price={currentPrice}
-              oldPrice={currentOldPrice}
-              currency={currency}
+              price={displayPriceConverted}
+              oldPrice={hasTierDiscount ? convertedBasePrice : convertedOldPrice}
+              currency={displayCurrency}
               variationAxes={product.variationAxes}
               selectedValues={selectedValues}
               onSelectAxis={handleSelectAxis}
@@ -573,21 +602,36 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               isVariantInStock={isVariantInStock}
               quantity={quantity}
               onQuantityChange={setQuantity}
+              tierSavingsPerUnit={tier.savingsPerUnit}
+              tierMinQuantity={tier.activeTier?.minQuantity}
               isAdding={isAdding}
               isWishlisted={isWishlisted}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
               onToggleWishlist={handleToggleWishlist}
               onShare={handleShare}
+              onNotifyMe={() => setNotifyMeOpen(true)}
+            />
+            <NotifyMeDialog
+              isOpen={notifyMeOpen}
+              slug={product.slug || String(product.id)}
+              productName={productName}
+              onClose={() => setNotifyMeOpen(false)}
             />
           </div>
 
           <ProductHighlights highlights={highlights} />
+          <TierPricingTable tiers={tierPricing} baseUnitPrice={convertCurrency(currentPrice, baseCurrency, displayCurrency)} quantity={quantity} currency={displayCurrency} />
+          <AddToCompareButton slug={product.slug || String(product.id)} productName={productName} />
         </div>
       </div>
 
       {/* Kit contents (bundles only) */}
-      <ProductBundleContents bundle={product.bundle} />
+      <ProductBundleContents
+        bundle={product.bundle}
+        bundlePrice={currentPrice}
+        onBuyBundle={handleAddToCart}
+      />
 
       {/* Specifications & Shipping Sections */}
       <ProductSpecs
@@ -616,7 +660,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       {similarProducts.length > 0 && (
         <div className="mt-10 mb-6 sm:mt-14 sm:mb-8">
           <SectionTitle
-            title={tProducts("details.similarProducts")}
+            title={tProducts("details.relatedProducts")}
             link={`/products?category=${product.categoryId || product.category}`}
           />
           <ProductsGrid

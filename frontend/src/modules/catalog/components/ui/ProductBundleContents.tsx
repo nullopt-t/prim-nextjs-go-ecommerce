@@ -1,22 +1,78 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { LazyImage } from "@/shared/ui/lazyImage";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { BadgePercent, CheckCircle2, XCircle, ShoppingBag } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { catalogService } from "@/modules/catalog/api/catalogService";
+import { normalizeProduct } from "@/modules/catalog/model/normalizeProduct";
+import { computeBundleSavings, resolveItemPrice } from "@/modules/catalog/utils/bundlePricing";
+import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
 import type { ProductBundle } from "../../types";
 
 interface ProductBundleContentsProps {
   bundle?: ProductBundle | null;
+  /** Price of the kit itself (the bundle product's own price). */
+  bundlePrice?: number;
+  /** Adds the kit to the cart; the kit sells as a single product. */
+  onBuyBundle?: () => void;
 }
 
 /**
- * Lists what a kit ships with and the availability of each component. A bundle
- * keeps no stock of its own, so this section is the only place a customer can
- * see why a kit is or is not available.
+ * Lists what a kit ships with and the availability of each component. The
+ * payload carries no prices, so savings are computed from each component
+ * product's own price (resolved client-side); when a component can't be
+ * priced, the savings line simply hides.
  */
-export function ProductBundleContents({ bundle }: ProductBundleContentsProps) {
+export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: ProductBundleContentsProps) {
   const t = useTranslations("products.bundle");
+  const formatPrice = usePriceFormatter();
+  const [prices, setPrices] = useState<Record<string, number>>({});
+
+  const slugsKey = useMemo(
+    () => (bundle ? bundle.items.map((item) => item.slug).join("|") : ""),
+    [bundle],
+  );
+
+  useEffect(() => {
+    if (!bundle || bundle.items.length === 0) return;
+    let isMounted = true;
+    const items = bundle.items;
+    Promise.allSettled(
+      items.map(async (item) => {
+        const res = await catalogService.getProductBySlug(item.slug);
+        const raw = (res as { data?: unknown })?.data ?? (res as unknown);
+        const product = normalizeProduct(raw as Parameters<typeof normalizeProduct>[0]) as unknown as {
+          price?: string | number;
+          extractedPrice?: number;
+          variants?: Array<{ extractedPrice?: number; price?: string | number; isDefault?: boolean }>;
+        } | null;
+        return { slug: item.slug, price: product ? resolveItemPrice(product) : 0 };
+      }),
+    ).then((results) => {
+      if (!isMounted) return;
+      const next: Record<string, number> = {};
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled" && result.value.price > 0) {
+          next[items[index].slug] = result.value.price;
+        }
+      });
+      setPrices(next);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [bundle, slugsKey]);
 
   if (!bundle || bundle.items.length === 0) return null;
+
+  const savings = computeBundleSavings(
+    bundle.items.map((item) => ({
+      slug: item.slug,
+      quantity: item.quantity,
+      price: prices[item.slug] ?? 0,
+    })),
+    bundlePrice ?? 0,
+  );
 
   return (
     <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm sm:mt-10 sm:p-7">
@@ -46,8 +102,19 @@ export function ProductBundleContents({ bundle }: ProductBundleContentsProps) {
         </span>
       </div>
 
+      {savings && (
+        <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:text-sm">
+          <BadgePercent className="size-4" aria-hidden="true" />
+          {t("savings", {
+            amount: formatPrice(savings.savings),
+            percent: savings.percentOff,
+          })}
+        </p>
+      )}
+
       <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {bundle.items.map((item) => {
+          const linePrice = prices[item.slug];
           const content = (
             <>
               <LazyImage
@@ -72,6 +139,12 @@ export function ProductBundleContents({ bundle }: ProductBundleContentsProps) {
                     {item.variant}
                   </p>
                 ) : null}
+
+                {linePrice !== undefined && (
+                  <p className="mt-0.5 text-xs font-semibold text-foreground">
+                    {formatPrice(linePrice * item.quantity)}
+                  </p>
+                )}
 
                 <p
                   className={`mt-1 flex items-center gap-1 text-xs font-medium ${
@@ -107,6 +180,25 @@ export function ProductBundleContents({ bundle }: ProductBundleContentsProps) {
       </ul>
 
       <p className="mt-4 text-xs text-muted-foreground">{t("hint")}</p>
+
+      {onBuyBundle && (
+        <div className="mt-5 flex justify-end border-t border-border/70 pt-5">
+          <button
+            type="button"
+            onClick={onBuyBundle}
+            disabled={!bundle.isInStock}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent-brand px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          >
+            <ShoppingBag className="size-4" aria-hidden="true" />
+            {t("buyBundle", {
+              price:
+                bundlePrice !== undefined
+                  ? formatPrice(bundlePrice)
+                  : "",
+            })}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
