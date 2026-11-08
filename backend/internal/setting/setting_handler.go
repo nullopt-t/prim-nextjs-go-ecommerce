@@ -26,6 +26,14 @@ func NewHandler(s *Service) *Handler {
 // SettingsMap is the key/value representation of the settings payload.
 type SettingsMap map[string]interface{}
 
+// CurrencyInfo represents a supported currency and its display metadata and conversion rate relative to base.
+type CurrencyInfo struct {
+	Code      string  `json:"code" example:"USD"`
+	Symbol    string  `json:"symbol" example:"$"`
+	Decimals  int     `json:"decimals" example:"2"`
+	RateToEGP float64 `json:"rateToEgp" example:"48.5"`
+}
+
 type UpdateSettingsRequest struct {
 	// Key/value pairs to upsert (e.g. {"currency": "EGP"}).
 	Items map[string]interface{} `json:"items" binding:"required" example:"{\"currency\":\"EGP\"}"`
@@ -71,6 +79,26 @@ func (h *Handler) GetPublicSettings(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{Data: cfg})
+}
+
+// GetCurrencies godoc
+//
+//	@Summary		Get supported currencies and exchange rates
+//	@Description	Returns supported currencies, their symbols, decimal places, and exchange conversion rates relative to the store base currency.
+//	@Tags			Settings
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	api.DataResponse{data=[]CurrencyInfo}	"Supported currencies"
+//	@Router			/settings/currencies [get]
+func (h *Handler) GetCurrencies(c *gin.Context) {
+	currencies := []CurrencyInfo{
+		{Code: "EGP", Symbol: "E£", Decimals: 2, RateToEGP: 1.0},
+		{Code: "USD", Symbol: "$", Decimals: 2, RateToEGP: 48.5},
+		{Code: "EUR", Symbol: "€", Decimals: 2, RateToEGP: 52.0},
+		{Code: "SAR", Symbol: "SR", Decimals: 2, RateToEGP: 12.9},
+		{Code: "AED", Symbol: "AED", Decimals: 2, RateToEGP: 13.2},
+	}
+	c.JSON(http.StatusOK, api.DataResponse{Data: currencies})
 }
 
 // UpdateSettings godoc

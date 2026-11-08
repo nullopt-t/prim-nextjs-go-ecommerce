@@ -48,5 +48,6 @@ func (r *SettingRouter) MapPublicRoutes(vgroup *gin.RouterGroup) {
 	public.Use(middleware.NoCache())
 	{
 		public.GET("/public", r.handler.GetPublicSettings)
+		public.GET("/currencies", r.handler.GetCurrencies)
 	}
 }
