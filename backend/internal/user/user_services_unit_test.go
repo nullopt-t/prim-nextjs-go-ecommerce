@@ -422,6 +422,63 @@ func TestAddressService_Unit_Validation(t *testing.T) {
 	}
 }
 
+func TestAddressService_Unit_InvalidPhoneRejected(t *testing.T) {
+	svc, _ := newAddressService()
+	ctx := context.Background()
+	userID := uuid.New()
+
+	badPhones := []string{"abc", "+441234567890", "011234", "012345678", "+2012345678901"}
+	for _, phone := range badPhones {
+		in := addressInput("Alice")
+		in.Phone = &phone
+		_, err := svc.CreateAddress(ctx, userID, in)
+		requireStatus(t, err, 400)
+	}
+
+	goodPhones := []string{"01012345678", "+201012345678", "0020 111 234 5678", "01123456789"}
+	for _, phone := range goodPhones {
+		in := addressInput("Alice")
+		in.Phone = &phone
+		_, err := svc.CreateAddress(ctx, userID, in)
+		require.NoError(t, err)
+	}
+}
+
+func TestAddressService_Unit_InvalidPostalCodeRejected(t *testing.T) {
+	svc, _ := newAddressService()
+	ctx := context.Background()
+	userID := uuid.New()
+
+	for _, postal := range []string{"123", "123456", "12A45"} {
+		in := addressInput("Alice")
+		in.PostalCode = &postal
+		_, err := svc.CreateAddress(ctx, userID, in)
+		requireStatus(t, err, 400)
+	}
+
+	in := addressInput("Alice")
+	valid := "11222"
+	in.PostalCode = &valid
+	_, err := svc.CreateAddress(ctx, userID, in)
+	require.NoError(t, err)
+}
+
+func TestAddressService_Unit_UpdateRejectsInvalidPhone(t *testing.T) {
+	svc, _ := newAddressService()
+	ctx := context.Background()
+	userID := uuid.New()
+
+	created, err := svc.CreateAddress(ctx, userID, addressInput("Alice"))
+	require.NoError(t, err)
+
+	bad := "not-a-phone"
+	_, err = svc.UpdateAddress(ctx, created.ID, userID, &user.UpdateAddressInput{
+		FullName: "Alice", Line1: "line", City: "Cairo", Country: "EG", Phone: &bad,
+		IsDefault: true,
+	})
+	requireStatus(t, err, 400)
+}
+
 func TestNotificationService_Unit_LifecycleAndIsolation(t *testing.T) {
 	repo := newFakeNotificationRepo()
 	svc := user.NewNotificationService(fakeRunner{}, repo, log.NewNoopLogger())

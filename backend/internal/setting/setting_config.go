@@ -3,6 +3,7 @@ package setting
 import (
 	"encoding/json"
 	"math"
+	"strings"
 )
 
 // Config is the typed projection of the administrative settings that actually
@@ -167,6 +168,11 @@ func configFromMap(m map[string]interface{}) Config {
 	c.StorePhone = getString(m, "storePhone", c.StorePhone)
 	c.StoreAddress = getString(m, "storeAddress", c.StoreAddress)
 	c.Currency = getString(m, "currency", c.Currency)
+	// An empty stored currency breaks every formatter downstream; restore the
+	// default instead of serving a blank code.
+	if strings.TrimSpace(c.Currency) == "" {
+		c.Currency = "EGP"
+	}
 	c.DefaultLocale = getString(m, "defaultLocale", c.DefaultLocale)
 	c.AnnouncementEnabled = getBool(m, "announcementEnabled", c.AnnouncementEnabled)
 	c.AnnouncementText = getString(m, "announcementText", c.AnnouncementText)

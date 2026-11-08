@@ -690,8 +690,16 @@ func (s *UserService) UpdateProfile(
 		return nil, apierr.BadRequestError("user id is required")
 	}
 
+	if fullName != nil && strings.TrimSpace(*fullName) == "" {
+		return nil, apierr.BadRequestError("Full name cannot be blank").WithCode(apierr.CodeInvalidInput)
+	}
+	phone, err := normalizePhone(phone)
+	if err != nil {
+		return nil, err
+	}
+
 	var updatedUser *model.User
-	err := s.dbExecutor.WithTx(ctx, func(txCtx context.Context) error {
+	err = s.dbExecutor.WithTx(ctx, func(txCtx context.Context) error {
 		u, err := s.repo.UpdateProfile(txCtx, id, fullName, phone)
 		if err != nil {
 			return err

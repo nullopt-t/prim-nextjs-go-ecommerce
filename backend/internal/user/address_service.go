@@ -168,12 +168,20 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
+	phone, err := normalizePhone(in.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if err = validatePostalCode(in.PostalCode); err != nil {
+		return nil, err
+	}
+
 	address := &model.UserAddress{
 		ID:         uuid.New(),
 		UserID:     userID,
 		Label:      in.Label,
 		FullName:   strings.TrimSpace(in.FullName),
-		Phone:      in.Phone,
+		Phone:      phone,
 		Line1:      strings.TrimSpace(in.Line1),
 		Line2:      in.Line2,
 		City:       strings.TrimSpace(in.City),
@@ -187,7 +195,7 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 	// A per-user advisory transaction lock serializes concurrent creations so
 	// only one "first address" wins the default flag (the partial unique index
 	// on addresses(user_id) WHERE is_default is the backstop).
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+	txErr := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.repo.LockUserAddresses(ctx, userID); err != nil {
 			return err
 		}
@@ -211,9 +219,9 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 		return s.repo.Create(ctx, address)
 	})
 
-	if err != nil {
-		s.logger.Error("failed to create user address", log.Meta{"userId": userID, "error": err.Error()})
-		return nil, s.handleError(err, "Failed to create address")
+	if txErr != nil {
+		s.logger.Error("failed to create user address", log.Meta{"userId": userID, "error": txErr.Error()})
+		return nil, s.handleError(txErr, "Failed to create address")
 	}
 
 	return address, nil
@@ -235,8 +243,16 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
+	phone, err := normalizePhone(in.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if err = validatePostalCode(in.PostalCode); err != nil {
+		return nil, err
+	}
+
 	var updated *model.UserAddress
-	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+	err = s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		current, err := s.repo.GetByIDAndUser(ctx, id, userID)
 		if err != nil {
 			return err
@@ -244,7 +260,7 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 
 		current.Label = in.Label
 		current.FullName = strings.TrimSpace(in.FullName)
-		current.Phone = in.Phone
+		current.Phone = phone
 		current.Line1 = strings.TrimSpace(in.Line1)
 		current.Line2 = in.Line2
 		current.City = strings.TrimSpace(in.City)
