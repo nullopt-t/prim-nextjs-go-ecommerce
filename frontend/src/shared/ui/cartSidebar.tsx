@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCart } from "@/modules/cart/model/useCart";
 import OrdersGrid from "@/modules/cart/components/ui/ordersGrid";
 import PaymentBox from "@/modules/cart/components/ui/paymentBox";
-import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
+import { useOptionalCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { ProductsCard } from "@/shared/ui/productsCard";
 import type { CardDetails } from "@/shared/ui/productsCard";
 import {
@@ -19,7 +19,10 @@ export function CartSidebar() {
   const t = useTranslations("cart");
   const tUi = useTranslations("components");
   const { cartItems, isCartOpen, closeCart } = useCart();
-  const { products } = useCatalogContext();
+  // The shop layout mounts the catalog provider, but this sidebar renders in
+  // the root layout (above route groups), so tolerate its absence and simply
+  // skip recommendations outside the shop group.
+  const products = useOptionalCatalogContext()?.products;
   const [mounted, setMounted] = useState(false);
   const hasItems = cartItems && cartItems.length > 0;
 
