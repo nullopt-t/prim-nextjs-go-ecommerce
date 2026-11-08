@@ -59,4 +59,39 @@ describe("calculateCartTotals", () => {
 		expect(r.shippingKnown).toBe(false);
 		expect(r.shippingCost).toBe(0);
 	});
+
+	it("a freeShipping coupon flag never waives shipping (backend has no such benefit)", () => {
+		const r = calculateCartTotals(
+			[item(10, 1)],
+			{ code: "FS", discountType: "percentage", discountPercent: 10, freeShipping: true },
+			150,
+			9.99,
+		);
+		expect(r.isFreeShipping).toBe(false);
+		expect(r.shippingCost).toBe(9.99);
+		expect(r.discount).toBe(1);
+	});
+
+	it("rounds the settings shipping float to cents (backend minor-unit parity)", () => {
+		const r = calculateCartTotals([item(10, 1)], null, 150, 9.999);
+		expect(r.shippingCost).toBe(10);
+		expect(r.total).toBe(20);
+	});
+
+	it("threshold 0 means free shipping with 100% progress", () => {
+		const r = calculateCartTotals([item(10, 1)], null, 0, 9.99);
+		expect(r.isFreeShipping).toBe(true);
+		expect(r.shippingProgress).toBe(100);
+		expect(r.remainingForFreeShipping).toBe(0);
+	});
+
+	it("NaN unitPrice and zero quantity contribute 0, never NaN totals", () => {
+		const nanItem = { ...item(NaN, 1), productPrice: "" };
+		const r = calculateCartTotals([nanItem], null, 150, 9.99);
+		expect(r.subtotal).toBe(0);
+		expect(Number.isNaN(r.total)).toBe(false);
+		const zeroQty = calculateCartTotals([item(50, 0)], null, 150, 9.99);
+		expect(zeroQty.subtotal).toBe(0);
+		expect(zeroQty.total).toBe(0);
+	});
 });

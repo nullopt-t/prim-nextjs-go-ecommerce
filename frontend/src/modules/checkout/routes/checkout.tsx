@@ -155,11 +155,12 @@ export function Checkout() {
 		// Express has no configured rate in the public settings contract yet, so
 		// fall back to the standard rate instead of inventing a price. The backend
 		// remains the authority on the final charge.
-		const expressShippingCost = storeSettings?.expressShippingRate ?? standardShippingCost;
+		const roundCents = (n: number) => Math.round(n * 100) / 100;
+		const expressShippingCost = roundCents(storeSettings?.expressShippingRate ?? standardShippingCost);
 		// The backend charges 0 at/above the free-shipping threshold regardless
 		// of speed (it has no express rate); mirror that so the displayed
 		// express total cannot drift from the charged total.
-		const shippingCost = isStandardFree ? 0 : shippingSpeed === "express" ? expressShippingCost : standardShippingCost;
+		const shippingCost = isStandardFree ? 0 : shippingSpeed === "express" ? expressShippingCost : roundCents(standardShippingCost);
 
 	// Tax is only charged on top when prices are configured as tax-exclusive.
 	const taxRate = storeSettings?.taxRatePercent ?? 0;
@@ -169,7 +170,7 @@ export function Checkout() {
 			: 0;
 
 	// Cash-on-delivery surcharge, applied only when COD is the selected method.
-	const codFee = codAvailable ? (storeSettings?.codFee ?? 0) : 0;
+	const codFee = codAvailable ? roundCents(storeSettings?.codFee ?? 0) : 0;
 
 	const finalTotal = Math.round(Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee) * 100) / 100;
 

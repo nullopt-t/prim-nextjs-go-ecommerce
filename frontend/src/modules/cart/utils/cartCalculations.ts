@@ -28,12 +28,13 @@ export function calculateCartTotals(
 ): CartCalculation {
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const subtotal = round2(items.reduce((acc, item) => {
-    const rawPrice = typeof item.unitPrice === "number"
-      ? item.unitPrice
-      : typeof item.productPrice === "number"
+    const rawPrice = Number.isFinite(item.unitPrice)
+      ? (item.unitPrice as number)
+      : typeof item.productPrice === "number" && Number.isFinite(item.productPrice)
         ? item.productPrice
         : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
-    return acc + rawPrice * (item.quantity || 1);
+    const qty = Number.isFinite(item.quantity) ? item.quantity : 1;
+    return acc + rawPrice * qty;
   }, 0));
 
   // Calculate discount from coupon
@@ -57,10 +58,19 @@ export function calculateCartTotals(
   discount = Math.min(round2(discount), subtotal);
 
   const shippingKnown = shippingThreshold !== null;
-  const isFreeShipping = shippingKnown && (subtotal >= (shippingThreshold as number) || Boolean(appliedCoupon?.freeShipping));
-  const shippingCost = !shippingKnown || isFreeShipping || subtotal === 0 ? 0 : standardShippingCost;
+  // Free shipping is threshold-only: the backend waives shipping solely on the
+  // gross-total threshold and has no free-shipping coupon benefit, so a
+  // coupon flag must never waive it here (display would drift from charge).
+  const isFreeShipping = shippingKnown && subtotal >= (shippingThreshold as number);
+  // Settings are major-unit floats; the backend rounds them to minor units
+  // (math.Round(v*100)), so round here too or 9.999 displays/charges as 9.99.
+  const shippingCost = !shippingKnown || isFreeShipping || subtotal === 0 ? 0 : round2(standardShippingCost);
   const remainingForFreeShipping = shippingKnown ? Math.max(0, (shippingThreshold as number) - subtotal) : 0;
-  const shippingProgress = shippingKnown && shippingThreshold ? Math.min(100, (subtotal / shippingThreshold) * 100) : 0;
+  const shippingProgress = shippingKnown && shippingThreshold !== null && shippingThreshold > 0
+    ? Math.min(100, (subtotal / shippingThreshold) * 100)
+    : shippingKnown && shippingThreshold === 0
+      ? 100
+      : 0;
 
   const total = round2(Math.max(0, subtotal - discount + shippingCost));
 
