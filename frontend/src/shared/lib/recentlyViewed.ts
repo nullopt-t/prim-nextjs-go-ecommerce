@@ -20,6 +20,12 @@ export function mergeRecentSlugs(
 	return next.slice(0, maxItems);
 }
 
+/** Drops a slug from the list. Pure, testable. */
+export function removeRecentlyViewedSlug(existing: string[], slug?: string | null): string[] {
+	if (!slug) return existing;
+	return existing.filter((item) => item !== slug);
+}
+
 export function getRecentlyViewedSlugs(): string[] {
 	if (typeof window === "undefined") return [];
 	try {
@@ -42,6 +48,19 @@ export function recordRecentlyViewed(slug?: string | null) {
 	} catch {
 		// Storage can be unavailable in private mode; the server history still works.
 	}
+}
+
+export function removeRecentlyViewed(slug?: string | null) {
+	if (typeof window === "undefined" || !slug) return;
+	try {
+		window.localStorage.setItem(
+			STORAGE_KEY,
+			JSON.stringify(removeRecentlyViewedSlug(getRecentlyViewedSlugs(), slug)),
+		);
+	} catch {
+		// Ignore unavailable storage.
+	}
+	notifyRecentlyViewedChanged();
 }
 
 export function clearRecentlyViewed(notify = true) {

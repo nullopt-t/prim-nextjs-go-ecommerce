@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { mergeRecentSlugs } from "./recentlyViewed";
+import { mergeRecentSlugs, removeRecentlyViewedSlug } from "./recentlyViewed";
+
+describe("removeRecentlyViewedSlug", () => {
+	it("drops the slug", () => {
+		expect(removeRecentlyViewedSlug(["b", "a", "c"], "a")).toEqual(["b", "c"]);
+	});
+
+	it("is a no-op for empty input", () => {
+		expect(removeRecentlyViewedSlug(["b"], "")).toEqual(["b"]);
+	});
+});
 
 describe("mergeRecentSlugs", () => {
 	it("moves an existing slug to the front without duplicating it", () => {

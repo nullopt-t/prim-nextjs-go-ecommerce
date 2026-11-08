@@ -8,9 +8,12 @@ import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { historyService } from "@/modules/history/api/historyService";
 import type { ViewedProduct } from "@/modules/history/types";
 import {
+	clearRecentlyViewed,
 	getRecentlyViewedSlugs,
+	removeRecentlyViewed,
 	RECENTLY_VIEWED_UPDATED_EVENT,
 } from "@/shared/lib/recentlyViewed";
+import { notify } from "@/shared/lib/notify";
 
 const RECENT_LIMIT = 6;
 
@@ -77,6 +80,37 @@ export default function Recently() {
 		};
 	}, [load]);
 
+	const handleRemove = useCallback(
+		async (item: ViewedProduct) => {
+			setItems((prev) => prev.filter((i) => i.productId !== item.productId));
+			try {
+				if (user) {
+					await historyService.remove(item.productId);
+				} else {
+					removeRecentlyViewed(item.slug);
+				}
+			} catch {
+				// Best-effort: optimistic removal stands.
+			}
+			notify.info(t("recentlyViewed.removed", { name: item.title }));
+		},
+		[t, user],
+	);
+
+	const handleClear = useCallback(async () => {
+		setItems([]);
+		try {
+			if (user) {
+				await historyService.clear();
+			} else {
+				clearRecentlyViewed();
+			}
+		} catch {
+			// Best-effort: optimistic clear stands.
+		}
+		notify.success(t("recentlyViewed.cleared"));
+	}, [t, user]);
+
 	if (items.length === 0) {
 		return null;
 	}
@@ -88,8 +122,15 @@ export default function Recently() {
 					<p className="text-foreground font-bold text-sm sm:text-base">
 						{t("recentlyViewed.title")}
 					</p>
+					<button
+						type="button"
+						onClick={() => void handleClear()}
+						className="cursor-pointer text-xs font-medium text-accent-brand hover:underline"
+					>
+						{t("recentlyViewed.clear")}
+					</button>
 				</div>
-				<RecentlyGrid items={items} />
+				<RecentlyGrid items={items} onRemove={handleRemove} />
 			</div>
 		</div>
 	);
