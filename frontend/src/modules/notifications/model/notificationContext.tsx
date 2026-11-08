@@ -29,7 +29,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
     setLoading(true);
     try {
-      const res = await notificationService.getNotifications(1, 15, false);
+      // shortcut: first page only (backend caps pageSize at 10); add cursor chaining when the dropdown gets load-more.
+      const res = await notificationService.getNotifications({ pageSize: 10 });
       if (res && res.data) {
         setNotifications(res.data);
       }

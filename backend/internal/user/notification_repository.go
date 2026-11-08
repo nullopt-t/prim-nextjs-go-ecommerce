@@ -57,62 +57,47 @@ func (r *NotificationRepository) Create(
 	).Scan(&n.ID, &n.CreatedAt)
 }
 
-// ListByUser retrieves paginated user notifications, optionally filtered to unread items only.
-// It executes a count query to populate pagination metadata, followed by a limit/offset query
-// sorted newest-first (created_at DESC).
+// ListByUser retrieves cursor-paginated user notifications, optionally filtered to unread items only.
+// It queries limit+1 rows ordered by (created_at DESC, id DESC) using KeysetClause, eliminating COUNT and OFFSET.
 func (r *NotificationRepository) ListByUser(
 	ctx context.Context,
 	userID uuid.UUID,
 	unreadOnly bool,
-	q *pagination.ListQuery,
-) ([]*model.UserNotification, int, error) {
+	limit int,
+	cursor *pagination.Keyset,
+) ([]*model.UserNotification, *pagination.CursorPage, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	var countQuery string
+	query := `
+		SELECT id, user_id, title, message, category, action_url, metadata, read_at, created_at
+		FROM user_notifications
+		WHERE user_id = $1
+	`
+	args := []any{userID}
+	nextArg := 2
+
 	if unreadOnly {
-		countQuery = `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1 AND read_at IS NULL`
-	} else {
-		countQuery = `SELECT COUNT(*) FROM user_notifications WHERE user_id = $1`
+		query += " AND read_at IS NULL"
 	}
 
-	var total int
-	if err := executor.QueryRowContext(ctx, countQuery, userID).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count user notifications: %w", err)
-	}
+	keysetClause, keysetArgs := pagination.KeysetClause("", cursor, nextArg)
+	query += keysetClause
+	args = append(args, keysetArgs...)
+	nextArg += len(keysetArgs)
 
-	if total == 0 {
-		return []*model.UserNotification{}, 0, nil
-	}
+	query += pagination.KeysetOrderBy("") + fmt.Sprintf(" LIMIT $%d", nextArg)
+	args = append(args, limit+1)
 
-	var selectQuery string
-	if unreadOnly {
-		selectQuery = `
-			SELECT id, user_id, title, message, category, action_url, metadata, read_at, created_at
-			FROM user_notifications
-			WHERE user_id = $1 AND read_at IS NULL
-			ORDER BY created_at DESC
-			LIMIT $2 OFFSET $3
-		`
-	} else {
-		selectQuery = `
-			SELECT id, user_id, title, message, category, action_url, metadata, read_at, created_at
-			FROM user_notifications
-			WHERE user_id = $1
-			ORDER BY created_at DESC
-			LIMIT $2 OFFSET $3
-		`
-	}
-
-	rows, err := executor.QueryContext(ctx, selectQuery, userID, q.PageSize, q.Offset)
+	rows, err := executor.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list user notifications: %w", err)
+		return nil, nil, fmt.Errorf("list user notifications: %w", err)
 	}
 	defer rows.Close()
 
-	items := make([]*model.UserNotification, 0, q.PageSize)
+	var items []*model.UserNotification
 	for rows.Next() {
 		var item model.UserNotification
 		if err := rows.Scan(
@@ -126,12 +111,22 @@ func (r *NotificationRepository) ListByUser(
 			&item.ReadAt,
 			&item.CreatedAt,
 		); err != nil {
-			return nil, 0, fmt.Errorf("scan user notification: %w", err)
+			return nil, nil, fmt.Errorf("scan user notification: %w", err)
 		}
 		items = append(items, &item)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("iterate user notifications: %w", err)
+	}
 
-	return items, total, rows.Err()
+	items, page := pagination.NewCursorPageFrom(items, limit, func(n *model.UserNotification) pagination.Keyset {
+		return pagination.Keyset{
+			CreatedAt: n.CreatedAt,
+			IDInt:     n.ID,
+		}
+	})
+
+	return items, page, nil
 }
 
 // CountUnreadByUser queries the index on unread notifications (read_at IS NULL) for the given user.

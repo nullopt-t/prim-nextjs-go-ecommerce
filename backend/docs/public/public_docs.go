@@ -4950,7 +4950,7 @@ const docTemplatepublic = `{
         },
         "/user/notifications": {
             "get": {
-                "description": "Returns a paginated list of in-app notifications localized to the active site language.",
+                "description": "Returns a cursor-paginated list of in-app notifications localized to the active site language.",
                 "produces": [
                     "application/json"
                 ],
@@ -5031,10 +5031,19 @@ const docTemplatepublic = `{
                                             "items": {
                                                 "$ref": "#/definitions/NotificationItemResponse"
                                             }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/definitions/CursorPage"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
                         }
                     },
                     "401": {
@@ -6174,6 +6183,78 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "BundleItemResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Units currently available for sale",
+                    "type": "integer",
+                    "example": 12
+                },
+                "id": {
+                    "description": "Component product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "isInStock": {
+                    "description": "True when availableQuantity \u003e 0",
+                    "type": "boolean",
+                    "example": true
+                },
+                "quantity": {
+                    "description": "Units of this component included in one kit",
+                    "type": "integer",
+                    "example": 2
+                },
+                "slug": {
+                    "description": "Component product storefront slug",
+                    "type": "string",
+                    "example": "wireless-mouse"
+                },
+                "thumbnail": {
+                    "description": "Component cover image URL",
+                    "type": "string",
+                    "example": "https://example.com/mouse.jpg"
+                },
+                "title": {
+                    "description": "Component product title",
+                    "type": "string",
+                    "example": "Wireless Mouse"
+                },
+                "variant": {
+                    "description": "Pinned variant title, when the kit was built with a specific variant",
+                    "type": "string",
+                    "example": "Black"
+                }
+            }
+        },
+        "BundleResponse": {
+            "type": "object",
+            "properties": {
+                "availableQuantity": {
+                    "description": "Complete kits the components can currently build",
+                    "type": "integer",
+                    "example": 4
+                },
+                "isInStock": {
+                    "description": "True when at least one complete kit is available",
+                    "type": "boolean",
+                    "example": true
+                },
+                "itemCount": {
+                    "description": "Number of distinct products in the kit",
+                    "type": "integer",
+                    "example": 3
+                },
+                "items": {
+                    "description": "Kit composition in display order",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/BundleItemResponse"
+                    }
+                }
+            }
+        },
         "CartItemResponse": {
             "type": "object",
             "properties": {
@@ -6546,6 +6627,26 @@ const docTemplatepublic = `{
                     "description": "Optional review headline title",
                     "type": "string",
                     "example": "Unbelievable performance!"
+                }
+            }
+        },
+        "CursorPage": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "description": "HasMore reports whether additional rows exist after this page.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "nextCursor": {
+                    "description": "NextCursor is the opaque token to fetch the following page, or \"\" when exhausted.",
+                    "type": "string",
+                    "example": "eyJ0IjoiMjAyNC0wMS0wMVQwMDowMDowMFoiLCJpIjoiLi4uIn0"
+                },
+                "pageSize": {
+                    "description": "PageSize is the maximum number of items returned per page.",
+                    "type": "integer",
+                    "example": 10
                 }
             }
         },
@@ -7063,6 +7164,14 @@ const docTemplatepublic = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/ProductBrandSummary"
+                        }
+                    ]
+                },
+                "bundle": {
+                    "description": "Kit composition, present only when the product is a bundle",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/BundleResponse"
                         }
                     ]
                 },

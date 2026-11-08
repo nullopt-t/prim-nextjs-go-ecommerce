@@ -190,7 +190,7 @@ func (f *fakeNotificationRepo) Create(_ context.Context, n *model.UserNotificati
 	return nil
 }
 
-func (f *fakeNotificationRepo) ListByUser(_ context.Context, userID uuid.UUID, unreadOnly bool, q *pagination.ListQuery) ([]*model.UserNotification, int, error) {
+func (f *fakeNotificationRepo) ListByUser(_ context.Context, userID uuid.UUID, unreadOnly bool, limit int, cursor *pagination.Keyset) ([]*model.UserNotification, *pagination.CursorPage, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	var all []*model.UserNotification
@@ -201,23 +201,27 @@ func (f *fakeNotificationRepo) ListByUser(_ context.Context, userID uuid.UUID, u
 		if unreadOnly && n.ReadAt != nil {
 			continue
 		}
+		if cursor != nil {
+			if !n.CreatedAt.Before(cursor.CreatedAt) && !(n.CreatedAt.Equal(cursor.CreatedAt) && n.ID < cursor.IDInt) {
+				continue
+			}
+		}
 		copy := *n
 		all = append(all, &copy)
 	}
-	sort.Slice(all, func(i, j int) bool { return all[i].CreatedAt.After(all[j].CreatedAt) })
-	total := len(all)
-	if q == nil {
-		q = &pagination.ListQuery{Page: 1, PageSize: 10}
-	}
-	start := q.Offset
-	if start > total {
-		start = total
-	}
-	end := start + q.PageSize
-	if q.PageSize <= 0 || end > total {
-		end = total
-	}
-	return all[start:end], total, nil
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].CreatedAt.Equal(all[j].CreatedAt) {
+			return all[i].ID > all[j].ID
+		}
+		return all[i].CreatedAt.After(all[j].CreatedAt)
+	})
+	items, page := pagination.NewCursorPageFrom(all, limit, func(n *model.UserNotification) pagination.Keyset {
+		return pagination.Keyset{
+			CreatedAt: n.CreatedAt,
+			IDInt:     n.ID,
+		}
+	})
+	return items, page, nil
 }
 
 func (f *fakeNotificationRepo) CountUnreadByUser(_ context.Context, userID uuid.UUID) (int, error) {
@@ -447,14 +451,15 @@ func TestNotificationService_Unit_LifecycleAndIsolation(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, count)
 
-	all, err := svc.GetMyNotifications(ctx, owner, false, &pagination.ListQuery{Page: 1, PageSize: 10})
+	all, page, err := svc.GetMyNotifications(ctx, owner, false, 10, nil)
 	require.NoError(t, err)
-	assert.Len(t, all.Items, 3)
-	assert.Equal(t, 3, all.Page.TotalItems)
+	assert.Len(t, all, 3)
+	assert.False(t, page.HasMore)
 
-	unread, err := svc.GetMyNotifications(ctx, owner, true, &pagination.ListQuery{Page: 1, PageSize: 10})
+	unread, unreadPage, err := svc.GetMyNotifications(ctx, owner, true, 10, nil)
 	require.NoError(t, err)
-	assert.Len(t, unread.Items, 2)
+	assert.Len(t, unread, 2)
+	assert.False(t, unreadPage.HasMore)
 
 	require.NoError(t, svc.MarkAsRead(ctx, first, owner))
 	count, err = svc.GetUnreadCount(ctx, owner)
@@ -477,9 +482,10 @@ func TestNotificationService_Unit_LifecycleAndIsolation(t *testing.T) {
 	err = svc.DeleteNotification(ctx, first, intruder)
 	requireStatus(t, err, 404)
 
-	other, err := svc.GetMyNotifications(ctx, intruder, false, &pagination.ListQuery{Page: 1, PageSize: 10})
+	other, otherPage, err := svc.GetMyNotifications(ctx, intruder, false, 10, nil)
 	require.NoError(t, err)
-	assert.Empty(t, other.Items)
+	assert.Empty(t, other)
+	assert.False(t, otherPage.HasMore)
 
 	otherCount, err := svc.GetUnreadCount(ctx, intruder)
 	require.NoError(t, err)

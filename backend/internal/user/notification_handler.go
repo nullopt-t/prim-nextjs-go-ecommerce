@@ -73,12 +73,13 @@ func mapNotificationResponse(n *model.UserNotification, locale string) Notificat
 // GetMyNotifications godoc
 //
 //	@Summary		List user notifications
-//	@Description	Returns a paginated list of in-app notifications localized to the active site language.
+//	@Description	Returns a cursor-paginated list of in-app notifications localized to the active site language.
 //	@Tags			Notifications
 //	@Produce		json
-//	@Param			q			query		pagination.ListQuery	true	"Pagination parameters"
+//	@Param			q			query		pagination.ListQuery	true	"Pagination parameters (supports cursor)"
 //	@Param			unreadOnly	query		bool					false	"Filter by unread only"
-//	@Success		200			{object}	api.PaginatedResponse{data=[]NotificationItemResponse}
+//	@Success		200			{object}	api.PaginatedResponse{data=[]NotificationItemResponse,meta=pagination.CursorPage}
+//	@Failure		400			{object}	api.BadRequestErrorResponse
 //	@Failure		401			{object}	api.UnauthorizedErrorResponse
 //	@Router			/user/notifications [get]
 func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
@@ -97,26 +98,32 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 5, MaxPageSize: 10})
 
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
 	// Parse unread-only boolean query filter and active content language
 	unreadOnly := c.Query("unreadOnly") == "true"
 	locale := middleware.GetLocale(c)
 
-	// Fetch paginated notification items
-	result, err := h.service.GetMyNotifications(c.Request.Context(), userID, unreadOnly, q)
+	// Fetch cursor-paginated notification items
+	items, page, err := h.service.GetMyNotifications(c.Request.Context(), userID, unreadOnly, q.PageSize, cursor)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	// Map and localize notification items
-	responses := make([]NotificationItemResponse, len(result.Items))
-	for i, item := range result.Items {
+	responses := make([]NotificationItemResponse, len(items))
+	for i, item := range items {
 		responses[i] = mapNotificationResponse(item, locale)
 	}
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
-		Meta: result.Page,
+		Meta: page,
 	})
 }
 

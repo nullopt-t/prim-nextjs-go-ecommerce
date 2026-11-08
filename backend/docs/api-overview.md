@@ -30,6 +30,7 @@ All routes are versioned under `/api/v1`. Breaking changes are shipped as a new 
 - **Money:** minor units (e.g. piastres/cents) as integers.
 - **IDs:** UUIDv4 strings.
 - **Locale:** `Accept-Language` header (`en` / `ar`) drives bilingual responses; the admin can override per-resource where applicable.
+- **Pagination:** List endpoints use either classic offset pagination (`page`, `pageSize` returning `meta: { page, pageSize, totalPages, totalItems }`) or keyset cursor pagination (`cursor`, `pageSize` returning `meta: { nextCursor, hasMore, pageSize }`). High-frequency or real-time event feeds (e.g. `/user/notifications`, `/admin/audit`, `/admin/payments`) use cursor pagination to avoid costly `COUNT(*)` queries and offset drifting.
 
 ## Errors
 

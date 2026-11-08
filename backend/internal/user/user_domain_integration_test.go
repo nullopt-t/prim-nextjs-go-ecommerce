@@ -23,7 +23,6 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
-	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -348,15 +347,16 @@ func (s *UserDomainSuite) TestNotification_CreateListCountReadAndDelete() {
 	s.Require().NoError(err)
 	s.Equal(2, count)
 
-	page, err := s.notifs.GetMyNotifications(context.Background(), userID, false, &pagination.ListQuery{Page: 1, PageSize: 10})
+	notifications, page, err := s.notifs.GetMyNotifications(context.Background(), userID, false, 10, nil)
 	s.Require().NoError(err)
-	s.Len(page.Items, 3)
-	s.Equal(3, page.Page.TotalItems)
+	s.Len(notifications, 3)
+	s.False(page.HasMore)
 
-	unread, err := s.notifs.GetMyNotifications(context.Background(), userID, true, &pagination.ListQuery{Page: 1, PageSize: 10})
+	unread, unreadPage, err := s.notifs.GetMyNotifications(context.Background(), userID, true, 10, nil)
 	s.Require().NoError(err)
-	s.Len(unread.Items, 2)
-	for _, item := range unread.Items {
+	s.Len(unread, 2)
+	s.False(unreadPage.HasMore)
+	for _, item := range unread {
 		s.Nil(item.ReadAt)
 	}
 
@@ -377,9 +377,9 @@ func (s *UserDomainSuite) TestNotification_CreateListCountReadAndDelete() {
 	s.Equal(0, count)
 
 	s.Require().NoError(s.notifs.DeleteNotification(context.Background(), second, userID))
-	rest, err := s.notifs.GetMyNotifications(context.Background(), userID, false, &pagination.ListQuery{Page: 1, PageSize: 10})
+	rest, _, err := s.notifs.GetMyNotifications(context.Background(), userID, false, 10, nil)
 	s.Require().NoError(err)
-	s.Len(rest.Items, 2)
+	s.Len(rest, 2)
 }
 
 func (s *UserDomainSuite) TestNotification_CrossUserMutationsAreNotFound() {
@@ -393,9 +393,10 @@ func (s *UserDomainSuite) TestNotification_CrossUserMutationsAreNotFound() {
 	err = s.notifs.DeleteNotification(context.Background(), notificationID, intruder)
 	s.Equal(404, statusOf(s.T(), err))
 
-	list, err := s.notifs.GetMyNotifications(context.Background(), intruder, false, &pagination.ListQuery{Page: 1, PageSize: 10})
+	list, otherPage, err := s.notifs.GetMyNotifications(context.Background(), intruder, false, 10, nil)
 	s.Require().NoError(err)
-	s.Empty(list.Items)
+	s.Empty(list)
+	s.False(otherPage.HasMore)
 
 	count, err := s.notifs.GetUnreadCount(context.Background(), intruder)
 	s.Require().NoError(err)

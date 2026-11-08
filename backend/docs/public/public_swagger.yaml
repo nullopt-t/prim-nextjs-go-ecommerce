@@ -161,6 +161,62 @@ definitions:
       variantId:
         type: string
     type: object
+  BundleItemResponse:
+    properties:
+      availableQuantity:
+        description: Units currently available for sale
+        example: 12
+        type: integer
+      id:
+        description: Component product UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      isInStock:
+        description: True when availableQuantity > 0
+        example: true
+        type: boolean
+      quantity:
+        description: Units of this component included in one kit
+        example: 2
+        type: integer
+      slug:
+        description: Component product storefront slug
+        example: wireless-mouse
+        type: string
+      thumbnail:
+        description: Component cover image URL
+        example: https://example.com/mouse.jpg
+        type: string
+      title:
+        description: Component product title
+        example: Wireless Mouse
+        type: string
+      variant:
+        description: Pinned variant title, when the kit was built with a specific
+          variant
+        example: Black
+        type: string
+    type: object
+  BundleResponse:
+    properties:
+      availableQuantity:
+        description: Complete kits the components can currently build
+        example: 4
+        type: integer
+      isInStock:
+        description: True when at least one complete kit is available
+        example: true
+        type: boolean
+      itemCount:
+        description: Number of distinct products in the kit
+        example: 3
+        type: integer
+      items:
+        description: Kit composition in display order
+        items:
+          $ref: '#/definitions/BundleItemResponse'
+        type: array
+    type: object
   CartItemResponse:
     properties:
       attributes:
@@ -434,6 +490,22 @@ definitions:
     required:
     - productId
     - rating
+    type: object
+  CursorPage:
+    properties:
+      hasMore:
+        description: HasMore reports whether additional rows exist after this page.
+        example: true
+        type: boolean
+      nextCursor:
+        description: NextCursor is the opaque token to fetch the following page, or
+          "" when exhausted.
+        example: eyJ0IjoiMjAyNC0wMS0wMVQwMDowMDowMFoiLCJpIjoiLi4uIn0
+        type: string
+      pageSize:
+        description: PageSize is the maximum number of items returned per page.
+        example: 10
+        type: integer
     type: object
   Dashboard:
     properties:
@@ -824,6 +896,10 @@ definitions:
         allOf:
         - $ref: '#/definitions/ProductBrandSummary'
         description: Associated brand summary
+      bundle:
+        allOf:
+        - $ref: '#/definitions/BundleResponse'
+        description: Kit composition, present only when the product is a bundle
       currency:
         description: Currency ISO code
         example: EGP
@@ -5686,8 +5762,8 @@ paths:
       - History
   /user/notifications:
     get:
-      description: Returns a paginated list of in-app notifications localized to the
-        active site language.
+      description: Returns a cursor-paginated list of in-app notifications localized
+        to the active site language.
       parameters:
       - description: |-
           Cursor is an opaque keyset token. When present, repositories should use
@@ -5746,7 +5822,13 @@ paths:
                   items:
                     $ref: '#/definitions/NotificationItemResponse'
                   type: array
+                meta:
+                  $ref: '#/definitions/CursorPage'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
         "401":
           description: Unauthorized
           schema:

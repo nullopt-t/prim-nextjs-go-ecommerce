@@ -18,7 +18,7 @@ import (
 // tests provide an in-memory fake.
 type notificationStore interface {
 	Create(ctx context.Context, n *model.UserNotification) error
-	ListByUser(ctx context.Context, userID uuid.UUID, unreadOnly bool, q *pagination.ListQuery) ([]*model.UserNotification, int, error)
+	ListByUser(ctx context.Context, userID uuid.UUID, unreadOnly bool, limit int, cursor *pagination.Keyset) ([]*model.UserNotification, *pagination.CursorPage, error)
 	CountUnreadByUser(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkAsRead(ctx context.Context, id int64, userID uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -90,28 +90,28 @@ func (s *NotificationService) CreateNotification(
 	return nil
 }
 
-// GetMyNotifications returns a paginated list of notifications for the user,
+// GetMyNotifications returns a cursor-paginated list of notifications for the user,
 // supporting optional filtering for unread notifications only.
 func (s *NotificationService) GetMyNotifications(
 	ctx context.Context,
 	userID uuid.UUID,
 	unreadOnly bool,
-	q *pagination.ListQuery,
-) (*pagination.PagedResult[model.UserNotification], error) {
+	limit int,
+	cursor *pagination.Keyset,
+) ([]*model.UserNotification, *pagination.CursorPage, error) {
 	var items []*model.UserNotification
-	var total int
+	var page *pagination.CursorPage
 
 	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, total, err = s.repo.ListByUser(ctx, userID, unreadOnly, q)
+		items, page, err = s.repo.ListByUser(ctx, userID, unreadOnly, limit, cursor)
 		return err
 	})
 	if err != nil {
-		return nil, s.handleError(err, "Failed to fetch notifications")
+		return nil, nil, s.handleError(err, "Failed to fetch notifications")
 	}
 
-	page := pagination.NewPage(q.Page, q.PageSize, total)
-	return pagination.NewPagedResult(items, page), nil
+	return items, page, nil
 }
 
 // GetUnreadCount returns the number of unread alerts for the customer badge.
