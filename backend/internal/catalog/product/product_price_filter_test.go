@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,4 +109,32 @@ func TestProductList_PriceSortDesc(t *testing.T) {
 	require.GreaterOrEqual(t, len(qe.queries), 2)
 	selectSQL := qe.queries[1]
 	assert.True(t, strings.Contains(selectSQL, "ORDER BY COALESCE(pv.price, 0) DESC"))
+}
+
+func TestProductList_AttributeFilterSQL(t *testing.T) {
+	repo := NewProductRepository()
+	qe := &captureQE{}
+
+	attrStr := "color:black,size:XL"
+	q := &ListProductsQuery{
+		Attribute: &attrStr,
+	}
+	q.Process(pagination.QueryOptions{})
+
+	_, err := repo.List(database.WithExecutor(context.Background(), qe), q, false)
+	require.NoError(t, err)
+
+	require.GreaterOrEqual(t, len(qe.queries), 2)
+	countSQL := qe.queries[0]
+	selectSQL := qe.queries[1]
+
+	expectedClause := "EXISTS (SELECT 1 FROM product_variants v_attr WHERE v_attr.product_id = p.id AND v_attr.deleted_at IS NULL AND v_attr.attributes->>$1 = $2 AND v_attr.attributes->>$3 = $4)"
+	assert.Contains(t, countSQL, expectedClause)
+	assert.Contains(t, selectSQL, expectedClause)
+
+	allArgs := qe.args[0]
+	assert.Contains(t, allArgs, "color")
+	assert.Contains(t, allArgs, "black")
+	assert.Contains(t, allArgs, "size")
+	assert.Contains(t, allArgs, "XL")
 }

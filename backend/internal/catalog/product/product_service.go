@@ -192,6 +192,10 @@ type CreateProductInput struct {
 	Highlights    []string
 	ProductType   string
 	VariationAxes []string
+	// DownloadURL is the file a downloadable product delivers.
+	DownloadURL *string
+	// DeliveryInstructions explains how the buyer receives that file.
+	DeliveryInstructions *string
 	// ThumbnailObjectID is the product's own image. Optional on drafts;
 	// publishing requires a thumbnail on the product or a variant.
 	ThumbnailObjectID *uuid.UUID
@@ -405,18 +409,20 @@ func (s *ProductService) CreateProductAsDraft(
 		}
 
 		product = &model.Product{
-			ID:                uuid.New(),
-			SellerID:          input.SellerID,
-			Slug:              finalSlug,
-			BrandID:           input.BrandID,
-			CategoryID:        input.CategoryID,
-			Title:             input.Title,
-			Description:       input.Description,
-			Highlights:        input.Highlights,
-			Status:            model.PublicationStatusDraft,
-			ProductType:       pt,
-			VariationAxes:     axes,
-			ThumbnailObjectID: input.ThumbnailObjectID,
+			ID:                   uuid.New(),
+			SellerID:             input.SellerID,
+			Slug:                 finalSlug,
+			BrandID:              input.BrandID,
+			CategoryID:           input.CategoryID,
+			Title:                input.Title,
+			Description:          input.Description,
+			Highlights:           input.Highlights,
+			Status:               model.PublicationStatusDraft,
+			ProductType:          pt,
+			VariationAxes:        axes,
+			DownloadURL:          input.DownloadURL,
+			DeliveryInstructions: input.DeliveryInstructions,
+			ThumbnailObjectID:    input.ThumbnailObjectID,
 		}
 
 		return s.productRepo.Create(ctx, product)

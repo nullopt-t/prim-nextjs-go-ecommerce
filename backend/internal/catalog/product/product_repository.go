@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -106,11 +107,13 @@ func (r *ProductRepository) Create(
 			status,
 			product_type,
 			variation_axes,
+			download_url,
+			delivery_instructions,
 			seller_id,
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -127,6 +130,8 @@ func (r *ProductRepository) Create(
 		p.Status,
 		p.ProductType,
 		p.VariationAxes,
+		p.DownloadURL,
+		p.DeliveryInstructions,
 		p.SellerID,
 	).Scan(&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
@@ -484,6 +489,28 @@ func (r *ProductRepository) List(
 		whereClauses = append(whereClauses, fmt.Sprintf("COALESCE(pv.price, 0) <= $%d", argIdx))
 		args = append(args, *q.MaxPrice)
 		argIdx++
+	}
+
+	if len(q.AttributeFilters) > 0 {
+		// Filter products where at least one active variant satisfies all attribute criteria.
+		// Variant attributes are stored as jsonb (e.g. {"color":"Black","size":"M"}).
+		keys := make([]string, 0, len(q.AttributeFilters))
+		for k := range q.AttributeFilters {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		var attrParts []string
+		for _, k := range keys {
+			v := q.AttributeFilters[k]
+			attrParts = append(attrParts, fmt.Sprintf("v_attr.attributes->>$%d = $%d", argIdx, argIdx+1))
+			args = append(args, k, v)
+			argIdx += 2
+		}
+		whereClauses = append(whereClauses, fmt.Sprintf(
+			"EXISTS (SELECT 1 FROM product_variants v_attr WHERE v_attr.product_id = p.id AND v_attr.deleted_at IS NULL AND %s)",
+			strings.Join(attrParts, " AND "),
+		))
 	}
 
 	search := strings.TrimSpace(q.Search)

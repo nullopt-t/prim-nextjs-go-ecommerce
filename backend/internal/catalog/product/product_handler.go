@@ -766,6 +766,8 @@ type ListProductsQuery struct {
 	MinPrice *int64 `form:"min_price" example:"1000"`
 	// Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)
 	MaxPrice *int64 `form:"max_price" example:"50000"`
+	// Optional attribute filter(s) in "key:value" format (comma-separated or repeated, e.g. "color:red,size:M")
+	Attribute *string `form:"attribute" example:"color:black,size:XL"`
 
 	BrandUUIDs    []uuid.UUID `form:"-"`
 	BrandNames    []string    `form:"-"`
@@ -773,6 +775,8 @@ type ListProductsQuery struct {
 	CategoryNames []string    `form:"-"`
 	TagUUIDs      []uuid.UUID `form:"-"`
 	TagNames      []string    `form:"-"`
+	// AttributeFilters contains parsed key-value pairs to filter variants by custom attributes
+	AttributeFilters map[string]string `form:"-"`
 
 	// SellerUUIDs restricts the listing to products owned by these sellers.
 	// Set by the seller portal; never bound from the query string.
@@ -808,11 +812,38 @@ func parseCommaSeparatedValues(input *string) ([]uuid.UUID, []string) {
 	return uuids, names
 }
 
+func parseAttributeFilters(input *string) map[string]string {
+	if input == nil {
+		return nil
+	}
+	parts := strings.Split(*input, ",")
+	filters := make(map[string]string)
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
+		}
+		colonIdx := strings.Index(trimmed, ":")
+		if colonIdx > 0 && colonIdx < len(trimmed)-1 {
+			k := strings.TrimSpace(trimmed[:colonIdx])
+			v := strings.TrimSpace(trimmed[colonIdx+1:])
+			if k != "" && v != "" {
+				filters[k] = v
+			}
+		}
+	}
+	if len(filters) == 0 {
+		return nil
+	}
+	return filters
+}
+
 func (q *ListProductsQuery) Process(opts pagination.QueryOptions) {
 	q.ListQuery.Process(opts)
 	q.BrandUUIDs, q.BrandNames = parseCommaSeparatedValues(q.Brand)
 	q.CategoryUUIDs, q.CategoryNames = parseCommaSeparatedValues(q.Category)
 	q.TagUUIDs, q.TagNames = parseCommaSeparatedValues(q.Tag)
+	q.AttributeFilters = parseAttributeFilters(q.Attribute)
 }
 
 // GetAllProducts godoc

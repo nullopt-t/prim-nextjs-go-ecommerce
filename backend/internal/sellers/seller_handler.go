@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
+	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
@@ -741,10 +741,14 @@ type SellerCreateProductRequest struct {
 	Description *string `json:"description,omitempty"`
 	// Key bullet points shown on the storefront.
 	Highlights []string `json:"highlights,omitempty" example:"Active Noise Cancellation,30h battery"`
-	// Product classification: simple or variable.
-	ProductType string `json:"productType" binding:"omitempty,oneof=simple variable" example:"simple"`
+	// Product classification: simple, variable, or downloadable.
+	ProductType string `json:"productType" binding:"omitempty,oneof=simple variable downloadable" example:"simple"`
 	// Ordered variation axis keys for variable products.
 	VariationAxes []string `json:"variationAxes,omitempty" example:"color,storage"`
+	// Public file URL for downloadable products.
+	DownloadURL *string `json:"downloadUrl,omitempty"`
+	// Delivery note shown to buyers of a downloadable product.
+	DeliveryInstructions *string `json:"deliveryInstructions,omitempty"`
 	// Optional public product image URL, as returned by POST /seller/media.
 	// Required before publishing; drafts may omit it.
 	ThumbnailURL string `json:"thumbnailUrl,omitempty" example:"https://cdn.example.com/catalog/8f14e45f-ea0a-4a7a-9c9a-123456789abc"`
@@ -763,8 +767,8 @@ type SellerUpdateProductRequest struct {
 	Description *string `json:"description,omitempty"`
 	// Updated highlight bullets.
 	Highlights []string `json:"highlights,omitempty"`
-	// Product classification: simple or variable.
-	ProductType *string `json:"productType,omitempty" binding:"omitempty,oneof=simple variable"`
+	// Product classification: simple, variable, or downloadable.
+	ProductType *string `json:"productType,omitempty" binding:"omitempty,oneof=simple variable downloadable"`
 	// Variation axes; omit to leave unchanged, [] to make the product simple.
 	VariationAxes *[]string `json:"variationAxes,omitempty"`
 }
@@ -889,14 +893,16 @@ func (h *Handler) CreateProduct(c *gin.Context) {
 	}
 
 	created, err := h.service.CreateProduct(c.Request.Context(), userID, req.ThumbnailURL, product.CreateProductInput{
-		BrandID:       brandID,
-		CategoryID:    categoryID,
-		Slug:          &req.Slug,
-		Title:         req.Title,
-		Description:   req.Description,
-		Highlights:    req.Highlights,
-		ProductType:   req.ProductType,
-		VariationAxes: req.VariationAxes,
+		BrandID:              brandID,
+		CategoryID:           categoryID,
+		Slug:                 &req.Slug,
+		Title:                req.Title,
+		Description:          req.Description,
+		Highlights:           req.Highlights,
+		ProductType:          req.ProductType,
+		VariationAxes:        req.VariationAxes,
+		DownloadURL:          req.DownloadURL,
+		DeliveryInstructions: req.DeliveryInstructions,
 	})
 	if err != nil {
 		_ = c.Error(err)
@@ -1075,7 +1081,7 @@ type SellerCreatePromotionRequest struct {
 	// Optional per-customer redemption cap.
 	PerUserLimit *int `json:"perUserLimit,omitempty"`
 	// Optional activation window.
-	StartsAt *time.Time `json:"startsAt,omitempty"`
+	StartsAt  *time.Time `json:"startsAt,omitempty"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 }
 
@@ -1378,13 +1384,13 @@ func (h *Handler) CreateVariant(c *gin.Context) {
 	}
 
 	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, derefString(req.ThumbnailURL), &variant.CreateVariantInput{
-		SKU:               req.SKU,
-		Title:             req.Title,
-		Price:             req.Price,
-		CrossedOutPrice:   req.CrossedOutPrice,
-		Currency:          req.Currency,
-		Attributes:        req.Attributes,
-		IsDefault:         req.IsDefault,
+		SKU:             req.SKU,
+		Title:           req.Title,
+		Price:           req.Price,
+		CrossedOutPrice: req.CrossedOutPrice,
+		Currency:        req.Currency,
+		Attributes:      req.Attributes,
+		IsDefault:       req.IsDefault,
 	})
 	if err != nil {
 		_ = c.Error(err)
@@ -1426,13 +1432,13 @@ func (h *Handler) UpdateVariant(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, derefString(req.ThumbnailURL), variant.UpdateVariantInput{
-		SKU:               req.SKU,
-		Title:             req.Title,
-		Price:             req.Price,
-		CrossedOutPrice:   req.CrossedOutPrice,
-		Currency:          req.Currency,
-		Attributes:        req.Attributes,
-		IsDefault:         req.IsDefault,
+		SKU:             req.SKU,
+		Title:           req.Title,
+		Price:           req.Price,
+		CrossedOutPrice: req.CrossedOutPrice,
+		Currency:        req.Currency,
+		Attributes:      req.Attributes,
+		IsDefault:       req.IsDefault,
 	}); err != nil {
 		_ = c.Error(err)
 		return

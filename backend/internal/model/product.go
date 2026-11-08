@@ -33,6 +33,8 @@ const (
 	ProductTypeSimple ProductType = "simple"
 	// ProductTypeVariable indicates a product with multiple configurable variants (sizes, colors, etc.).
 	ProductTypeVariable ProductType = "variable"
+	// ProductTypeDownloadable indicates a digital product delivered as a file.
+	ProductTypeDownloadable ProductType = "downloadable"
 )
 
 // ErrInvalidProductType is returned when an unrecognized product type string is encountered.
@@ -45,6 +47,8 @@ func ParseProductType(s string) (ProductType, error) {
 		return ProductTypeSimple, nil
 	case "variable":
 		return ProductTypeVariable, nil
+	case "downloadable":
+		return ProductTypeDownloadable, nil
 	default:
 		return "", ErrInvalidProductType
 	}
@@ -99,6 +103,10 @@ type Product struct {
 	// product's variation matrix (e.g. ["color","storage"]). Empty for simple
 	// single-SKU products.
 	VariationAxes []string `db:"variation_axes" json:"variationAxes,omitempty"`
+	// DownloadURL is the seller-supplied file for downloadable products.
+	DownloadURL *string `db:"download_url" json:"downloadUrl,omitempty"`
+	// DeliveryInstructions tells the buyer how a downloadable product arrives.
+	DeliveryInstructions *string `db:"delivery_instructions" json:"deliveryInstructions,omitempty"`
 	// ThumbnailObjectID is the optional storage object UUID for the primary cover image.
 	ThumbnailObjectID *uuid.UUID `db:"thumbnail_object_id" json:"thumbnailObjectId,omitempty"`
 	// DefaultVariantID points to the primary/default variant for this product.

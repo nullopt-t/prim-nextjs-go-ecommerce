@@ -27,7 +27,7 @@ BEGIN
         CREATE TYPE product_status AS ENUM ('draft', 'published', 'archived');
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_type') THEN
-        CREATE TYPE product_type AS ENUM ('simple', 'variable');
+        CREATE TYPE product_type AS ENUM ('simple', 'variable', 'downloadable');
     END IF;
     IF to_regtype('user_role') IS NULL THEN
         CREATE TYPE user_role AS ENUM ('customer', 'seller', 'support', 'admin', 'superadmin');
@@ -210,6 +210,8 @@ CREATE TABLE IF NOT EXISTS products (
     status         product_status NOT NULL,
     product_type   product_type NOT NULL DEFAULT 'simple',
     variation_axes text[] NOT NULL DEFAULT '{}'::text[],
+    download_url   text NULL,
+    delivery_instructions text NULL,
     thumbnail_object_id uuid NULL,
     default_variant_id uuid NULL,
     created_at     timestamptz NOT NULL DEFAULT now(),
