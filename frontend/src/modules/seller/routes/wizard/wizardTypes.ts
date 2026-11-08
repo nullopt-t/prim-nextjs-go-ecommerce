@@ -59,7 +59,18 @@ export function slugify(value: string) {
 export function parseMajorPrice(value: string): number | undefined {
 	const parsed = Number(value);
 	if (value.trim() === "" || !Number.isFinite(parsed) || parsed <= 0) return undefined;
-	return Math.round(parsed * 100);
+	const minor = Math.round(parsed * 100);
+	// Sub-cent input like "0.001" rounds to zero; a zero price is not a price.
+	if (minor <= 0) return undefined;
+	return minor;
+}
+
+// Stock must be a whole, non-negative unit count. Number() (not parseInt)
+// rejects "3.5" and "3abc", which parseInt would silently truncate.
+export function parseWholeStock(value: string): number | undefined {
+	if (value.trim() === "") return undefined;
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 export function draftKeyFor(productId?: string) {
@@ -89,13 +100,17 @@ export function bundlePayloadItems(
 	items: BundleItemDraft[],
 	isValidProduct?: (productId: string) => boolean,
 ): { productId: string; quantity: number }[] {
-	return items.flatMap((item) => {
+	// Merge repeated rows for the same product so one kit never bills the
+	// same line twice (the backend stores one row per product per bundle).
+	const merged = new Map<string, number>();
+	for (const item of items) {
 		const quantity = Number(item.quantity);
 		const productValid = isValidProduct ? isValidProduct(item.productId) : true;
-		return item.productId && productValid && Number.isInteger(quantity) && quantity > 0
-			? [{ productId: item.productId, quantity }]
-			: [];
-	});
+		if (item.productId && productValid && Number.isInteger(quantity) && quantity > 0) {
+			merged.set(item.productId, (merged.get(item.productId) ?? 0) + quantity);
+		}
+	}
+	return [...merged].map(([productId, quantity]) => ({ productId, quantity }));
 }
 
 export interface VariationRow {

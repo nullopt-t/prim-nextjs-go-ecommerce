@@ -15,6 +15,7 @@ import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useSearchParams } from "next/navigation";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 
 function parseMajorPrice(value: string): number | undefined {
@@ -355,22 +356,21 @@ export function SellerProducts() {
                 className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(event) => {
-                const value = event.target.value;
-                setStatusFilter(value);
-                setPage(1);
-                void loadProducts(1, value);
-              }}
-              className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              aria-label={t("products.table.status")}
-            >
-              <option value="all">{t("products.filterAll")}</option>
-              <option value="draft">{t("products.status.draft")}</option>
-              <option value="published">{t("products.status.published")}</option>
-              <option value="archived">{t("products.status.archived")}</option>
-            </select>
+            <CustomSelect
+	value={statusFilter}
+	onChange={(value) => {
+		setStatusFilter(value);
+		setPage(1);
+		void loadProducts(1, value);
+	}}
+	options={[
+		{ value: "all", label: t("products.filterAll") },
+		{ value: "draft", label: t("products.status.draft") },
+		{ value: "published", label: t("products.status.published") },
+		{ value: "archived", label: t("products.status.archived") },
+	]}
+	ariaLabel={t("products.table.status")}
+/>
           </div>
 
           <div className="overflow-hidden rounded-lg border border-border bg-background">
@@ -605,16 +605,17 @@ export function SellerProducts() {
                             className="w-20 rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
                             aria-label={t("variants.stockAmount")}
                           />
-                          <select
-                            value={stockReason}
-                            onChange={(event) => setStockReason(event.target.value as "restock" | "return" | "adjustment")}
-                            className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-                            aria-label={t("variants.stockReason")}
-                          >
-                            <option value="restock">{t("variants.reasonRestock")}</option>
-                            <option value="return">{t("variants.reasonReturn")}</option>
-                            <option value="adjustment">{t("variants.reasonAdjustment")}</option>
-                          </select>
+                          <CustomSelect
+	value={stockReason}
+	onChange={(value) => setStockReason(value as "restock" | "return" | "adjustment")}
+	options={[
+		{ value: "restock", label: t("variants.reasonRestock") },
+		{ value: "return", label: t("variants.reasonReturn") },
+		{ value: "adjustment", label: t("variants.reasonAdjustment") },
+	]}
+	size="sm"
+	ariaLabel={t("variants.stockReason")}
+/>
                           <button
                             onClick={() => void handleAdjustStock(variant)}
                             disabled={savingStock}

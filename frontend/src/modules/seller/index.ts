@@ -8,6 +8,7 @@ export { SellerConsoleGate } from "./routes/sellerConsoleGate";
 export { SellerDashboard } from "./routes/sellerDashboard";
 export { SellerProducts } from "./routes/sellerProducts";
 export { SellerProductWizard } from "./routes/sellerProductWizard";
+export { SellerProductEdit } from "./routes/sellerProductEdit";
 export { SellerInventory } from "./routes/sellerInventory";
 export { SellerOrders } from "./routes/sellerOrders";
 export { SellerOrderDetail } from "./routes/sellerOrderDetail";

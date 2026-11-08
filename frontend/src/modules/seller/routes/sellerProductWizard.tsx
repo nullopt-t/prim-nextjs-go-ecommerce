@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2, PackagePlus, Plus, Trash2 } from "lucide-react";
 import { Link, useRouter } from "@/shared/i18n/navigation";
 import { sellerService } from "@/modules/seller/api/sellerService";
@@ -25,6 +24,7 @@ import {
 	isValidDownloadUrl,
 	slugify,
 	parseMajorPrice,
+	parseWholeStock,
 	draftKeyFor,
 	uniqueKeys,
 	formatCombination,
@@ -40,9 +40,8 @@ import { useTranslations } from "next-intl";
 export function SellerProductWizard() {
 	const t = useTranslations("seller");
 	const router = useRouter();
-	const params = useParams();
-	const productId = typeof params?.id === "string" ? params.id : undefined;
-	const mode: "create" | "edit" = productId ? "edit" : "create";
+	// Creation-only: existing products are immutable except price/status,
+	// edited via SellerProductEdit. There is no edit mode here.
 
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [brands, setBrands] = useState<Brand[]>([]);
@@ -65,7 +64,6 @@ export function SellerProductWizard() {
 	const [saving, setSaving] = useState(false);
 	const [publishing, setPublishing] = useState(false);
 	const [hydrated, setHydrated] = useState(false);
-	const [existingProduct, setExistingProduct] = useState<SellerProduct | null>(null);
 	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 	const [bundleCandidates, setBundleCandidates] = useState<SellerProduct[]>([]);
 	const [bundleCandidatesState, setBundleCandidatesState] = useState<"idle" | "loading" | "ready">("idle");
@@ -108,7 +106,7 @@ export function SellerProductWizard() {
 				label: steps[0],
 				done: Boolean(
 					formData.title.trim() &&
-						(mode === "edit" || formData.categoryId) &&
+						formData.categoryId &&
 						(!formData.slug.trim() || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug.trim().toLowerCase())),
 				),
 			},
@@ -124,9 +122,7 @@ export function SellerProductWizard() {
 			},
 			{
 				label: steps[2],
-				done:
-					mode === "edit" ||
-					(formData.productType === "bundle" || formData.productType === "downloadable"
+				done: (formData.productType === "bundle" || formData.productType === "downloadable"
 						? parseMajorPrice(formData.price) !== undefined &&
 							/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())
 						: formData.productType === "variable"
@@ -142,23 +138,22 @@ export function SellerProductWizard() {
 									!formData.crossesOutPrice ||
 									(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
 								/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
-								Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
-								Number.parseInt(formData.initialStock, 10) >= 0),
+								parseWholeStock(formData.initialStock) !== undefined),
 			},
 			{ label: steps[3], done: false },
 		];
 		const doneCount = checks.filter((c) => c.done).length;
 		return { checks, percent: Math.round((doneCount / checks.length) * 100) };
-	}, [formData, steps, mode, savedCombinations, variantOverrides, validBundleItems]);
+	}, [formData, steps, savedCombinations, variantOverrides, validBundleItems]);
 
 	const combinations = useMemo(
 		() => (formData.productType === "variable" ? savedCombinations : []),
 		[formData.productType, savedCombinations],
 	);
 
-	const draftKey = draftKeyFor(productId);
+	const draftKey = draftKeyFor();
 
-	// Hydrate from saved draft (create) or server product summary (edit).
+	// Hydrate from the saved creation draft.
 	useEffect(() => {
 		let cancelled = false;
 		const hydrate = async () => {
@@ -195,29 +190,6 @@ export function SellerProductWizard() {
 				}
 			}
 
-			if (mode === "edit" && productId) {
-				// The seller list API is the summary source; fetch enough pages to find the product.
-				let found: SellerProduct | undefined;
-				for (let page = 1; page <= 10 && !found; page += 1) {
-					const response = await sellerService.getProducts({ page, pageSize: 100 });
-					found = response.data.find((item) => item.id === productId);
-					if (response.data.length < 100) break;
-				}
-				if (!found) throw new Error(t("wizard.loadFailed"));
-				setExistingProduct(found);
-				const initialAxes = found.productType === "variable" ? "" : "";
-				setFormData({
-					...EMPTY_FORM,
-					title: found.title,
-					slug: found.slug,
-					productType: (found.productType as ProductForm["productType"]) || "simple",
-					variationAxes: initialAxes,
-					sku: found.sku ?? "",
-					price: found.price ? String(found.price / 100) : "",
-					currency: found.currency ?? "EGP",
-				});
-				setVariationRows([]);
-			}
 		};
 
 		hydrate()
@@ -233,7 +205,7 @@ export function SellerProductWizard() {
 		return () => {
 			cancelled = true;
 		};
-	}, [draftKey, mode, productId, t]);
+	}, [draftKey, t]);
 
 	// Load variation-axis definitions for the selected category so the seller can
 	// pick real axes instead of guessing keys. Categories with no attributes get a
@@ -316,7 +288,7 @@ export function SellerProductWizard() {
 			if (formData.slug.trim() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug.trim().toLowerCase())) {
 				nextErrors.slug = t("products.validation.slugInvalid");
 			}
-			if (mode === "create" && !formData.categoryId) {
+			if (!formData.categoryId) {
 				nextErrors.categoryId = t("products.validation.categoryRequired");
 			}
 		}
@@ -336,8 +308,8 @@ export function SellerProductWizard() {
 				: t("products.validation.downloadUrlRequired");
 		}
 		if (currentStep === 2) {
-			const isVariableCreate = mode === "create" && formData.productType === "variable";
-			const isDigitalCreate = mode === "create" && (formData.productType === "bundle" || formData.productType === "downloadable");
+			const isVariableCreate = formData.productType === "variable";
+			const isDigitalCreate = formData.productType === "bundle" || formData.productType === "downloadable";
 			if (isDigitalCreate && parseMajorPrice(formData.price) === undefined) {
 				nextErrors.price = t(
 					formData.productType === "bundle"
@@ -359,8 +331,8 @@ export function SellerProductWizard() {
 				) {
 					nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
 				}
-				const stock = Number.parseInt(formData.initialStock, 10);
-				if (!Number.isInteger(stock) || stock < 0) nextErrors.initialStock = t("products.validation.stockInvalid");
+				const stock = parseWholeStock(formData.initialStock);
+				if (stock === undefined) nextErrors.initialStock = t("products.validation.stockInvalid");
 			}
 			if (!/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())) {
 				nextErrors.currency = t("products.validation.currencyInvalid");
@@ -382,8 +354,7 @@ export function SellerProductWizard() {
 						nextErrors.crossesOutPrice = t("products.validation.compareAtTooLow");
 					}
 					if (override?.stock !== undefined && override.stock !== "") {
-						const overrideStock = Number.parseInt(override.stock, 10);
-						if (!Number.isInteger(overrideStock) || overrideStock < 0) {
+						if (parseWholeStock(override.stock) === undefined) {
 							nextErrors.initialStock = t("products.validation.stockInvalid");
 						}
 					}
@@ -465,12 +436,12 @@ export function SellerProductWizard() {
 			setStep(1);
 			return;
 		}
-		if (mode === "create" && !validateStep(2)) {
+		if (!validateStep(2)) {
 			setStep(2);
 			return;
 		}
 
-		if (mode === "create" && formData.productType === "bundle") {
+		if (formData.productType === "bundle") {
 			const bundlePrice = parseMajorPrice(formData.price);
 			if (bundlePrice === undefined) {
 				setStep(2);
@@ -504,20 +475,7 @@ export function SellerProductWizard() {
 		setSaving(true);
 		setPublishing(shouldPublish);
 		try {
-			if (mode === "edit" && productId) {
-				await sellerService.updateProduct(productId, {
-					title: formData.title.trim(),
-					description: formData.description.trim() || undefined,
-					highlights: formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean),
-					productType: formData.productType,
-					variationAxes:
-						formData.productType === "variable"
-							? formData.variationAxes.split(",").map((axis) => axis.trim()).filter(Boolean)
-							: [],
-				});
-				if (shouldPublish) await sellerService.publishProduct(productId);
-				notify.success(shouldPublish ? t("toasts.productPublished") : t("toasts.productUpdated"));
-			} else {
+			{
 				const slug = formData.slug.trim() || slugify(formData.title);
 				const highlightList = formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean);
 				const axes = formData.productType === "variable" ? uniqueKeys(savedCombinations) : undefined;
@@ -535,7 +493,7 @@ export function SellerProductWizard() {
 						formData.productType === "downloadable" ? formData.deliveryInstructions.trim() || undefined : undefined,
 				});
 				const initialStock =
-					formData.productType === "downloadable" ? 0 : Number.parseInt(formData.initialStock, 10);
+					formData.productType === "downloadable" ? 0 : (parseWholeStock(formData.initialStock) ?? 0);
 				if (combinations.length > 0) {
 					for (let index = 0; index < combinations.length; index += 1) {
 						const combination = combinations[index];
@@ -544,7 +502,7 @@ export function SellerProductWizard() {
 						const variantPrice = override?.price ? parseMajorPrice(override.price) : undefined;
 						const variantCrossedOut = override?.crossesOutPrice ? parseMajorPrice(override.crossesOutPrice) : undefined;
 						const variantStock =
-							override?.stock !== undefined && override.stock !== "" ? Number.parseInt(override.stock, 10) : undefined;
+							override?.stock !== undefined && override.stock !== "" ? parseWholeStock(override.stock) : undefined;
 						const swatchThumbnail = Object.entries(combination)
 							.map(([axisKey, axisValue]) => swatchImages[`swatch:${axisKey}=${axisValue}`])
 							.find((url): url is string => Boolean(url));
@@ -606,7 +564,7 @@ export function SellerProductWizard() {
 	if (loadError) {
 		return (
 			<div className="space-y-5">
-				<PageHeader title={mode === "edit" ? t("products.editTitle") : t("products.addTitle")} />
+				<PageHeader title={t("products.addTitle")} />
 				<ErrorState
 					title={t("products.loadTitle")}
 					description={loadError.message || t("wizard.loadFailed")}
@@ -629,7 +587,7 @@ export function SellerProductWizard() {
 					: "products.form.simple",
 	);
 
-	const previewCombinations = mode === "create" && formData.productType === "variable" ? savedCombinations : [];
+	const previewCombinations = formData.productType === "variable" ? savedCombinations : [];
 	const previewAxes = uniqueKeys(previewCombinations);
 	const previewCombination =
 		previewCombinations.find((combination) =>
@@ -661,7 +619,7 @@ export function SellerProductWizard() {
 		{ label: t("products.form.title"), value: formData.title.trim() || "—" },
 		{ label: t("products.form.highlights"), value: formData.highlights.split("\n").map((h) => h.trim()).filter(Boolean).join(" · ") || "—" },
 		{ label: t("products.form.slug"), value: formData.slug.trim() || slugify(formData.title) || "—" },
-		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? (mode === "edit" ? t("wizard.review.categoryUnchanged") : "—") },
+		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? "—" },
 		{ label: t("products.form.brand"), value: brands.find((b) => b.id === formData.brandId)?.name ?? t("products.form.noBrand") },
 		{ label: t("products.form.productType"), value: productTypeLabel },
 		{ label: t("products.form.variationAxes"), value: savedCombinations.length > 0 ? uniqueKeys(savedCombinations).join(", ") : (formData.variationAxes.trim() || "—") },
@@ -669,10 +627,10 @@ export function SellerProductWizard() {
 		{ label: t(isBundle ? "bundles.bundlePrice" : "products.form.sellingPrice"), value: formData.price ? `${formData.currency.toUpperCase()} ${(Number(formData.price)).toFixed(2)}` : "—" },
 		{ label: t("products.form.compareAtPrice"), value: formData.crossesOutPrice ? `${formData.currency.toUpperCase()} ${Number(formData.crossesOutPrice).toFixed(2)}` : "—" },
 		{ label: t("products.form.initialStock"), value: formData.initialStock || "—" },
-		...(isDownloadable && mode === "create"
+		...(isDownloadable
 			? [{ label: t("products.form.downloadUrl"), value: formData.downloadUrl.trim() || "—" }]
 			: []),
-		...(formData.productType === "bundle" && mode === "create"
+		...(formData.productType === "bundle"
 			? [
 					{
 						label: t("bundles.itemsTitle"),
@@ -691,7 +649,7 @@ export function SellerProductWizard() {
 	return (
 		<div className="mx-auto w-full max-w-3xl space-y-5">
 			<PageHeader
-				title={mode === "edit" ? t("products.editTitle") : t("products.addTitle")}
+				title={t("products.addTitle")}
 				description={t("wizard.subtitle")}
 				actions={
 					<Link
@@ -758,9 +716,8 @@ export function SellerProductWizard() {
 							/>
 							{fieldError("title")}
 						</div>
-						{mode === "create" && (
-							<div className="space-y-1">
-								<label htmlFor="wizard-slug" className="text-sm font-medium text-foreground">{t("products.form.slug")}</label>
+						<div className="space-y-1">
+							<label htmlFor="wizard-slug" className="text-sm font-medium text-foreground">{t("products.form.slug")}</label>
 								<input
 									id="wizard-slug"
 									dir="ltr"
@@ -770,10 +727,8 @@ export function SellerProductWizard() {
 									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
 								/>
 								{fieldError("slug")}
-							</div>
-						)}
-						{mode === "create" && (
-							<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+						</div>
+						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<div className="space-y-1">
 									<label htmlFor="wizard-category" className="text-sm font-medium text-foreground">{t("products.form.category")}</label>
 									<Select value={formData.categoryId} onValueChange={(value) => setField("categoryId", value)}>
@@ -802,8 +757,7 @@ export function SellerProductWizard() {
 										</SelectContent>
 									</Select>
 								</div>
-							</div>
-						)}
+						</div>
 					</div>
 				)}
 
@@ -841,8 +795,8 @@ export function SellerProductWizard() {
 									<SelectContent>
 										<SelectItem value="simple">{t("products.form.simple")}</SelectItem>
 										<SelectItem value="variable">{t("products.form.variable")}</SelectItem>
-										{mode === "create" && <SelectItem value="bundle">{t("products.form.bundle")}</SelectItem>}
-										{mode === "create" && <SelectItem value="downloadable">{t("products.form.downloadable")}</SelectItem>}
+										<SelectItem value="bundle">{t("products.form.bundle")}</SelectItem>
+										<SelectItem value="downloadable">{t("products.form.downloadable")}</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
@@ -1125,7 +1079,7 @@ export function SellerProductWizard() {
 
 				{step === 2 && (
 					<div className="mt-5 space-y-4">
-					{!(mode === "create" && formData.productType === "variable") && (<>
+					{formData.productType !== "variable" && (<>
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							{!hidesInventory && (
 								<div className="space-y-1">
@@ -1199,7 +1153,7 @@ export function SellerProductWizard() {
 							<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
 						)}
 						</>)}
-					{mode === "create" && formData.productType === "variable" && (
+					{formData.productType === "variable" && (
 						<VariantPricing
 							currency={formData.currency}
 							onCurrencyChange={(value) => setField("currency", value)}
@@ -1216,9 +1170,8 @@ export function SellerProductWizard() {
 
 				{step === 3 && (
 					<div className="mt-5 space-y-4">
-						{mode === "create" && (
-							<div className="rounded-md border border-border">
-								<p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">{t("wizard.attributes.previewTitle")}</p>
+						<div className="rounded-md border border-border">
+							<p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">{t("wizard.attributes.previewTitle")}</p>
 								<div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
 									<ProductGallery
 										images={previewImages}
@@ -1297,8 +1250,7 @@ export function SellerProductWizard() {
 										</p>
 									</div>
 								</div>
-							</div>
-						)}
+						</div>
 						<dl className="divide-y divide-border rounded-md border border-border text-sm">
 							{reviewRows.map((row) => (
 								<div key={row.label} className="flex items-center justify-between gap-4 px-4 py-2.5">
@@ -1307,7 +1259,7 @@ export function SellerProductWizard() {
 								</div>
 							))}
 						</dl>
-						{mode === "create" && formData.productType === "variable" && combinations.length > 0 && (
+						{formData.productType === "variable" && combinations.length > 0 && (
 							<div className="rounded-md border border-border">
 								<p className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">{t("wizard.variants.title")}</p>
 								<ul className="divide-y divide-border text-sm">
@@ -1329,11 +1281,6 @@ export function SellerProductWizard() {
 							</div>
 						)}
 						<p className="text-xs text-muted-foreground">{t("wizard.review.note")}</p>
-						{existingProduct?.status === "published" && mode === "edit" ? (
-							<p className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground">
-								{t("wizard.review.publishedNote")}
-							</p>
-						) : null}
 					</div>
 				)}
 

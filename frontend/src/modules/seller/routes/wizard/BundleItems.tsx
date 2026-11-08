@@ -21,7 +21,10 @@ export function BundleItems({ products, items, currency, loading, onChange, erro
 	const t = useTranslations("seller");
 	const totalMinor = items.reduce((sum, item) => {
 		const unitPrice = products.find((product) => product.id === item.productId)?.price ?? 0;
-		return sum + unitPrice * (Number.parseInt(item.quantity, 10) || 0);
+		const quantity = Number(item.quantity);
+		// Mirror bundlePayloadItems: only whole positive quantities count, so
+		// the displayed total never disagrees with what will be submitted.
+		return sum + unitPrice * (Number.isInteger(quantity) && quantity > 0 ? quantity : 0);
 	}, 0);
 	const update = (index: number, patch: Partial<BundleItemDraft>) =>
 		onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));

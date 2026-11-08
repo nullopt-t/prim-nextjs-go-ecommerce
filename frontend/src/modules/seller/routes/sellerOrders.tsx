@@ -13,6 +13,7 @@ import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { formatMinor } from "./sellerDashboard";
 import { useTranslations, useLocale } from "next-intl";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 const ORDER_STATUS_KEYS: Record<string, string> = {
 	pending: "status.pending",
@@ -105,22 +106,22 @@ export function SellerOrders() {
 							{t("orders.noFulfillmentChanges")}
 						</p>
 					</div>
-					<select
+					<CustomSelect
 						value={statusFilter}
-						onChange={(event) => {
-							const next = event.target.value;
-							setStatusFilter(next);
+						onChange={(value) => {
+							setStatusFilter(value);
 							setPage(1);
-							void loadOrders(1, next);
+							void loadOrders(1, value);
 						}}
-						className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-						aria-label={t("orders.table.fulfillmentStatus")}
-					>
-						<option value="all">{t("status.all")}</option>
-						{Object.keys(ORDER_STATUS_KEYS).map((status) => (
-							<option key={status} value={status}>{t(ORDER_STATUS_KEYS[status])}</option>
-						))}
-					</select>
+						options={[
+							{ value: "all", label: t("status.all") },
+							...Object.keys(ORDER_STATUS_KEYS).map((status) => ({
+							value: status,
+							label: t(ORDER_STATUS_KEYS[status]),
+							})),
+						]}
+						ariaLabel={t("orders.table.fulfillmentStatus")}
+/>
 				</div>
 
 				{orders.length === 0 ? (

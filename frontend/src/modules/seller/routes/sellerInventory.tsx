@@ -14,6 +14,7 @@ import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface InventoryRow {
 	product: SellerProduct;
@@ -186,21 +187,22 @@ export function SellerInventory() {
 												<div className="text-xs font-normal text-muted-foreground">{t("inventory.productTotalStockNote")}</div>
 											</td>
 											<td className="py-3">
-												<select
+												<CustomSelect
 													value={reasonByVariant[variant.id] ?? "restock"}
-													onChange={(event) =>
+													onChange={(value) =>
 														setReasonByVariant((current) => ({
-															...current,
-															[variant.id]: event.target.value as StockReason,
+														...current,
+														[variant.id]: value as StockReason,
 														}))
 													}
-													className="rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-													aria-label={t("inventory.table.stockReason")}
-												>
-													<option value="restock">{t("inventory.reasonRestock")}</option>
-													<option value="return">{t("inventory.reasonReturn")}</option>
-													<option value="adjustment">{t("inventory.reasonAdjustment")}</option>
-												</select>
+													options={[
+														{ value: "restock", label: t("inventory.reasonRestock") },
+														{ value: "return", label: t("inventory.reasonReturn") },
+														{ value: "adjustment", label: t("inventory.reasonAdjustment") },
+													]}
+													size="sm"
+													ariaLabel={t("inventory.table.stockReason")}
+/>
 											</td>
 											<td className="py-3">
 												<StatusPill
