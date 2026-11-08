@@ -69,12 +69,30 @@ export function draftKeyFor(productId?: string) {
 // One composer row while building a single combination: an attribute plus
 // the one value it takes in that combination. Saved combinations are built
 // one at a time instead of expanding every value into a cartesian product.
+// Downloadable products deliver a hosted file, so the seller link must be a
+// real http(s) URL rather than free text.
+export function isValidDownloadUrl(value: string): boolean {
+	const trimmed = value.trim();
+	if (!trimmed) return false;
+	try {
+		const parsed = new URL(trimmed);
+		return parsed.protocol === "http:" || parsed.protocol === "https:";
+	} catch {
+		return false;
+	}
+}
+
 // Bundle payload rows: only a chosen product with a positive whole quantity is
-// sendable, so validation and submission share one rule.
-export function bundlePayloadItems(items: BundleItemDraft[]): { productId: string; quantity: number }[] {
+// sendable, so validation and submission share one rule. An optional catalog
+// or predicate can be passed to exclude deleted or zero-priced items.
+export function bundlePayloadItems(
+	items: BundleItemDraft[],
+	isValidProduct?: (productId: string) => boolean,
+): { productId: string; quantity: number }[] {
 	return items.flatMap((item) => {
 		const quantity = Number(item.quantity);
-		return item.productId && Number.isInteger(quantity) && quantity > 0
+		const productValid = isValidProduct ? isValidProduct(item.productId) : true;
+		return item.productId && productValid && Number.isInteger(quantity) && quantity > 0
 			? [{ productId: item.productId, quantity }]
 			: [];
 	});

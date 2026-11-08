@@ -164,7 +164,7 @@ export default function CompareContent() {
 					<table className="w-full min-w-[640px] border-collapse text-sm">
 						<thead>
 							<tr className="border-b border-border/70">
-								<th className="min-w-36 p-4 text-start align-bottom text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+								<th className="sticky start-0 z-20 min-w-36 bg-card p-4 text-start align-bottom text-xs font-semibold uppercase tracking-wider text-muted-foreground">
 									{t("table.spec")}
 								</th>
 								{products.map(({ slug, product }) => (
@@ -203,7 +203,7 @@ export default function CompareContent() {
 						</thead>
 						<tbody className="divide-y divide-border/70">
 							<tr>
-								<td className="p-4 font-medium text-muted-foreground">{t("table.price")}</td>
+								<td className="sticky start-0 z-10 bg-card p-4 font-medium text-muted-foreground">{t("table.price")}</td>
 								{products.map(({ slug, product }) => (
 									<td key={slug} className="p-4 text-center font-bold text-foreground">
 										{formatPrice(resolvePrice(product))}
@@ -211,7 +211,7 @@ export default function CompareContent() {
 								))}
 							</tr>
 							<tr>
-								<td className="p-4 font-medium text-muted-foreground">{t("table.brand")}</td>
+								<td className="sticky start-0 z-10 bg-card p-4 font-medium text-muted-foreground">{t("table.brand")}</td>
 								{products.map(({ slug, product }) => (
 									<td key={slug} className="p-4 text-center text-foreground">
 										{typeof product.brand === "string"
@@ -221,7 +221,7 @@ export default function CompareContent() {
 								))}
 							</tr>
 							<tr>
-								<td className="p-4 font-medium text-muted-foreground">{t("table.category")}</td>
+								<td className="sticky start-0 z-10 bg-card p-4 font-medium text-muted-foreground">{t("table.category")}</td>
 								{products.map(({ slug, product }) => (
 									<td key={slug} className="p-4 text-center capitalize text-foreground">
 										{product.category?.replace("-", " ") || "—"}
@@ -229,7 +229,7 @@ export default function CompareContent() {
 								))}
 							</tr>
 							<tr>
-								<td className="p-4 font-medium text-muted-foreground">{t("table.availability")}</td>
+								<td className="sticky start-0 z-10 bg-card p-4 font-medium text-muted-foreground">{t("table.availability")}</td>
 								{products.map(({ slug, product }) => (
 									<td
 										key={slug}
@@ -242,7 +242,7 @@ export default function CompareContent() {
 								))}
 							</tr>
 							<tr>
-								<td className="p-4 font-medium text-muted-foreground">{t("table.rating")}</td>
+								<td className="sticky start-0 z-10 bg-card p-4 font-medium text-muted-foreground">{t("table.rating")}</td>
 								{products.map(({ slug, product }) => (
 									<td key={slug} className="p-4">
 										<div className="flex items-center justify-center gap-1.5">
@@ -254,7 +254,7 @@ export default function CompareContent() {
 							</tr>
 							{attributeKeys.map((key) => (
 								<tr key={key}>
-									<td className="p-4 font-medium capitalize text-muted-foreground">
+									<td className="sticky start-0 z-10 bg-card p-4 font-medium capitalize text-muted-foreground">
 										{key.replace(/[_-]+/g, " ")}
 									</td>
 									{products.map(({ slug, product }) => (

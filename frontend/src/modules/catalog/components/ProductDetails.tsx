@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/shared/i18n/navigation";import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ChevronRight, Package } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { AnimatedSection, CustomButton } from "@/shared/ui";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
@@ -72,6 +72,30 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
+
+  // Mobile sticky buy bar: appears once the in-card purchase actions scroll
+  // out of view, and hides while the footer is on screen so it never covers it.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [showBuyBar, setShowBuyBar] = useState(false);
+  const [footerVisible, setFooterVisible] = useState(false);
+
+  useEffect(() => {
+    const actions = actionsRef.current;
+    if (!actions || typeof IntersectionObserver === "undefined") return;
+    const footer = document.querySelector("footer");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === actions) setShowBuyBar(!entry.isIntersecting);
+          else setFooterVisible(entry.isIntersecting);
+        }
+      },
+      { rootMargin: "-72px 0px 0px 0px" },
+    );
+    observer.observe(actions);
+    if (footer) observer.observe(footer);
+    return () => observer.disconnect();
+  }, [product?.id]);
 
   // Listen for real-time stock updates to immediately update availableStock & isVariantInStock
   useEffect(() => {
@@ -551,7 +575,32 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   };
 
   return (
-    <AnimatedSection className="mx-auto w-full max-w-7xl">
+    <>
+      {showBuyBar && !footerVisible && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md lg:hidden">
+          <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-bold text-foreground">
+                {formatMoney(displayPriceConverted, displayCurrency)}
+              </p>
+              <p className="truncate text-[11px] text-muted-foreground">{productName}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isAdding || !isVariantInStock}
+              className="min-h-12 min-w-40 shrink-0 cursor-pointer rounded-xl bg-accent-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isAdding
+                ? tProducts("actions.adding")
+                : isVariantInStock
+                  ? tProducts("actions.addToCart")
+                  : tProducts("actions.outOfStock")}
+            </button>
+          </div>
+        </div>
+      )}
+      <AnimatedSection className="mx-auto w-full max-w-7xl">
       <CatalogFeedLoader />
       {/* Breadcrumb */}
       <nav className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
@@ -586,7 +635,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
         </div>
 
         <div className="flex flex-col gap-5 lg:col-span-5">
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+          <div ref={actionsRef} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
             <ProductActions
               productCategory={product.category}
               productName={productName}
@@ -670,5 +719,6 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
         </div>
       )}
     </AnimatedSection>
+    </>
   );
 }

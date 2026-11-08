@@ -74,7 +74,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           </div>
         )}
 
-        <label className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2 cursor-pointer border border-border/40">
+        <label className="flex flex-col items-start justify-between gap-3 rounded-lg border border-border/40 bg-secondary/50 px-3 py-2 cursor-pointer min-[400px]:flex-row min-[400px]:items-center">
           <span className="flex items-center gap-1.5 text-xs text-foreground">
             <Gift className="size-3.5 text-accent-brand shrink-0" aria-hidden="true" />
             {t("giftWrap.label")}
@@ -203,7 +203,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-foreground font-medium">{formatMoney(taxAmount, currency)}</span>
         </p>
 
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3.5 py-3 cursor-pointer hover:border-accent-brand/50 transition-colors">
+        <label className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border/60 px-3.5 py-3 cursor-pointer transition-colors hover:border-accent-brand/50 min-[400px]:flex-row min-[400px]:items-center">
           <span className="flex items-center gap-2 text-sm">
             <Gift className="size-4 text-accent-brand" aria-hidden="true" />
             <span>

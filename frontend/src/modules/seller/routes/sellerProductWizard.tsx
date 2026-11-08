@@ -22,6 +22,7 @@ import type {
 import {
 	EMPTY_FORM,
 	bundlePayloadItems,
+	isValidDownloadUrl,
 	slugify,
 	parseMajorPrice,
 	draftKeyFor,
@@ -35,12 +36,6 @@ import { VariantPricing } from "./wizard/VariantPricing";
 import { BundleItems } from "./wizard/BundleItems";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
-
-// Downloadable products deliver a hosted file, so the seller link must be a
-// real http(s) URL rather than free text.
-function isValidDownloadUrl(value: string) {
-	return /^https?:\/\/\S+$/i.test(value.trim());
-}
 
 export function SellerProductWizard() {
 	const t = useTranslations("seller");
@@ -85,7 +80,27 @@ export function SellerProductWizard() {
 		[t],
 	);
 
-	const validBundleItems = useMemo(() => bundlePayloadItems(formData.bundleItems), [formData.bundleItems]);
+	// Candidate products for bundles must not be soft-deleted and must have a positive selling price
+	const eligibleBundleCandidates = useMemo(
+		() =>
+			bundleCandidates.filter(
+				(p) =>
+					p.status !== "archived" &&
+					p.productType !== "bundle" &&
+					p.price !== undefined &&
+					p.price !== null &&
+					p.price > 0,
+			),
+		[bundleCandidates],
+	);
+
+	const validBundleItems = useMemo(
+		() =>
+			bundlePayloadItems(formData.bundleItems, (id) =>
+				eligibleBundleCandidates.some((c) => c.id === id),
+			),
+		[formData.bundleItems, eligibleBundleCandidates],
+	);
 
 	const readiness = useMemo(() => {
 		const checks = [
@@ -864,7 +879,7 @@ export function SellerProductWizard() {
 						)}
 						{formData.productType === "bundle" && (
 							<BundleItems
-								products={bundleCandidates}
+								products={eligibleBundleCandidates}
 								items={formData.bundleItems}
 								currency={formData.currency}
 								loading={bundleCandidatesState === "loading"}

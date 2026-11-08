@@ -12,6 +12,16 @@ import type { Order } from "@/modules/orders/types";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function parseSnapshotTitle(snapshot?: string): string {
+  if (!snapshot) return "";
+  try {
+    const parsed = JSON.parse(snapshot) as { title?: string; name?: string };
+    return parsed.title || parsed.name || "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Guest order lookup: email + order number against the public
  * `GET /api/v1/orders/lookup` contract (no session). Renders the same
@@ -153,15 +163,19 @@ export default function OrderLookupContent() {
           )}
 
           <div className="divide-y divide-border/70">
-            {(order.items ?? []).map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-foreground">{item.title ?? item.productSnapshot ?? item.variantId}</p>
-                  <p className="text-xs text-muted-foreground">{tDetails("quantity", { count: item.quantity })}</p>
+            {(order.items ?? []).map((item) => {
+              const snapshotTitle = parseSnapshotTitle(item.productSnapshot);
+              const displayName = item.title || snapshotTitle || t("deletedProduct", { defaultMessage: "Item" }) + ` (#${item.variantId.slice(0, 8)})`;
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-foreground">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">{tDetails("quantity", { count: item.quantity })}</p>
+                  </div>
+                  <p className="shrink-0 font-semibold text-foreground">{formatMoney(((item.priceAtPurchase || 0) * (item.quantity || 1)) / 100, order.currency)}</p>
                 </div>
-                <p className="shrink-0 font-semibold text-foreground">{formatMoney((item.priceAtPurchase * item.quantity) / 100, order.currency)}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <Link href="/products" className="text-sm font-medium text-accent-brand hover:underline">
