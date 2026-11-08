@@ -1286,6 +1286,13 @@
   },
   "auth": {
     "backToLogin": "Back to login",
+ "passkey": {
+  "button": "Sign in with Passkey",
+  "cancelled": "Passkey sign-in cancelled",
+  "failed": "Passkey sign-in failed. Try email sign-in instead.",
+  "or": "or",
+  "success": "Signed in with passkey!"
+ },
     "guestCart": {
       "decreaseQty": "Decrease quantity",
       "increaseQty": "Increase quantity",
@@ -1337,6 +1344,12 @@
       "item": "{count} item",
       "items": "{count} items",
       "title": "Your Cart"
+    },
+    "youMayAlsoLike": "You may also like",
+    "couponCodeHint": "This field also accepts gift card codes.",
+    "giftWrap": {
+      "label": "Gift wrap",
+      "note": "+{fee} — premium wrap & gift card"
     },
     "coupon": {
       "applied": "Coupon {code} applied!",
@@ -1527,6 +1540,15 @@
   },
   "common": {
     "cancel": "Cancel",
+    "currency": {
+      "AED": "UAE Dirham",
+      "EGP": "Egyptian Pound",
+      "EUR": "Euro",
+      "SAR": "Saudi Riyal",
+      "USD": "US Dollar",
+      "approximate": "Prices shown in your selected currency are approximate.",
+      "label": "Currency"
+    },
     "confirm": "Confirm",
     "errors": {
       "copyFailed": "Couldn't copy to clipboard",
@@ -1665,7 +1687,11 @@
       "addToCart": "Add to cart"
     },
     "recentlyViewed": {
-      "title": "Recently Viewed"
+      "title": "Recently Viewed",
+      "clear": "Clear",
+      "cleared": "Browsing history cleared",
+      "remove": "Remove {name}",
+      "removed": "Removed “{name}” from history"
     },
     "scrollLeft": "Scroll left",
     "scrollRight": "Scroll right",
@@ -1767,6 +1793,14 @@
         "description": "View and manage your saved items",
         "title": "Your Wishlist"
       },
+      "compare": {
+        "description": "Compare products side by side",
+        "title": "Compare Products"
+      },
+      "orderLookup": {
+        "description": "Look up a guest order with email and order number",
+        "title": "Track Your Order"
+      },
       "brands": {
         "description": "Browse every brand in the store catalog",
         "title": "Brands"
@@ -1779,6 +1813,20 @@
     "subtitle": "The page you're looking for doesn't exist or may have been moved.",
     "title": "Page Not Found"
   },
+  "orderLookup": {
+    "continueShopping": "Continue Shopping",
+    "emailInvalid": "Enter a valid email address",
+    "emailLabel": "Email address",
+    "looking": "Looking up…",
+    "lookup": "Look up my order",
+    "lookupFailed": "Couldn't look up your order. Please try again.",
+    "notFound": "Order not found",
+    "notFoundDesc": "We couldn't find an order matching that email and order number. Check both entries and try again.",
+    "orderNumberInvalid": "Enter a valid order number (UUID)",
+    "orderNumberLabel": "Order number",
+    "subtitle": "Track any order with your email and order number — no account needed.",
+    "title": "Track your order"
+  },
   "orderDetails": {
     "backToOrders": "Back to orders",
     "buyAgain": "Buy again",
@@ -1790,6 +1838,17 @@
     "customer": "Customer Contact",
     "deliveryAddress": "Delivery Address",
     "discount": "Discount",
+    "downloadInvoice": "Download Invoice",
+    "invoice": {
+      "amount": "Amount",
+      "codFee": "Cash on delivery fee",
+      "date": "Order date",
+      "item": "Item",
+      "quantity": "Qty",
+      "tax": "Tax (VAT)",
+      "title": "Invoice",
+      "unitPrice": "Unit price"
+    },
     "error": "Failed to load order details",
     "freeShipping": "Free",
     "item": "Item",
@@ -2055,6 +2114,8 @@
       "freeDeliveryHint": "Free on orders over {threshold}",
       "inStock": "In Stock ({count} available)",
       "outOfStock": "Out of Stock",
+      "addToCompare": "Add to Compare",
+      "addedToCompare": "Added to Compare",
       "reviewsCount": "{count} Reviews",
       "savedToWishlist": "Saved to Wishlist",
       "selectColor": "Select color",
@@ -2075,8 +2136,33 @@
       "recently": "Recently",
       "reviewedOn": "Reviewed on {date}",
       "shareUrl": "Share URL: {url}",
+      "relatedProducts": "Recommended with this item",
       "similarProducts": "Similar Products",
       "you": "You"
+    },
+    "tierPricing": {
+      "activeSavings": "Volume pricing: save {amount} per unit at {minQuantity}+",
+      "minQuantity": "Buy {count}+",
+      "quantity": "Quantity",
+      "savings": "You save",
+      "savingsAmount": "Save {amount} / unit",
+      "savingsPercent": "Save {percent}%",
+      "title": "Volume discounts",
+      "unitPrice": "Unit price"
+    },
+    "notifyMe": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "cooldown": "You've already requested an alert for this product. Please try again shortly.",
+      "description": "Be the first to know when “{name}” is back in stock.",
+      "done": "Done",
+      "emailInvalid": "Enter a valid email address",
+      "emailLabel": "Email address",
+      "open": "Notify me when available",
+      "subscribed": "You're on the list — we'll email you as soon as this item is back in stock.",
+      "success": "Alert set for “{name}”",
+      "submit": "Notify me",
+      "title": "Notify me when available"
     },
     "gallery": {
       "nextImage": "Next image",
@@ -2086,6 +2172,7 @@
       "thumbnailAlt": "{productName} thumbnail {index}"
     },
     "bundle": {
+      "buyBundle": "Buy bundle · {price}",
       "hint": "Availability is calculated from the items included in this bundle.",
       "itemInStock": "In stock",
       "itemOutOfStock": "Out of stock",
@@ -2093,6 +2180,7 @@
       "kitAvailable": "Available ({count} kits)",
       "kitUnavailable": "Currently unavailable",
       "quantity": "×{count}",
+      "savings": "You save {amount} ({percent}% less than buying separately)",
       "title": "What's in this bundle"
     },
     "highlights": {
@@ -2689,6 +2777,12 @@
         "compareAtPrice": "Compare-at price",
         "currency": "Currency",
         "description": "Description",
+        "deliveryInstructions": "Delivery instructions (optional)",
+        "deliveryInstructionsPlaceholder": "e.g. The download link is emailed within 24 hours of payment.",
+        "downloadable": "Downloadable",
+        "downloadUrl": "Download file link",
+        "downloadUrlHint": "Public link to the file buyers receive after purchase, e.g. a hosted PDF, ZIP, or EPUB.",
+        "downloadUrlPlaceholder": "https://files.example.com/guide.pdf",
         "imageUrl": "Image URL",
         "initialPurchaseNote": "A default variant is created for simple products. Initial stock is recorded as a restock movement.",
         "initialStock": "Initial Stock",
@@ -2740,6 +2834,8 @@
         "slugInvalid": "Slug must use lowercase letters, numbers, and single hyphens only.",
         "axesRequired": "Enter at least one variation axis for variable products.",
         "bundlePriceRequired": "Enter a bundle price greater than 0.",
+        "downloadUrlInvalid": "Enter a valid download link starting with http:// or https://.",
+        "downloadUrlRequired": "Add the download file link.",
         "priceInvalid": "Enter a selling or compare-at price greater than 0.",
         "compareAtTooLow": "Compare-at price cannot be lower than the selling price.",
         "currencyInvalid": "Currency must be a 3-letter code such as EGP.",
@@ -2986,6 +3082,37 @@
       "signInRequired": "Please sign in to save items to your wishlist"
     },
     "cancel": "Cancel"
+  },
+  "compare": {
+    "addMore": "You are comparing one product. Add more products from the catalog to compare them side by side.",
+    "addToCompare": "Add to Compare",
+    "addedToCompare": "Added to Compare",
+    "clearAll": "Clear All",
+    "continueShopping": "Continue Shopping",
+    "empty": {
+      "browse": "Browse Products",
+      "subtitle": "Nothing to compare yet. Open any product and tap “Add to Compare” to build your shortlist.",
+      "title": "No products to compare"
+    },
+    "loadError": "Couldn't load your compared products. Please try again.",
+    "missingProducts": "{count, plural, =1 {1 product} other {# products}} couldn't be loaded and were skipped.",
+    "remove": "Remove",
+    "subtitle": "Compare up to 4 products side by side.",
+    "table": {
+      "availability": "Availability",
+      "brand": "Brand",
+      "category": "Category",
+      "price": "Price",
+      "rating": "Rating",
+      "spec": "Spec"
+    },
+    "title": "Compare Products",
+    "toast": {
+      "added": "Added “{name}” to compare",
+      "limitReached": "You can compare up to 4 products",
+      "removed": "Removed from compare"
+    },
+    "viewCompare": "View Compare ({count})"
   },
   "marketing": {
     "meta": {

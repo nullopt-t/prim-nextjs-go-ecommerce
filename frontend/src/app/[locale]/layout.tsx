@@ -53,6 +53,7 @@ export function generateStaticParams() {
 import { CartProvider } from "@/modules/cart/model/cartContext";
 import { AuthProvider } from "@/modules/auth/model/authContext";
 import { WishlistProvider } from "@/modules/wishlist/model/wishlistContext";
+import { CompareProvider } from "@/modules/compare/model/compareContext";
 import { NotificationProvider } from "@/modules/notifications/model/notificationContext";
 import { PublicSettingsProvider } from "@/modules/settings/model/publicSettingsContext";
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
@@ -130,6 +131,7 @@ export default async function RootLayout({
             <ThemeProvider>
               <AuthProvider>
                 <WishlistProvider>
+                  <CompareProvider>
                   <NotificationProvider>
                     <CartProvider>
                       {children}
@@ -137,6 +139,7 @@ export default async function RootLayout({
                     </CartProvider>
                     <ResponsiveToaster richColors />
                   </NotificationProvider>
+                  </CompareProvider>
                 </WishlistProvider>
               </AuthProvider>
             </ThemeProvider>

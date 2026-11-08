@@ -1286,6 +1286,13 @@
   },
   "auth": {
     "backToLogin": "العودة إلى تسجيل الدخول",
+ "passkey": {
+  "button": "تسجيل الدخول بمفتاح المرور",
+  "cancelled": "أُلغي تسجيل الدخول بمفتاح المرور",
+  "failed": "فشل تسجيل الدخول بمفتاح المرور. جرّب تسجيل الدخول بالبريد بدلًا من ذلك.",
+  "or": "أو",
+  "success": "تم تسجيل الدخول بمفتاح المرور!"
+ },
     "guestCart": {
       "decreaseQty": "تقليل الكمية",
       "increaseQty": "زيادة الكمية",
@@ -1337,6 +1344,12 @@
       "item": "{count} عنصر",
       "items": "{count} عناصر",
       "title": "سلة التسوق"
+    },
+    "youMayAlsoLike": "قد يعجبك أيضًا",
+    "couponCodeHint": "يقبل هذا الحقل أيضًا رموز بطاقات الهدايا.",
+    "giftWrap": {
+      "label": "تغليف هدية",
+      "note": "+{fee} — تغليف فاخر وبطاقة هدية"
     },
     "coupon": {
       "applied": "تم تطبيق الكوبون {code}!",
@@ -1527,6 +1540,15 @@
   },
   "common": {
     "cancel": "إلغاء",
+    "currency": {
+      "AED": "درهم إماراتي",
+      "EGP": "جنيه مصري",
+      "EUR": "يورو",
+      "SAR": "ريال سعودي",
+      "USD": "دولار أمريكي",
+      "approximate": "الأسعار المعروضة بعملتك المحددة تقريبية.",
+      "label": "العملة"
+    },
     "confirm": "تأكيد",
     "errors": {
       "copyFailed": "تعذّر النسخ إلى الحافظة",
@@ -1665,7 +1687,11 @@
       "addToCart": "أضف إلى السلة"
     },
     "recentlyViewed": {
-      "title": "شوهدت مؤخرًا"
+      "title": "شوهدت مؤخرًا",
+      "clear": "مسح",
+      "cleared": "تم مسح سجل التصفح",
+      "remove": "إزالة {name}",
+      "removed": "تمت إزالة «{name}» من السجل"
     },
     "scrollLeft": "التمرير إلى اليسار",
     "scrollRight": "التمرير إلى اليمين",
@@ -1767,6 +1793,14 @@
         "description": "عرض وإدارة منتجاتك المحفوظة",
         "title": "قائمة أمنياتك"
       },
+      "compare": {
+        "description": "قارِن بين المنتجات جنبًا إلى جنب",
+        "title": "مقارنة المنتجات"
+      },
+      "orderLookup": {
+        "description": "ابحث عن طلب ضيف باستخدام البريد ورقم الطلب",
+        "title": "تتبّع طلبك"
+      },
       "brands": {
         "description": "تصفح جميع العلامات التجارية في كتالوج المتجر",
         "title": "العلامات التجارية"
@@ -1779,6 +1813,20 @@
     "subtitle": "الصفحة التي تبحث عنها غير موجودة أو ربما تم نقلها.",
     "title": "الصفحة غير موجودة"
   },
+  "orderLookup": {
+    "continueShopping": "متابعة التسوق",
+    "emailInvalid": "أدخل عنوان بريد إلكتروني صحيحًا",
+    "emailLabel": "البريد الإلكتروني",
+    "looking": "جاري البحث…",
+    "lookup": "ابحث عن طلبي",
+    "lookupFailed": "تعذر البحث عن طلبك. حاول مرة أخرى.",
+    "notFound": "الطلب غير موجود",
+    "notFoundDesc": "لم نتمكن من العثور على طلب يطابق هذا البريد ورقم الطلب. تحقق من الإدخالين وحاول مرة أخرى.",
+    "orderNumberInvalid": "أدخل رقم طلب صحيحًا (UUID)",
+    "orderNumberLabel": "رقم الطلب",
+    "subtitle": "تتبّع أي طلب ببريدك ورقم الطلب — دون الحاجة إلى حساب.",
+    "title": "تتبّع طلبك"
+  },
   "orderDetails": {
     "backToOrders": "الرجوع إلى الطلبات",
     "buyAgain": "شراء مجدداً",
@@ -1790,6 +1838,17 @@
     "customer": "بيانات العميل",
     "deliveryAddress": "عنوان التوصيل",
     "discount": "الخصم",
+    "downloadInvoice": "تحميل الفاتورة",
+    "invoice": {
+      "amount": "المبلغ",
+      "codFee": "رسوم الدفع عند الاستلام",
+      "date": "تاريخ الطلب",
+      "item": "العنصر",
+      "quantity": "الكمية",
+      "tax": "الضريبة (ضريبة القيمة المضافة)",
+      "title": "فاتورة",
+      "unitPrice": "سعر الوحدة"
+    },
     "error": "فشل تحميل تفاصيل الطلب",
     "freeShipping": "مجاني",
     "item": "عنصر",
@@ -2055,6 +2114,8 @@
       "freeDeliveryHint": "مجاناً للطلبات التي تتجاوز {threshold}",
       "inStock": "متوفر ({count} متاح)",
       "outOfStock": "غير متوفر",
+      "addToCompare": "أضف للمقارنة",
+      "addedToCompare": "أُضيف للمقارنة",
       "reviewsCount": "{count} مراجعة",
       "savedToWishlist": "محفوظ في المفضلة",
       "selectColor": "اختر اللون",
@@ -2075,8 +2136,33 @@
       "recently": "حديثاً",
       "reviewedOn": "تمت المراجعة في {date}",
       "shareUrl": "رابط المشاركة: {url}",
+      "relatedProducts": "موصى به مع هذا العنصر",
       "similarProducts": "منتجات مشابهة",
       "you": "أنت"
+    },
+    "tierPricing": {
+      "activeSavings": "سعر الكمية: وفّر {amount} للوحدة عند {minQuantity}+",
+      "minQuantity": "اشترِ {count}+",
+      "quantity": "الكمية",
+      "savings": "توفيرك",
+      "savingsAmount": "وفّر {amount} / للوحدة",
+      "savingsPercent": "وفّر {percent}٪",
+      "title": "خصومات الكمية",
+      "unitPrice": "سعر الوحدة"
+    },
+    "notifyMe": {
+      "cancel": "إلغاء",
+      "close": "إغلاق",
+      "cooldown": "طلبت تنبيهًا لهذا المنتج بالفعل. حاول مرة أخرى بعد قليل.",
+      "description": "كن أول من يعرف عند عودة «{name}» إلى المخزون.",
+      "done": "تم",
+      "emailInvalid": "أدخل عنوان بريد إلكتروني صحيحًا",
+      "emailLabel": "البريد الإلكتروني",
+      "open": "أعلمني عند التوفر",
+      "subscribed": "أنت في القائمة — سنراسلك فور عودة هذا العنصر إلى المخزون.",
+      "success": "تم تعيين التنبيه لـ«{name}»",
+      "submit": "أعلمني",
+      "title": "أعلمني عند التوفر"
     },
     "gallery": {
       "nextImage": "الصورة التالية",
@@ -2086,6 +2172,7 @@
       "thumbnailAlt": "الصورة المصغرة {index} لـ {productName}"
     },
     "bundle": {
+      "buyBundle": "اشترِ الحزمة · {price}",
       "hint": "يُحتسب التوفر بناءً على العناصر المضمّنة في هذه الحزمة.",
       "itemInStock": "متوفر",
       "itemOutOfStock": "غير متوفر",
@@ -2093,6 +2180,7 @@
       "kitAvailable": "متوفر ({count} حزمة)",
       "kitUnavailable": "غير متوفر حالياً",
       "quantity": "×{count}",
+      "savings": "وفّر {amount} ({percent}٪ أقل من الشراء منفردًا)",
       "title": "محتويات هذه الحزمة"
     },
     "highlights": {
@@ -2689,6 +2777,12 @@
         "compareAtPrice": "السعر قبل الخصم",
         "currency": "العملة",
         "description": "الوصف",
+        "deliveryInstructions": "تعليمات التسليم (اختياري)",
+        "deliveryInstructionsPlaceholder": "مثال: يُرسل رابط التنزيل بالبريد خلال 24 ساعة من الدفع.",
+        "downloadable": "قابل للتنزيل",
+        "downloadUrl": "رابط ملف التنزيل",
+        "downloadUrlHint": "رابط عام للملف الذي يستلمه المشتري بعد الشراء، مثل ملف PDF أو ZIP أو EPUB مستضاف.",
+        "downloadUrlPlaceholder": "https://files.example.com/guide.pdf",
         "imageUrl": "رابط الصورة",
         "initialPurchaseNote": "يتم إنشاء متغير افتراضي للمنتجات البسيطة. يتم تسجيل المخزون الأولي كحركة إعادة مخزون.",
         "initialStock": "المخزون الابتدائي",
@@ -2740,6 +2834,8 @@
         "slugInvalid": "يجب أن يستخدم الرابط الحروف الصغيرة والأرقام وشرطات واحدة فقط.",
         "axesRequired": "أدخل محور تنويع واحدًا على الأقل للمنتجات المتغيرة.",
         "bundlePriceRequired": "أدخل سعر حزمة أكبر من صفر.",
+        "downloadUrlInvalid": "أدخل رابط تنزيل صالحًا يبدأ بـ http:// أو https://.",
+        "downloadUrlRequired": "أضف رابط ملف التنزيل.",
         "priceInvalid": "أدخل سعر بيع أو سعر مقارنة أكبر من 0.",
         "compareAtTooLow": "لا يمكن أن يكون سعر المقارنة أقل من سعر البيع.",
         "currencyInvalid": "يجب أن تكون العملة رمزًا من 3 حروف مثل EGP.",
@@ -2986,6 +3082,37 @@
       "signInRequired": "يرجى تسجيل الدخول لحفظ المنتجات في المفضلة"
     },
     "cancel": "إلغاء"
+  },
+  "compare": {
+    "addMore": "أنت تقارن منتجًا واحدًا. أضف مزيدًا من المنتجات من الكتالوج لمقارنتها جنبًا إلى جنب.",
+    "addToCompare": "أضف للمقارنة",
+    "addedToCompare": "أُضيف للمقارنة",
+    "clearAll": "مسح الكل",
+    "continueShopping": "متابعة التسوق",
+    "empty": {
+      "browse": "تصفح المنتجات",
+      "subtitle": "لا يوجد ما يُقارن بعد. افتح أي منتج واضغط على «أضف للمقارنة» لبناء قائمتك المختصرة.",
+      "title": "لا توجد منتجات للمقارنة"
+    },
+    "loadError": "تعذر تحميل المنتجات المحددة للمقارنة. حاول مرة أخرى.",
+    "missingProducts": "لم يتم تحميل {count, plural, =1 {منتج واحد} =2 {منتجين} few {# منتجات} many {# منتجًا} other {# منتج}} وتخُطّيها.",
+    "remove": "إزالة",
+    "subtitle": "قارِن حتى 4 منتجات جنبًا إلى جنب.",
+    "table": {
+      "availability": "التوفر",
+      "brand": "العلامة التجارية",
+      "category": "الفئة",
+      "price": "السعر",
+      "rating": "التقييم",
+      "spec": "المواصفة"
+    },
+    "title": "مقارنة المنتجات",
+    "toast": {
+      "added": "تمت إضافة «{name}» للمقارنة",
+      "limitReached": "يمكنك مقارنة حتى 4 منتجات",
+      "removed": "تمت الإزالة من المقارنة"
+    },
+    "viewCompare": "عرض المقارنة ({count})"
   },
   "marketing": {
     "meta": {

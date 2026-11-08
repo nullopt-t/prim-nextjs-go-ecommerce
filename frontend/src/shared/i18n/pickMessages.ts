@@ -10,6 +10,7 @@ export const BASE_MESSAGE_PATHS = [
 	"components",
 	"cart",
 	"wishlist",
+	"compare",
 	"products",
 	"notFound",
 	"home.product",
@@ -17,7 +18,7 @@ export const BASE_MESSAGE_PATHS = [
 ] as const;
 
 export const GROUP_MESSAGE_PATHS = {
-	shop: ["home", "shop", "about", "reviews", "addresses", "checkout"],
+	shop: ["home", "shop", "about", "reviews", "addresses", "checkout", "orderLookup", "orders", "orderDetails"],
 	dashboard: [
 		"addresses",
 		"orders",

@@ -112,9 +112,10 @@ export interface CreateSellerProductPayload {
   slug: string;
   title: string;
   description?: string;
-  highlights?: string[];
-  productType?: string;
+  highlights?: string[];	productType?: string;
   variationAxes?: string[];
+  downloadUrl?: string;
+  deliveryInstructions?: string;
 }
 
 export interface UpdateSellerProductPayload {

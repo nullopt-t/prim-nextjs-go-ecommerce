@@ -13,7 +13,7 @@ export interface ProductForm {
 	categoryId: string;
 	description: string;
 	highlights: string;
-	productType: "simple" | "variable" | "bundle";
+	productType: "simple" | "variable" | "bundle" | "downloadable";
 	variationAxes: string;
 	sku: string;
 	price: string;
@@ -21,6 +21,8 @@ export interface ProductForm {
 	currency: string;
 	initialStock: string;
 	bundleItems: BundleItemDraft[];
+	downloadUrl: string;
+	deliveryInstructions: string;
 }
 
 export const EMPTY_FORM: ProductForm = {
@@ -38,6 +40,8 @@ export const EMPTY_FORM: ProductForm = {
 	currency: "EGP",
 	initialStock: "0",
 	bundleItems: [{ productId: "", quantity: "1" }],
+	downloadUrl: "",
+	deliveryInstructions: "",
 };
 
 export type WizardStep = 0 | 1 | 2 | 3;
