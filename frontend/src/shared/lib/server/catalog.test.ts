@@ -47,6 +47,26 @@ describe("server catalog fetchers", () => {
 		});
 	});
 
+	it("getProducts serializes attribute facets as comma-separated key:value pairs", async () => {
+		respondWith({ data: [] });
+
+		await getProducts({ pageSize: 24, attributes: { color: "black", size: "XL" } });
+
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe(
+			"http://api:8081/api/v1/products?pageSize=24&attribute=color%3Ablack%2Csize%3AXL",
+		);
+	});
+
+	it("getProducts omits the attribute param when no facets are selected", async () => {
+		respondWith({ data: [] });
+
+		await getProducts({ attributes: {} });
+
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).not.toContain("attribute=");
+	});
+
 	it("getProducts defaults pageSize to 100", async () => {
 		respondWith({ data: [] });
 		await getProducts();

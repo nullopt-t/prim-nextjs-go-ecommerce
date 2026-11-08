@@ -91,6 +91,8 @@ export interface CatalogQuery {
 	minPrice?: number;
 	maxPrice?: number;
 	sort?: string;
+	/** Selected variant attribute facets, e.g. { color: "black", size: "XL" }. */
+	attributes?: Record<string, string>;
 }
 
 function productParams(query: CatalogQuery): URLSearchParams {
@@ -106,6 +108,15 @@ function productParams(query: CatalogQuery): URLSearchParams {
 	if (query.minPrice !== undefined) params.set("min_price", String(query.minPrice));
 	if (query.maxPrice !== undefined) params.set("max_price", String(query.maxPrice));
 	if (query.sort) params.set("sort", query.sort);
+	// Backend binds a single `attribute` query param: comma-separated
+	// "key:value" pairs (e.g. attribute=color:black,size:XL). Repeated
+	// params would only bind the last value.
+	if (query.attributes) {
+		const pairs = Object.entries(query.attributes)
+			.filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
+			.map(([k, v]) => `${k.trim()}:${v.trim()}`);
+		if (pairs.length > 0) params.set("attribute", pairs.join(","));
+	}
 	return params;
 }
 
