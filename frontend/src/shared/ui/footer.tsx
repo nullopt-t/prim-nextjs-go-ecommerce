@@ -2,6 +2,7 @@
 
 import { Brand } from "@/shared/ui/Brand";
 import { StoreContactInfo } from "@/shared/ui/storeContactInfo";
+import { CurrencySwitcher } from "@/shared/ui/currencySwitcher";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 import { useTranslations } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
@@ -109,6 +110,12 @@ export function Footer() {
               {t("footer.footerDescription", { store: storeName })}
             </p>
             <StoreContactInfo />
+            <div className="mt-4">
+              <span className="mb-2 block text-xs font-semibold text-muted-foreground">
+                {t("currency.label")}
+              </span>
+              <CurrencySwitcher variant="footer" />
+            </div>
           </div>
           {sections.map((value) => (
             <div key={value.id} className="flex-1">

@@ -11,8 +11,7 @@ import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { CatalogImage } from "@/shared/ui/catalogImage";
-import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
-import { formatMoney } from "@/shared/lib/money";
+import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
 
 export interface CardDetails {
   id: string | number;
@@ -54,7 +53,7 @@ export function ProductsCard({
   const tCommon = useTranslations("common");
   const tCard = useTranslations("components");
   const locale = useLocale();
-  const currency = useCurrency();
+  const formatPrice = usePriceFormatter();
   const { addToCart } = useCartContext();
   const { toggleWishlist } = useWishlist();
 
@@ -90,7 +89,7 @@ export function ProductsCard({
         slug: cardDetails.slug || String(cardDetails.id),
         variantId: defaultVariant?.id || cardDetails.defaultVariantId,
         productName: cardDetails.product,
-        productPrice: typeof cardDetails.price === "number" ? formatMoney(cardDetails.price, currency) : String(cardDetails.price),
+        productPrice: formatPrice(cardDetails.price),
         img: typeof cardDetails.img === "string" ? normalizeMediaUrl(cardDetails.img) : "/placeholder-product.png",
         quantity: 1,
       };
@@ -190,15 +189,11 @@ export function ProductsCard({
           {/* Pricing */}
           <div className="flex flex-wrap items-baseline gap-1.5">
             <span className="font-bold text-sm sm:text-base text-foreground">
-              {typeof cardDetails.price === "number"
-                ? formatMoney(cardDetails.price, currency)
-                : String(cardDetails.price)}
+              {formatPrice(cardDetails.price)}
             </span>
             {cardDetails.oldPrice && (
               <del className="text-muted-foreground text-[11px]">
-                {typeof cardDetails.oldPrice === "number"
-                  ? formatMoney(cardDetails.oldPrice, currency)
-                  : String(cardDetails.oldPrice)}
+                {formatPrice(cardDetails.oldPrice)}
               </del>
             )}
           </div>

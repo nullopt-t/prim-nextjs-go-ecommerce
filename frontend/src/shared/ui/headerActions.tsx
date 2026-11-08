@@ -23,6 +23,7 @@ import { useCart } from "@/modules/cart/model/useCart";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { NotificationsDropdown } from "@/shared/ui/notificationsDropdown";
+import { CurrencySwitcher } from "@/shared/ui/currencySwitcher";
 import { rememberLocaleChoice } from "@/shared/lib/localePreference";
 
 interface HeaderActionsProps {
@@ -116,7 +117,10 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				</Link>
 			)}
 
-			{/* 2. Notifications Center */}
+			{/* 1b. Currency switcher */}
+			<CurrencySwitcher variant="header" />
+
+			{/* 3. Notifications Center */}
 			{isAuthenticated && <NotificationsDropdown />}
 
 			{/* 3. User Menu & Settings Dropdown */}

@@ -10,6 +10,7 @@ export interface PublicSettings {
   announcementEnabled: boolean;
   announcementText: string;
   flatRateShipping: number;
+  giftWrapFee?: number;
   freeShippingThreshold: number;
   /** Optional until the backend exposes a dedicated express rate. */
   expressShippingRate?: number;
