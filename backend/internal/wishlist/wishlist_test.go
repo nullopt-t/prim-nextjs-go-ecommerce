@@ -111,7 +111,7 @@ func (s *WishlistHTTPTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
+	schemaBytes, err := os.ReadFile("../../migrations/000001_init.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)

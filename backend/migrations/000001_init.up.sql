@@ -1,11 +1,19 @@
+BEGIN;
+
+-- =====================================================================
+-- PRIM E-COMMERCE DATABASE SCHEMA (Production Hardened)
+-- PostgreSQL
+-- Consolidated: schema for all domains (seller, merchant lifecycle,
+-- user product views, coupon seller scope, seller attributes, bundles).
+-- =====================================================================
+
+
+-- ---- 000001_init_sechema.up.sql ----
 -- =====================================================================
 -- PRIM E-COMMERCE DATABASE SCHEMA (Production Hardened)
 -- PostgreSQL
 -- Consolidated (dev): 000001_init_sechema + 000003_audit_log + 000004_reservation_order_link
 -- =====================================================================
-
-BEGIN;
-
 -- =====================================================================
 -- ENUM TYPES
 -- =====================================================================
@@ -642,5 +650,214 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DES
 CREATE INDEX IF NOT EXISTS idx_audit_log_actor_id   ON audit_log (actor_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_action     ON audit_log (action);
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity     ON audit_log (entity_type, entity_id);
+
+
+-- ---- 000003_seller_domain.up.sql ----
+-- =====================================================================
+-- 000003 Seller Domain (Design B — seller-owned products)
+-- See docs/adr-seller-domain.md
+-- =====================================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'seller_status') THEN
+        CREATE TYPE seller_status AS ENUM ('pending', 'active', 'suspended', 'rejected');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payout_status') THEN
+        CREATE TYPE payout_status AS ENUM ('requested', 'approved', 'processing', 'paid', 'rejected');
+    END IF;
+END
+$$;
+
+-- Seller profiles: 1:1 with users. Soft-deleted sellers keep their order
+-- history; FKs on products/order_items use ON DELETE SET NULL so deleting a
+-- seller de-attributes instead of destroying money trail.
+CREATE TABLE IF NOT EXISTS sellers (
+    id                   uuid NOT NULL,
+    user_id              uuid NOT NULL,
+    store_name           text NOT NULL CHECK (length(store_name) BETWEEN 2 AND 150),
+    slug                 text NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
+    description          text NULL,
+    logo_object_id       uuid NULL,
+    banner_object_id     uuid NULL,
+    commission_rate_bps  int NOT NULL DEFAULT 1000 CHECK (commission_rate_bps BETWEEN 0 AND 10000),
+    status               seller_status NOT NULL DEFAULT 'pending',
+    bank_account_info    jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at           timestamptz NOT NULL DEFAULT now(),
+    updated_at           timestamptz NOT NULL DEFAULT now(),
+    deleted_at           timestamptz NULL,
+    PRIMARY KEY (id),
+    UNIQUE (user_id),
+    UNIQUE (slug),
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (logo_object_id) REFERENCES storage_objects (id) ON DELETE SET NULL,
+    FOREIGN KEY (banner_object_id) REFERENCES storage_objects (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_sellers_status ON sellers (status) WHERE deleted_at IS NULL;
+
+-- Ledger of payout requests. Rejected rows are retained (full audit trail).
+-- snapshot_available_balance records what the balance validation computed at
+-- request time; the enforceable invariant is re-validated under the seller
+-- row lock in RequestPayout.
+CREATE TABLE IF NOT EXISTS seller_payouts (
+    id                          uuid NOT NULL,
+    seller_id                   uuid NOT NULL,
+    amount                      bigint NOT NULL CHECK (amount > 0),
+    currency                    text NOT NULL DEFAULT 'EGP',
+    status                      payout_status NOT NULL DEFAULT 'requested',
+    reference_number            text NULL,
+    notes                       text NULL,
+    snapshot_available_balance  bigint NOT NULL DEFAULT 0,
+    created_at                  timestamptz NOT NULL DEFAULT now(),
+    updated_at                  timestamptz NOT NULL DEFAULT now(),
+    processed_at                timestamptz NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (seller_id) REFERENCES sellers (id) ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS idx_seller_payouts_seller_id ON seller_payouts (seller_id);
+CREATE INDEX IF NOT EXISTS idx_seller_payouts_status ON seller_payouts (status);
+
+-- Attribution: pre-existing products/orders keep NULL = platform-owned.
+ALTER TABLE products ADD COLUMN seller_id uuid NULL REFERENCES sellers (id) ON DELETE SET NULL;
+ALTER TABLE order_items ADD COLUMN seller_id uuid NULL REFERENCES sellers (id) ON DELETE SET NULL;
+ALTER TABLE order_items ADD COLUMN seller_earning bigint NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products (seller_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items (seller_id);
+
+
+-- ---- 000004_merchant_lifecycle.up.sql ----
+-- =====================================================================
+-- 000004 Merchant lifecycle hardening
+-- Status review metadata, slug policy, payout idempotency, and frozen
+-- commission components on order lines.
+-- =====================================================================
+ALTER TABLE sellers
+    ADD COLUMN status_reason text NULL,
+    ADD COLUMN reviewed_by uuid NULL REFERENCES users (id) ON DELETE SET NULL,
+    ADD COLUMN reviewed_at timestamptz NULL;
+
+-- Slugs are public identifiers: enforce the API's 3-63 character policy at
+-- the database boundary as well.
+ALTER TABLE sellers DROP CONSTRAINT IF EXISTS sellers_slug_check;
+ALTER TABLE sellers ADD CONSTRAINT sellers_slug_check
+    CHECK (
+        length(slug) BETWEEN 3 AND 63
+        AND slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'
+    );
+
+-- Payout retries must be idempotent per seller. NULL keys preserve the
+-- existing manual/admin callers that do not supply one.
+ALTER TABLE seller_payouts ADD COLUMN idempotency_key text NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_payouts_idempotency
+    ON seller_payouts (seller_id, idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
+-- Freeze both sides of the commission split for historical audit. The
+-- existing seller_earning stays the authoritative seller share.
+ALTER TABLE order_items
+    ADD COLUMN commission_rate_bps int NOT NULL DEFAULT 0
+        CHECK (commission_rate_bps BETWEEN 0 AND 10000),
+    ADD COLUMN commission_amount bigint NOT NULL DEFAULT 0
+        CHECK (commission_amount >= 0);
+
+
+-- ---- 000005_user_product_views.up.sql ----
+-- =====================================================================
+-- 000005 User browsing history
+-- Per-user recently viewed products, deduplicated and capped by the
+-- service's rolling window.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS user_product_views (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id    uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    viewed_at  timestamptz NOT NULL DEFAULT now(),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_user_product_views UNIQUE (user_id, product_id)
+);
+
+-- Primary read path: the newest N views for one account.
+CREATE INDEX IF NOT EXISTS idx_user_product_views_lookup
+    ON user_product_views (user_id, viewed_at DESC);
+
+-- Product deletion cascades benefit from an indexed child lookup.
+CREATE INDEX IF NOT EXISTS idx_user_product_views_product_id
+    ON user_product_views (product_id);
+
+
+-- ---- 000006_coupon_seller_scope.up.sql ----
+-- =====================================================================
+-- 000006 Coupon seller scope
+-- NULL seller_id = platform coupon (admin). A set seller_id scopes the
+-- coupon to that merchant's products: it discounts only the seller's
+-- eligible subtotal at checkout and is manageable through the seller portal.
+-- =====================================================================
+ALTER TABLE coupons
+    ADD COLUMN IF NOT EXISTS seller_id uuid NULL
+        REFERENCES sellers (id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_coupons_seller_id
+    ON coupons (seller_id) WHERE seller_id IS NOT NULL;
+
+
+-- ---- 000007_seller_attributes.up.sql ----
+-- =====================================================================
+-- 000007 Seller custom attributes
+-- Seller-scoped attribute definitions attached to a category. They extend
+-- the admin-defined category attributes for that merchant's products only.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS seller_attributes (
+    id             uuid NOT NULL,
+    seller_id      uuid NOT NULL REFERENCES sellers (id) ON DELETE CASCADE,
+    category_id    uuid NOT NULL REFERENCES product_categories (id) ON DELETE CASCADE,
+    key            text NOT NULL,
+    label          text NOT NULL,
+    value_type     attribute_value_type NOT NULL,
+    allowed_values jsonb NULL,
+    is_filterable  boolean NOT NULL DEFAULT false,
+    sort_order     int NOT NULL DEFAULT 0,
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    updated_at     timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id),
+    UNIQUE (seller_id, category_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_seller_attributes_lookup
+    ON seller_attributes (seller_id, category_id);
+
+
+-- ---- 000008_product_bundles.up.sql ----
+-- =====================================================================
+-- 000008 Product bundles
+-- A bundle is a sellable product composed of other seller catalog items.
+-- The bundle's own product carries the bundle price; bundle_items records
+-- the composition for display and fulfillment.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS product_bundles (
+    id           uuid NOT NULL,
+    seller_id    uuid NOT NULL REFERENCES sellers (id) ON DELETE CASCADE,
+    product_id   uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    bundle_price bigint NOT NULL CHECK (bundle_price > 0),
+    currency     text NOT NULL DEFAULT 'EGP',
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    updated_at   timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id),
+    UNIQUE (product_id)
+);
+
+CREATE TABLE IF NOT EXISTS bundle_items (
+    id         uuid NOT NULL,
+    bundle_id  uuid NOT NULL REFERENCES product_bundles (id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES products (id) ON DELETE CASCADE,
+    variant_id uuid NULL REFERENCES product_variants (id) ON DELETE CASCADE,
+    quantity   int NOT NULL DEFAULT 1 CHECK (quantity > 0),
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_bundle_items_bundle ON bundle_items (bundle_id);
+CREATE INDEX IF NOT EXISTS idx_product_bundles_seller ON product_bundles (seller_id);
 
 COMMIT;

@@ -213,34 +213,9 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
+	schemaBytes, err := os.ReadFile("../../migrations/000001_init.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.ExecContext(ctx, string(schemaBytes))
-	require.NoError(s.T(), err)
-
-	sellerSchemaBytes, err := os.ReadFile("../../migrations/000003_seller_domain.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.ExecContext(ctx, string(sellerSchemaBytes))
-	require.NoError(s.T(), err)
-
-	lifecycleSchemaBytes, err := os.ReadFile("../../migrations/000004_merchant_lifecycle.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.ExecContext(ctx, string(lifecycleSchemaBytes))
-	require.NoError(s.T(), err)
-
-	couponSellerSchemaBytes, err := os.ReadFile("../../migrations/000006_coupon_seller_scope.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.ExecContext(ctx, string(couponSellerSchemaBytes))
-	require.NoError(s.T(), err)
-
-	sellerAttributesSchemaBytes, err := os.ReadFile("../../migrations/000007_seller_attributes.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.ExecContext(ctx, string(sellerAttributesSchemaBytes))
-	require.NoError(s.T(), err)
-
-	bundlesSchemaBytes, err := os.ReadFile("../../migrations/000008_product_bundles.up.sql")
-	require.NoError(s.T(), err)
-	_, err = db.ExecContext(ctx, string(bundlesSchemaBytes))
 	require.NoError(s.T(), err)
 
 	// ---- Redis (sessions) -------------------------------------------------

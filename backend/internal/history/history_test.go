@@ -102,9 +102,7 @@ func (s *HistoryTestSuite) SetupSuite() {
 	s.db = db
 
 	for _, migration := range []string{
-		"000001_init_sechema.up.sql",
-		"000003_seller_domain.up.sql",
-		"000005_user_product_views.up.sql",
+		"000001_init.up.sql",
 	} {
 		raw, err := os.ReadFile("../../migrations/" + migration)
 		require.NoError(s.T(), err)

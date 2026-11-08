@@ -540,10 +540,7 @@ func (s *SellerServiceSuite) SetupSuite() {
 	require.NoError(err)
 
 	for _, f := range []string{
-		"../../migrations/000001_init_sechema.up.sql",
-		"../../migrations/000003_seller_domain.up.sql",
-		"../../migrations/000004_merchant_lifecycle.up.sql",
-		"../../migrations/000007_seller_attributes.up.sql",
+		"../../migrations/000001_init.up.sql",
 	} {
 		migration, err := os.ReadFile(f)
 		require.NoError(err)

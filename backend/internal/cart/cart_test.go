@@ -115,22 +115,10 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schemaBytes, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
+	schemaBytes, err := os.ReadFile("../../migrations/000001_init.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
-
-	// Bundles reference sellers, so the seller domain has to exist before the
-	// bundle tables are created in the test schema.
-	for _, migration := range []string{
-		"../../migrations/000003_seller_domain.up.sql",
-		"../../migrations/000008_product_bundles.up.sql",
-	} {
-		migrationBytes, readErr := os.ReadFile(migration)
-		require.NoError(s.T(), readErr)
-		_, execErr := db.ExecContext(ctx, string(migrationBytes))
-		require.NoError(s.T(), execErr)
-	}
 
 	logger := log.NewConsoleLogger()
 	s.txRunner = database.NewTxRunner(s.db, logger)

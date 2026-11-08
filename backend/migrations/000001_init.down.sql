@@ -1,5 +1,13 @@
 BEGIN;
 
+-- Drop seller / bundle / history tables (added after base schema)
+DROP TABLE IF EXISTS bundle_items CASCADE;
+DROP TABLE IF EXISTS product_bundles CASCADE;
+DROP TABLE IF EXISTS seller_attributes CASCADE;
+DROP TABLE IF EXISTS user_product_views CASCADE;
+DROP TABLE IF EXISTS seller_payouts CASCADE;
+DROP TABLE IF EXISTS sellers CASCADE;
+
 -- Drop audit trail
 DROP TABLE IF EXISTS audit_log CASCADE;
 
@@ -60,5 +68,9 @@ DROP TYPE IF EXISTS discount_type CASCADE;
 DROP TYPE IF EXISTS attribute_value_type CASCADE;
 DROP TYPE IF EXISTS coupon_status CASCADE;
 DROP TYPE IF EXISTS inventory_reason CASCADE;
+DROP TYPE IF EXISTS product_status CASCADE;
+DROP TYPE IF EXISTS product_type CASCADE;
+DROP TYPE IF EXISTS seller_status CASCADE;
+DROP TYPE IF EXISTS payout_status CASCADE;
 
 COMMIT;

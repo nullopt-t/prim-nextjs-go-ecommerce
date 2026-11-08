@@ -1,1 +1,0 @@
-ALTER TABLE coupons DROP COLUMN IF EXISTS seller_id;

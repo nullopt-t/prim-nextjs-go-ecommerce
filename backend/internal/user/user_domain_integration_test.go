@@ -65,7 +65,7 @@ func (s *UserDomainSuite) SetupSuite() {
 	require.NoError(s.T(), err)
 	s.db = db
 
-	schema, err := os.ReadFile("../../migrations/000001_init_sechema.up.sql")
+	schema, err := os.ReadFile("../../migrations/000001_init.up.sql")
 	require.NoError(s.T(), err)
 	_, err = db.ExecContext(ctx, string(schema))
 	require.NoError(s.T(), err)
