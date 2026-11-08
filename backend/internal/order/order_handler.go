@@ -91,6 +91,10 @@ type OrderResponse struct {
 	TrackingNumber string `json:"trackingNumber"`
 	// Items lists the individual line items in this order.
 	Items []OrderItemResponse `json:"items,omitempty"`
+	// Carrier is the shipping carrier (null when not yet shipped/assigned).
+	Carrier *string `json:"carrier"`
+	// TrackingURL is the carrier tracking page URL (null when absent).
+	TrackingURL *string `json:"trackingUrl"`
 	// CreatedAt is the RFC3339 creation timestamp.
 	CreatedAt string `json:"createdAt"`
 	// UpdatedAt is the RFC3339 last update timestamp.
@@ -102,13 +106,6 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 	res := OrderResponse{
 		ID:            o.ID.String(),
 		CustomerEmail: o.CustomerEmail,
-		ShippingAddress: AddressResponse{
-			Street:     o.ShippingAddress.Street,
-			City:       o.ShippingAddress.City,
-			State:      o.ShippingAddress.State,
-			PostalCode: o.ShippingAddress.PostalCode,
-			Country:    o.ShippingAddress.Country,
-		},
 		Status:         o.Status,
 		DiscountAmount: o.DiscountAmount,
 		ShippingAmount: o.ShippingAmount,
@@ -118,8 +115,19 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 		Currency:       o.Currency,
 		PaymentMethod:  o.PaymentMethod,
 		TrackingNumber: o.TrackingNumber,
+		Carrier:        o.Carrier,
+		TrackingURL:    o.TrackingURL,
 		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
+	}
+	if o.ShippingAddress != nil {
+		res.ShippingAddress = AddressResponse{
+			Street:     o.ShippingAddress.Street,
+			City:       o.ShippingAddress.City,
+			State:      o.ShippingAddress.State,
+			PostalCode: o.ShippingAddress.PostalCode,
+			Country:    o.ShippingAddress.Country,
+		}
 	}
 
 	if o.CustomerID != nil {

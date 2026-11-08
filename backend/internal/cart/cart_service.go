@@ -667,6 +667,26 @@ func (s *CartService) MergeGuestCart(
 			combined[item.VariantID] += item.Quantity
 		}
 		for variantID, quantity := range combined {
+			// Bundles carry no stock of their own; like AddItem, they are
+			// limited by how many kits their components can build. Checking
+			// raw variant stock here would reject every bundle merge.
+			v, vErr := s.variantReader.GetByID(ctx, variantID)
+			if vErr != nil {
+				return apierr.NotFoundError("Variant not found").
+					WithCode(errcode.CodeVariantNotFound).
+					Wrap(vErr)
+			}
+			available, isBundle, kitErr := s.kitAvailability(ctx, v.ProductID)
+			if kitErr != nil {
+				return kitErr
+			}
+			if isBundle {
+				if available < quantity {
+					return apierr.BadRequestError("Insufficient inventory available to merge cart").
+						WithCode(errcode.CodeInsufficientInventory)
+				}
+				continue
+			}
 			stock, stockErr := s.inventoryReader.GetStock(ctx, variantID)
 			if stockErr != nil {
 				var apiErr *apierr.APIError

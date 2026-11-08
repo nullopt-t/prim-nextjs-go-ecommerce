@@ -198,8 +198,14 @@ export default function OrderDetailsContent() {
   const rawSubtotal = itemsSubtotalCents > 0 
     ? (itemsSubtotalCents / 100).toFixed(2) 
     : ((order.totalAmount + (order.discountAmount || 0)) / 100).toFixed(2);
-  const discountVal = (order.discountAmount || 0) / 100;
+  const discountVal = (order.discountAmount ?? 0) / 100;
   const formattedDiscount = discountVal > 0 ? discountVal.toFixed(2) : null;
+  const shippingVal = (order.shippingAmount ?? 0) / 100;
+  const formattedShipping = shippingVal > 0 ? shippingVal.toFixed(2) : null;
+  const taxVal = (order.taxAmount ?? 0) / 100;
+  const formattedTax = taxVal > 0 ? taxVal.toFixed(2) : null;
+  const codVal = (order.codFee ?? 0) / 100;
+  const formattedCod = codVal > 0 ? codVal.toFixed(2) : null;
   const totalPaid = (order.totalAmount / 100).toFixed(2);
   const formattedAddress = formatAddress(order.shippingAddress);
 
@@ -476,8 +482,24 @@ export default function OrderDetailsContent() {
               )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("shipping")}</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("freeShipping")}</span>
+                {formattedShipping ? (
+                  <span className="font-medium text-foreground">{formattedShipping} {order.currency.toUpperCase()}</span>
+                ) : (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("freeShipping")}</span>
+                )}
               </div>
+              {formattedTax && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t("invoice.tax")}</span>
+                  <span className="font-medium text-foreground">{formattedTax} {order.currency.toUpperCase()}</span>
+                </div>
+              )}
+              {formattedCod && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{t("invoice.codFee")}</span>
+                  <span className="font-medium text-foreground">{formattedCod} {order.currency.toUpperCase()}</span>
+                </div>
+              )}
               <div className="border-t border-border/50 pt-2.5 mt-2.5 flex items-center justify-between font-bold text-xs sm:text-sm">
                 <span className="text-foreground">{t("total")}</span>
                 <span className="text-foreground font-mono">{totalPaid} {order.currency.toUpperCase()}</span>

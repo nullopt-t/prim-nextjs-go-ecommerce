@@ -113,9 +113,10 @@ func TestOrderHandler_RequestOrderReturn_AuthAndValidation(t *testing.T) {
 }
 
 type fakeOrderReturnExecutor struct {
-	order *model.Order
-	items []model.OrderItem
-	notes []string
+	order   *model.Order
+	items   []model.OrderItem
+	notes   []string
+	returns map[uuid.UUID]int
 }
 
 func (e *fakeOrderReturnExecutor) ExecContext(_ context.Context, _ string, args ...any) (pgconn.CommandTag, error) {
@@ -157,8 +158,56 @@ func (r *fakeReturnItemRows) Values() ([]any, error) { return nil, nil }
 func (r *fakeReturnItemRows) RawValues() [][]byte    { return nil }
 func (r *fakeReturnItemRows) Conn() *pgx.Conn        { return nil }
 
-func (e *fakeOrderReturnExecutor) QueryContext(_ context.Context, _ string, _ ...any) (pgx.Rows, error) {
+type fakeReturnQtyRows struct {
+	entries []struct {
+		itemID uuid.UUID
+		qty    int
+	}
+	idx int
+}
+
+func (r *fakeReturnQtyRows) Close()                                       {}
+func (r *fakeReturnQtyRows) Err() error                                   { return nil }
+func (r *fakeReturnQtyRows) CommandTag() pgconn.CommandTag                { return pgconn.CommandTag{} }
+func (r *fakeReturnQtyRows) FieldDescriptions() []pgconn.FieldDescription { return nil }
+func (r *fakeReturnQtyRows) Next() bool {
+	if r.idx < len(r.entries) {
+		r.idx++
+		return true
+	}
+	return false
+}
+func (r *fakeReturnQtyRows) Scan(dest ...any) error {
+	e := r.entries[r.idx-1]
+	*dest[0].(*uuid.UUID) = e.itemID
+	*dest[1].(*int) = e.qty
+	return nil
+}
+func (r *fakeReturnQtyRows) Values() ([]any, error) { return nil, nil }
+func (r *fakeReturnQtyRows) RawValues() [][]byte    { return nil }
+func (r *fakeReturnQtyRows) Conn() *pgx.Conn        { return nil }
+
+func (e *fakeOrderReturnExecutor) QueryContext(_ context.Context, sql string, _ ...any) (pgx.Rows, error) {
+	if contains(sql, "order_return_items") {
+		rows := &fakeReturnQtyRows{}
+		for itemID, qty := range e.returns {
+			rows.entries = append(rows.entries, struct {
+				itemID uuid.UUID
+				qty    int
+			}{itemID, qty})
+		}
+		return rows, nil
+	}
 	return &fakeReturnItemRows{items: e.items}, nil
+}
+
+func contains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }
 
 type fakeOrderRow struct {
@@ -307,6 +356,44 @@ func TestOrderService_RequestOrderReturn(t *testing.T) {
 
 		err := svc.RequestOrderReturn(context.Background(), orderID, customerID, "Want return", []ReturnItemInput{
 			{ItemID: itemID, Quantity: 5},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Invalid return quantity")
+	})
+
+	t.Run("rejected when the same line is split across duplicate entries", func(t *testing.T) {
+		exec := &fakeOrderReturnExecutor{
+			order: baseOrder,
+			items: orderItems,
+		}
+		repo := NewRepository()
+		svc := &OrderService{
+			qexecutor: &fakeTxRunner{exec: exec},
+			orderRepo: repo,
+		}
+
+		err := svc.RequestOrderReturn(context.Background(), orderID, customerID, "Want return", []ReturnItemInput{
+			{ItemID: itemID, Quantity: 1},
+			{ItemID: itemID, Quantity: 2},
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "Invalid return quantity")
+	})
+
+	t.Run("rejected when prior returns already consumed the purchased quantity", func(t *testing.T) {
+		exec := &fakeOrderReturnExecutor{
+			order:   baseOrder,
+			items:   orderItems,
+			returns: map[uuid.UUID]int{itemID: 2},
+		}
+		repo := NewRepository()
+		svc := &OrderService{
+			qexecutor: &fakeTxRunner{exec: exec},
+			orderRepo: repo,
+		}
+
+		err := svc.RequestOrderReturn(context.Background(), orderID, customerID, "Want return", []ReturnItemInput{
+			{ItemID: itemID, Quantity: 1},
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "Invalid return quantity")

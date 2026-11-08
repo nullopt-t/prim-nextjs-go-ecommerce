@@ -31,12 +31,26 @@ export function computeBundleSavings(
 	};
 }
 
-export function resolveItemPrice(product: {
-	price?: string | number;
-	extractedPrice?: number;
-	variants?: Array<{ extractedPrice?: number; price?: string | number; isDefault?: boolean }>;
-}): number {
-	const variant = product.variants?.find((v) => v.isDefault) ?? product.variants?.[0];
+export function resolveItemPrice(
+	product: {
+		price?: string | number;
+		extractedPrice?: number;
+		variants?: Array<{
+			id?: string;
+			sku?: string;
+			extractedPrice?: number;
+			price?: string | number;
+			isDefault?: boolean;
+		}>;
+	},
+	targetVariant?: string,
+): number {
+	const variants = product.variants ?? [];
+	const matchedVariant = targetVariant
+		? variants.find((v) => v.id === targetVariant || v.sku === targetVariant)
+		: undefined;
+	const variant =
+		matchedVariant ?? variants.find((v) => v.isDefault) ?? variants[0];
 	const raw = variant?.extractedPrice ?? variant?.price ?? product.extractedPrice ?? product.price;
 	const num = Number(raw);
 	return Number.isFinite(num) ? num : 0;

@@ -16,6 +16,8 @@ export interface CartContextItem {
   productName: { ar?: string; en?: string } | string;
   productBrand?: string;
   productPrice: string | number;
+  /** Exact unit price in major units (minor/100); avoids parsing the formatted string back. */
+  unitPrice?: number;
   quantity: number;
   img?: string;
   color?: string;
@@ -135,6 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         productName: typeof title === "object" ? title : { en: title, ar: title },
         productBrand: "",
         productPrice: price,
+        unitPrice: item.unitPrice !== undefined ? item.unitPrice / 100 : 0,
         quantity: item.quantity || 1,
         img,
         color: item.color || (item.attributes?.color as string) || "Default",
@@ -144,6 +147,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
 
     setCartItems(formattedItems);
+    // Coupons are validated client-side only (the backend cart summary always
+    // reports discount 0), so a fresh server cart invalidates any previously
+    // validated discount — keeping it would desync cartSummary from the coupon.
+    setAppliedCoupon(null);
+    // An empty cart must not retain a gift-wrap opt-in for the next cart.
+    if (formattedItems.length === 0) setGiftWrap(false);
     if (rawCart.summary) {
       setCartSummary({
         subtotal: (rawCart.summary.subtotal || 0) / 100,
@@ -231,6 +240,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = async () => {
     const previousItems = cartItems;
     setCartItems([]);
+    setGiftWrap(false);
+    setAppliedCoupon(null);
 
     try {
       await cartService.clearCart();
@@ -294,6 +305,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       return { success: true, coupon: couponData };
     } catch (err) {
+      // A failed/invalid coupon must not clear a previously applied valid
+      // discount: leave appliedCoupon and cartSummary untouched.
       return { success: false, error: (err as { message?: string }).message || "Invalid coupon code" };
     }
   };

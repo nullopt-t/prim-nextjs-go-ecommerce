@@ -27,16 +27,18 @@ const PublicSettingsContext = createContext<PublicSettingsContextValue>({
 export function PublicSettingsProvider({
 	children,
 	initialSettings = null,
+	initialDisplayCurrency,
 }: {
 	children: React.ReactNode;
 	initialSettings?: PublicSettings | null;
+	initialDisplayCurrency?: string;
 }) {
 	const [settings, setSettings] = useState<PublicSettings | null>(initialSettings);
 	const [loading, setLoading] = useState(initialSettings === null);
-	// SSR renders the store's base currency; the stored choice applies on mount
-	// so hydration never flashes between the two.
+	// SSR renders the store's base currency or visitor's cookie currency;
+	// any localStorage choice syncs on mount without flash.
 	const [displayCurrency, setDisplayCurrencyState] = useState<string>(
-		initialSettings?.currency?.trim() ?? "",
+		initialDisplayCurrency || initialSettings?.currency?.trim() || "",
 	);
 
 	const loadSettings = useCallback(async () => {

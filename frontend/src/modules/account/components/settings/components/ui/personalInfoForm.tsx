@@ -5,6 +5,7 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
+import { isValidEgyptianPhone } from "@/modules/account/model/addressSchema";
 
 export default function PersonalInfoForm() {
   const { user, refreshUser } = useAuthContext();
@@ -23,6 +24,10 @@ export default function PersonalInfoForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (phone.trim() && !isValidEgyptianPhone(phone)) {
+      notify.error(t("invalidPhone"));
+      return;
+    }
     setIsSaving(true);
     try {
       await userService.updateProfile({

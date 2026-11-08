@@ -766,8 +766,10 @@ type ListProductsQuery struct {
 	MinPrice *int64 `form:"min_price" example:"1000"`
 	// Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)
 	MaxPrice *int64 `form:"max_price" example:"50000"`
-	// Optional attribute filter(s) in "key:value" format (comma-separated or repeated, e.g. "color:red,size:M")
-	Attribute *string `form:"attribute" example:"color:black,size:XL"`
+	// Optional attribute filter(s) in "key:value" format. Accepts repeated query
+	// params (?attribute=color:red&attribute=size:xl) and legacy comma-joined
+	// single params (?attribute=color:red,size:xl). Duplicate keys: last wins.
+	Attribute []string `form:"attribute" example:"color:black,size:XL"`
 
 	BrandUUIDs    []uuid.UUID `form:"-"`
 	BrandNames    []string    `form:"-"`
@@ -812,28 +814,26 @@ func parseCommaSeparatedValues(input *string) ([]uuid.UUID, []string) {
 	return uuids, names
 }
 
-func parseAttributeFilters(input *string) map[string]string {
-	if input == nil {
-		return nil
-	}
-	parts := strings.Split(*input, ",")
-	filters := make(map[string]string)
-	for _, p := range parts {
-		trimmed := strings.TrimSpace(p)
-		if trimmed == "" {
-			continue
-		}
-		colonIdx := strings.Index(trimmed, ":")
-		if colonIdx > 0 && colonIdx < len(trimmed)-1 {
-			k := strings.TrimSpace(trimmed[:colonIdx])
-			v := strings.TrimSpace(trimmed[colonIdx+1:])
-			if k != "" && v != "" {
-				filters[k] = v
+func parseAttributeFilters(inputs []string) map[string]string {
+	var filters map[string]string
+	for _, input := range inputs {
+		for _, p := range strings.Split(input, ",") {
+			trimmed := strings.TrimSpace(p)
+			if trimmed == "" {
+				continue
+			}
+			colonIdx := strings.Index(trimmed, ":")
+			if colonIdx > 0 && colonIdx < len(trimmed)-1 {
+				k := strings.TrimSpace(trimmed[:colonIdx])
+				v := strings.TrimSpace(trimmed[colonIdx+1:])
+				if k != "" && v != "" {
+					if filters == nil {
+						filters = make(map[string]string)
+					}
+					filters[k] = v
+				}
 			}
 		}
-	}
-	if len(filters) == 0 {
-		return nil
 	}
 	return filters
 }

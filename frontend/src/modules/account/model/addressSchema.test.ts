@@ -49,4 +49,60 @@ describe("createAddressSchema", () => {
 		expect(result.city).toBe("Cairo");
 		expect(result.country).toBe("Egypt");
 	});
+
+	it("validates Egyptian phone numbers", () => {
+		const validPhones = ["", "01012345678", "+201012345678", "00201112345678", "+20 12 3456 7890", "015-1234-5678"];
+		for (const phone of validPhones) {
+			const res = schema.safeParse({
+				...INITIAL_ADDRESS,
+				fullName: "User",
+				line1: "Street",
+				city: "Cairo",
+				country: "Egypt",
+				phone,
+			});
+			expect(res.success).toBe(true);
+		}
+
+		const invalidPhones = ["abc", "+441234567890", "011234", "01312345678", "+2012345678901"];
+		for (const phone of invalidPhones) {
+			const res = schema.safeParse({
+				...INITIAL_ADDRESS,
+				fullName: "User",
+				line1: "Street",
+				city: "Cairo",
+				country: "Egypt",
+				phone,
+			});
+			expect(res.success).toBe(false);
+		}
+	});
+
+	it("validates 5-digit postal codes", () => {
+		const validCodes = ["", "  ", "11511", "12345"];
+		for (const postalCode of validCodes) {
+			const res = schema.safeParse({
+				...INITIAL_ADDRESS,
+				fullName: "User",
+				line1: "Street",
+				city: "Cairo",
+				country: "Egypt",
+				postalCode,
+			});
+			expect(res.success).toBe(true);
+		}
+
+		const invalidCodes = ["123", "123456", "12A45", "abcde"];
+		for (const postalCode of invalidCodes) {
+			const res = schema.safeParse({
+				...INITIAL_ADDRESS,
+				fullName: "User",
+				line1: "Street",
+				city: "Cairo",
+				country: "Egypt",
+				postalCode,
+			});
+			expect(res.success).toBe(false);
+		}
+	});
 });

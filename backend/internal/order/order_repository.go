@@ -156,7 +156,7 @@ func (r *Repository) LookupOrderByIDAndEmail(
 	id uuid.UUID,
 	email string,
 ) (*model.Order, error) {
-	return r.getOrderByQuery(ctx, "WHERE o.id = $1 AND LOWER(o.customer_email) = LOWER($2)", id, strings.TrimSpace(email))
+	return r.getOrderByQuery(ctx, "WHERE o.id = $1 AND LOWER(TRIM(o.customer_email)) = LOWER(TRIM($2))", id, strings.TrimSpace(email))
 }
 
 func (r *Repository) getOrderByQuery(
@@ -688,6 +688,71 @@ func (r *Repository) GetSellerSettledEarnings(
 
 // UpdateOrderStatus updates the status enum and updated_at timestamp of an order.
 // Returns pgx.ErrNoRows if the target order ID was not found.
+// GetReturnedQuantities sums already-returned units per order line item across
+// all prior RMA requests, so a new request cannot push the cumulative total
+// past the purchased quantity.
+func (r *Repository) GetReturnedQuantities(
+	ctx context.Context,
+	orderID uuid.UUID,
+) (map[uuid.UUID]int, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := tx.QueryContext(ctx, `
+		SELECT ri.order_item_id, SUM(ri.quantity)
+		FROM order_return_items ri
+		JOIN order_returns rr ON rr.id = ri.return_id
+		WHERE rr.order_id = $1
+		GROUP BY ri.order_item_id
+	`, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("get returned quantities: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]int)
+	for rows.Next() {
+		var itemID uuid.UUID
+		var qty int
+		if err := rows.Scan(&itemID, &qty); err != nil {
+			return nil, fmt.Errorf("scan returned quantity: %w", err)
+		}
+		result[itemID] = qty
+	}
+	return result, rows.Err()
+}
+
+// CreateReturn persists one RMA request and its per-item quantities within the
+// active transaction. The order row is already locked FOR UPDATE by the caller,
+// so concurrent requests for the same order serialize here.
+func (r *Repository) CreateReturn(
+	ctx context.Context,
+	returnID, orderID, customerID uuid.UUID,
+	reason string,
+	items []ReturnItemInput,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO order_returns (id, order_id, customer_id, reason)
+		VALUES ($1, $2, $3, $4)
+	`, returnID, orderID, customerID, reason); err != nil {
+		return fmt.Errorf("create order return: %w", err)
+	}
+	for _, it := range items {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO order_return_items (id, return_id, order_item_id, quantity)
+			VALUES ($1, $2, $3, $4)
+		`, uuid.New(), returnID, it.ItemID, it.Quantity); err != nil {
+			return fmt.Errorf("create order return item: %w", err)
+		}
+	}
+	return nil
+}
+
 func (r *Repository) UpdateOrderStatus(
 	ctx context.Context,
 	orderID uuid.UUID,

@@ -95,7 +95,7 @@ export function LoginView() {
         notify.error(result.error || t("passkey.failed"));
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
+      if (err instanceof DOMException && (err.name === "AbortError" || err.name === "NotAllowedError")) {
         notify.info(t("passkey.cancelled"));
       } else {
         notify.error(apiErrorMessage(err, t("passkey.failed")));

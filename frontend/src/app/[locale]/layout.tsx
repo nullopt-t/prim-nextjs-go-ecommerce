@@ -59,6 +59,11 @@ import { PublicSettingsProvider } from "@/modules/settings/model/publicSettingsC
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
 import { EXPLICIT_LOCALE_COOKIE_NAME } from "@/shared/lib/localePreference";
 import {
+	CURRENCY_COOKIE_NAME,
+	normalizeCurrency,
+	type SupportedCurrency,
+} from "@/shared/lib/currency";
+import {
 	resolveTargetLocale,
 	shouldAddLocalePrefix,
 	type SupportedLocale,
@@ -91,6 +96,9 @@ export default async function RootLayout({
   const explicitLocale = (await cookies()).get(
     EXPLICIT_LOCALE_COOKIE_NAME,
   )?.value;
+  const cookieCurrency = normalizeCurrency(
+    (await cookies()).get(CURRENCY_COOKIE_NAME)?.value,
+  );
   const askedPath = (await headers()).get("x-pathname") || "/";
   const storeDefault = publicSettings?.defaultLocale;
   const targetLocale = resolveTargetLocale(explicitLocale, storeDefault);
@@ -127,7 +135,10 @@ export default async function RootLayout({
       <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       <body className={`antialiased ${locale === "ar" ? "font-arabic" : "font-sans"}`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          <PublicSettingsProvider initialSettings={publicSettings}>
+          <PublicSettingsProvider
+            initialSettings={publicSettings}
+            initialDisplayCurrency={cookieCurrency ?? undefined}
+          >
             <ThemeProvider>
               <AuthProvider>
                 <WishlistProvider>

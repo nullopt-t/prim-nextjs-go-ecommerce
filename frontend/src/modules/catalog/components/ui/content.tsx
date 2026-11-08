@@ -50,9 +50,10 @@ export default function Content({ products, category }: ContentProps) {
     if (maxPrice !== null) setFilter("maxPrice", maxPrice);
     const sort = params.get("sort");
     if (sort) setFilter("sort", sort);
-    const attributeParam = params.get("attribute");
-    if (attributeParam) {
-      const attributes: Record<string, string> = {};
+    // Repeated params (?attribute=color:red&attribute=size:xl); also accept the
+    // legacy comma-joined single param (?attribute=color:red,size:xl).
+    const attributes: Record<string, string> = {};
+    for (const attributeParam of params.getAll("attribute")) {
       for (const part of attributeParam.split(",")) {
         const colon = part.indexOf(":");
         if (colon <= 0 || colon >= part.length - 1) continue;
@@ -60,8 +61,8 @@ export default function Content({ products, category }: ContentProps) {
         const v = part.slice(colon + 1).trim();
         if (k && v) attributes[k] = v;
       }
-      if (Object.keys(attributes).length > 0) setFilter("attributes", attributes);
     }
+    if (Object.keys(attributes).length > 0) setFilter("attributes", attributes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,10 +84,11 @@ export default function Content({ products, category }: ContentProps) {
       apply("minPrice", current.minPrice !== null ? String(current.minPrice) : null);
       apply("maxPrice", current.maxPrice !== null ? String(current.maxPrice) : null);
       apply("sort", current.sort);
-      const facetPairs = Object.entries(current.attributes || {})
-        .filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
-        .map(([k, v]) => `${k.trim()}:${v.trim()}`);
-      apply("attribute", facetPairs.length > 0 ? facetPairs.join(",") : null);
+      next.delete("attribute");
+      for (const [k, v] of Object.entries(current.attributes || {})) {
+        if (k.trim() === "" || v.trim() === "") continue;
+        next.append("attribute", `${k.trim()}:${v.trim()}`);
+      }
       next.delete("page");
       const query = next.toString();
       if (query !== searchParamsString) {

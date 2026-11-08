@@ -38,7 +38,11 @@ export function ProductSpecs({
     return normalized;
   };
 
-  const attributeRows = attributes ? Object.entries(attributes) : [];
+  // Skip null/empty specs (jsonb attributes may be null) and stringify
+  // object/array values instead of rendering "null" / "[object Object]".
+  const attributeRows = (attributes ? Object.entries(attributes) : []).filter(
+    ([, val]) => val !== null && val !== undefined && String(val).trim() !== "",
+  );
 
   return (
     <div className="mt-10 flex flex-col gap-8 sm:mt-14 sm:gap-10">
@@ -81,7 +85,7 @@ export function ProductSpecs({
                 <div key={key} className="flex items-center justify-between gap-4 py-3">
                   <span className="capitalize text-muted-foreground">{attributeLabel(key)}</span>
                   <span className="max-w-[60%] text-end font-semibold text-foreground">
-                    {String(val)}
+                    {typeof val === "object" ? JSON.stringify(val) : String(val)}
                   </span>
                 </div>
               ))}

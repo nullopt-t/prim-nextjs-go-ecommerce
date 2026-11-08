@@ -14,6 +14,36 @@ describe("resolveItemPrice", () => {
 		).toBe(80);
 	});
 
+	it("matches a specific variant by id or sku", () => {
+		expect(
+			resolveItemPrice(
+				{
+					price: 100,
+					variants: [
+						{ id: "var-1", price: 90, isDefault: true },
+						{ id: "var-2", sku: "SKU-2", extractedPrice: 75, isDefault: false },
+					],
+				},
+				"SKU-2",
+			),
+		).toBe(75);
+	});
+
+	it("falls back to the default variant when target variant is missing or not found", () => {
+		expect(
+			resolveItemPrice(
+				{
+					price: 100,
+					variants: [
+						{ id: "var-1", price: 90, isDefault: true },
+						{ id: "var-2", price: 75, isDefault: false },
+					],
+				},
+				"var-nonexistent",
+			),
+		).toBe(90);
+	});
+
 	it("falls back to the product price", () => {
 		expect(resolveItemPrice({ extractedPrice: 42 })).toBe(42);
 		expect(resolveItemPrice({})).toBe(0);

@@ -113,7 +113,9 @@
       "city": "Enter the city.",
       "country": "Select a country.",
       "fullName": "Enter the recipient's full name.",
-      "line1": "Enter the street address and building number."
+      "line1": "Enter the street address and building number.",
+      "phone": "Enter a valid Egyptian mobile number (e.g. +2010..., 010...).",
+      "postalCode": "Postal code must be exactly 5 digits."
     },
     "validationError": "Please fill in all mandatory fields (Name, Street address, City, Country)"
   },
@@ -2300,7 +2302,8 @@
       "saveChanges": "Save Changes",
       "subtitle": "Your registered account identity and contact details.",
       "title": "Personal Information",
-      "saved": "Profile saved."
+      "saved": "Profile saved.",
+      "invalidPhone": "Enter a valid Egyptian mobile number (e.g. +2010..., 010...)."
     },
     "preferences": {
       "darkMode": "Dark Mode",

@@ -22,14 +22,16 @@ interface InvoiceOrder {
 	};
 	status: string;
 	totalAmount: number;
-	discountAmount: number;
+	discountAmount?: number;
 	shippingAmount?: number;
 	taxAmount?: number;
 	codFee?: number;
+	carrier?: string | null;
+	trackingNumber?: string | null;
 	couponCode?: string | null;
-	currency: string;
-	items: InvoiceOrderItem[];
-	createdAt: string;
+	currency?: string;
+	items?: InvoiceOrderItem[];
+	createdAt?: string;
 }
 
 function parseSnapshotTitle(snapshot?: string): string {
@@ -63,7 +65,7 @@ export default function InvoicePrintView({ order }: { order: InvoiceOrder }) {
 	const tOrders = useTranslations("orders");
 	const locale = useLocale();
 
-	const currency = order.currency.toUpperCase();
+	const currency = (order.currency || "USD").toUpperCase();
 	const items = order.items ?? [];
 	const subtotal = items.reduce(
 		(acc, item) => acc + (item.priceAtPurchase || 0) * (item.quantity || 1),
@@ -71,17 +73,19 @@ export default function InvoicePrintView({ order }: { order: InvoiceOrder }) {
 	);
 	const subtotalVal = subtotal > 0
 		? toMajor(subtotal)
-		: toMajor(order.totalAmount + (order.discountAmount || 0));
+		: toMajor((order.totalAmount || 0) + (order.discountAmount || 0));
 	const discount = toMajor(order.discountAmount || 0);
 	const shipping = toMajor(order.shippingAmount || 0);
 	const tax = toMajor(order.taxAmount || 0);
 	const cod = toMajor(order.codFee || 0);
-	const total = toMajor(order.totalAmount);
-	const placedDate = new Date(order.createdAt).toLocaleDateString(locale, {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	});
+	const total = toMajor(order.totalAmount || 0);
+	const placedDate = order.createdAt
+		? new Date(order.createdAt).toLocaleDateString(locale, {
+				year: "numeric",
+				month: "long",
+				day: "numeric",
+		  })
+		: "—";
 
 	return (
 		<div className="print-only" data-invoice-print="true">
@@ -106,6 +110,14 @@ export default function InvoicePrintView({ order }: { order: InvoiceOrder }) {
 						<th>{t("status")}</th>
 						<td>{tOrders(`status.${order.status}`)}</td>
 					</tr>
+					{(order.carrier || order.trackingNumber) && (
+						<tr>
+							<th>{t("carrier")}</th>
+							<td>
+								{[order.carrier, order.trackingNumber].filter(Boolean).join(" - ")}
+							</td>
+						</tr>
+					)}
 				</tbody>
 			</table>
 

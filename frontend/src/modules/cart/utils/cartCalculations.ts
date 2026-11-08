@@ -26,12 +26,15 @@ export function calculateCartTotals(
   shippingThreshold: number | null,
   standardShippingCost: number,
 ): CartCalculation {
-  const subtotal = items.reduce((acc, item) => {
-    const rawPrice = typeof item.productPrice === "number"
-      ? item.productPrice
-      : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const subtotal = round2(items.reduce((acc, item) => {
+    const rawPrice = typeof item.unitPrice === "number"
+      ? item.unitPrice
+      : typeof item.productPrice === "number"
+        ? item.productPrice
+        : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
     return acc + rawPrice * (item.quantity || 1);
-  }, 0);
+  }, 0));
 
   // Calculate discount from coupon
   let discount = 0;
@@ -49,13 +52,17 @@ export function calculateCartTotals(
     }
   }
 
+  // Backend caps the discount at the gross total; mirror that here so a fixed
+  // coupon applied to a since-shrunk cart cannot display a discount > subtotal.
+  discount = Math.min(round2(discount), subtotal);
+
   const shippingKnown = shippingThreshold !== null;
   const isFreeShipping = shippingKnown && (subtotal >= (shippingThreshold as number) || Boolean(appliedCoupon?.freeShipping));
   const shippingCost = !shippingKnown || isFreeShipping || subtotal === 0 ? 0 : standardShippingCost;
   const remainingForFreeShipping = shippingKnown ? Math.max(0, (shippingThreshold as number) - subtotal) : 0;
   const shippingProgress = shippingKnown && shippingThreshold ? Math.min(100, (subtotal / shippingThreshold) * 100) : 0;
 
-  const total = Math.max(0, subtotal - discount + shippingCost);
+  const total = round2(Math.max(0, subtotal - discount + shippingCost));
 
   return {
     subtotal,

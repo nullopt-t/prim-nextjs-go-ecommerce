@@ -40,10 +40,13 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const taxRate = storeSettings?.taxRatePercent ?? 0;
   const taxAmount =
     !storeSettings?.pricesIncludeTax && taxRate > 0
-      ? Math.max(0, (subtotal - discount) * (taxRate / 100))
+      ? Math.round(Math.max(0, (subtotal - discount) * (taxRate / 100)) * 100) / 100
       : 0;
+  // The backend/checkout never charges a gift-wrap fee (no such field on the
+  // order), so adding it here made the cart total drift from the charged
+  // total. Keep the opt-in state for display only; do not add it to the total.
   const giftWrapFee = giftWrap ? (storeSettings?.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE) : 0;
-  const total = Math.max(0, subtotal - discount + shippingCost + taxAmount + giftWrapFee);
+  const total = Math.max(0, subtotal - discount + shippingCost + taxAmount);
 
   const shippingLabel = !shippingKnown
     ? "—"

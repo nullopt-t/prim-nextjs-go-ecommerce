@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NOTIFY_ME_COOLDOWN_MS, isInCooldown } from "./notifyMeStore";
+import { NOTIFY_ME_COOLDOWN_MS, isInCooldown, EMAIL_RE } from "./notifyMeStore";
 
 describe("isInCooldown", () => {
 	it("is false when there is no existing alert", () => {
@@ -19,7 +19,11 @@ describe("isInCooldown", () => {
 
 describe("EMAIL_RE gate (via subscribe validation shape)", () => {
 	it("rejects obvious non-emails", () => {
-		expect(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test("not-an-email")).toBe(false);
-		expect(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test("a@b.co")).toBe(true);
+		expect(EMAIL_RE.test("not-an-email")).toBe(false);
+		expect(EMAIL_RE.test("@missing-user.com")).toBe(false);
+		expect(EMAIL_RE.test("user@")).toBe(false);
+		expect(EMAIL_RE.test("user@domain")).toBe(false);
+		expect(EMAIL_RE.test("a@b.co")).toBe(true);
+		expect(EMAIL_RE.test("test.user+tag@example.co.uk")).toBe(true);
 	});
 });

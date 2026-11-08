@@ -102,6 +102,11 @@ summary:focus-visible,
 		display: none !important;
 	}
 
+	body {
+		background: #fff !important;
+		color: #000 !important;
+	}
+
 	.print-only {
 		display: block !important;
 		color: #000 !important;

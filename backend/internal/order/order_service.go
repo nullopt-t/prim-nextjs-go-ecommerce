@@ -253,7 +253,7 @@ func (s *OrderService) PlaceOrder(
 	newOrder := &model.Order{
 		ID:              orderID,
 		CustomerID:      in.CustomerID,
-		CustomerEmail:   in.CustomerEmail,
+		CustomerEmail:   strings.ToLower(strings.TrimSpace(in.CustomerEmail)),
 		ShippingAddress: in.ShippingAddress,
 		Status:          model.OrderStatusPending,
 		CouponID:        in.CouponID,
@@ -900,21 +900,50 @@ func (s *OrderService) RequestOrderReturn(ctx context.Context, id uuid.UUID, cus
 			itemMap[it.ID] = it
 		}
 
+		// Normalize the request itself: the same line may appear more than
+		// once, and its entries must be summed before comparing to stock.
+		requested := make(map[uuid.UUID]int, len(items))
 		for _, retItem := range items {
 			line, ok := itemMap[retItem.ItemID]
 			if !ok {
 				return apierr.BadRequestError("Item does not belong to this order")
 			}
-			if retItem.Quantity <= 0 || retItem.Quantity > line.Quantity {
+			if retItem.Quantity <= 0 {
+				return apierr.BadRequestError("Invalid return quantity")
+			}
+			requested[retItem.ItemID] += retItem.Quantity
+			if requested[retItem.ItemID] > line.Quantity {
 				return apierr.BadRequestError("Invalid return quantity")
 			}
 		}
 
-		itemCount := len(items)
-		if itemCount == 0 {
-			itemCount = len(orderItems)
+		// No explicit items means the whole order is being returned.
+		if len(requested) == 0 {
+			for _, it := range orderItems {
+				requested[it.ID] = it.Quantity
+			}
 		}
-		note := fmt.Sprintf("Return requested (%d item(s)): %s", itemCount, trimmedReason)
+
+		// Cumulative check: prior accepted requests already consumed part of
+		// each line, so this request may only take what remains.
+		returned, err := s.orderRepo.GetReturnedQuantities(ctx, id)
+		if err != nil {
+			return s.handleError(err, "Failed to fetch prior returns")
+		}
+		normalized := make([]ReturnItemInput, 0, len(requested))
+		for itemID, qty := range requested {
+			line := itemMap[itemID]
+			if returned[itemID]+qty > line.Quantity {
+				return apierr.BadRequestError("Invalid return quantity")
+			}
+			normalized = append(normalized, ReturnItemInput{ItemID: itemID, Quantity: qty})
+		}
+
+		if err := s.orderRepo.CreateReturn(ctx, uuid.New(), id, customerID, trimmedReason, normalized); err != nil {
+			return s.handleError(err, "Failed to record return request")
+		}
+
+		note := fmt.Sprintf("Return requested (%d item(s)): %s", len(normalized), trimmedReason)
 		if err := s.orderRepo.AddStatusHistory(ctx, id, ord.Status, &note); err != nil {
 			return s.handleError(err, "Failed to record return request")
 		}

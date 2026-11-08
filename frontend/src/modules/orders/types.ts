@@ -36,10 +36,10 @@ export interface Order {
   status: OrderStatus;
   couponId?: string | null;
   couponCode?: string | null;
-  discountAmount: number;   // in cents
-  shippingAmount?: number;  // in cents
-  taxAmount?: number;       // in cents
-  codFee?: number;          // in cents
+  discountAmount: number | null;  // in cents
+  shippingAmount?: number | null; // in cents
+  taxAmount?: number | null;      // in cents
+  codFee?: number | null;         // in cents
   totalAmount: number;      // in cents
   currency: string;
   paymentMethod?: string;

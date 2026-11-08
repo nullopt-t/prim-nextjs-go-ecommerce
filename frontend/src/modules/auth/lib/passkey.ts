@@ -26,11 +26,15 @@ export interface PasskeyAssertion {
 	response: AuthenticatorAssertionResponse;
 }
 
-/** Decodes a base64url string (WebAuthn challenge format) into bytes. */
+/** Decodes a base64url string (WebAuthn challenge format) into bytes. Safe across browser and SSR/Node runtimes. */
 export function base64UrlToArrayBuffer(value: string): ArrayBuffer {
+	if (typeof window === "undefined" && typeof Buffer !== "undefined") {
+		const buf = Buffer.from(value, "base64url");
+		return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+	}
 	const padding = "=".repeat((4 - (value.length % 4)) % 4);
 	const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-	const binary = atob(base64);
+	const binary = typeof atob === "function" ? atob(base64) : Buffer.from(base64, "base64").toString("binary");
 	const bytes = new Uint8Array(binary.length);
 	for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
 	return bytes.buffer;
@@ -38,7 +42,11 @@ export function base64UrlToArrayBuffer(value: string): ArrayBuffer {
 
 export async function isPasskeySupported(): Promise<boolean> {
 	if (typeof window === "undefined") return false;
-	if (!("credentials" in navigator) || typeof window.PublicKeyCredential === "undefined") {
+	if (
+		!("credentials" in navigator) ||
+		typeof window.PublicKeyCredential === "undefined" ||
+		typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function"
+	) {
 		return false;
 	}
 	try {
@@ -58,13 +66,21 @@ export async function signInWithPasskey(deps: {
 	verify: (assertion: PasskeyAssertion, requestId?: string) => Promise<PasskeyVerifyResult>;
 }): Promise<PasskeyVerifyResult> {
 	const options = await deps.fetchOptions();
-	const credential = (await navigator.credentials.get({
-		publicKey: {
-			challenge: base64UrlToArrayBuffer(options.challenge),
-			rpId: options.rpId,
-			userVerification: options.userVerification ?? "preferred",
-		},
-	})) as PasskeyAssertion | null;
+	let credential: PasskeyAssertion | null = null;
+	try {
+		credential = (await navigator.credentials.get({
+			publicKey: {
+				challenge: base64UrlToArrayBuffer(options.challenge),
+				rpId: options.rpId,
+				userVerification: options.userVerification ?? "preferred",
+			},
+		})) as PasskeyAssertion | null;
+	} catch (err) {
+		if (err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")) {
+			return { ok: false, error: "cancelled" };
+		}
+		throw err;
+	}
 	if (!credential) return { ok: false, error: "cancelled" };
 	const requestId = (options as { requestId?: string }).requestId;
 	return deps.verify(credential, requestId);

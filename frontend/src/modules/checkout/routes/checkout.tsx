@@ -162,7 +162,7 @@ export function Checkout() {
 	const taxRate = storeSettings?.taxRatePercent ?? 0;
 	const taxAmount =
 		!storeSettings?.pricesIncludeTax && taxRate > 0
-			? Math.max(0, (subtotal - discount) * (taxRate / 100))
+			? Math.round(Math.max(0, (subtotal - discount) * (taxRate / 100)) * 100) / 100
 			: 0;
 
 	// Cash-on-delivery surcharge, applied only when COD is the selected method.

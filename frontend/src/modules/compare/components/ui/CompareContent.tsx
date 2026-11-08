@@ -27,11 +27,14 @@ function resolvePrice(product: ProductDetailsEntity): number {
 
 function resolveAttributes(product: ProductDetailsEntity): Record<string, string> {
 	const variant = product.variants?.find((v) => v.isDefault) ?? product.variants?.[0];
-	const raw = variant?.attributes ?? {};
+	const raw = (variant?.attributes ?? (product as unknown as { attributes?: Record<string, unknown> }).attributes) || {};
 	const out: Record<string, string> = {};
 	for (const [key, value] of Object.entries(raw)) {
 		if (value === undefined || value === null || value === "") continue;
-		out[key] = String(value);
+		const str = typeof value === "object" ? JSON.stringify(value) : String(value);
+		if (str.trim() !== "" && str !== "null" && str !== "undefined") {
+			out[key] = str;
+		}
 	}
 	return out;
 }

@@ -65,10 +65,12 @@ export const catalogService = {
     if (params?.maxPrice !== undefined) query.append("max_price", String(params.maxPrice));
     if (params?.sort) query.append("sort", params.sort);
     if (params?.attributes) {
-      const pairs = Object.entries(params.attributes)
-        .filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
-        .map(([k, v]) => `${k.trim()}:${v.trim()}`);
-      if (pairs.length > 0) query.append("attribute", pairs.join(","));
+      // One repeated query param per facet (?attribute=color:red&attribute=size:xl)
+      // so values containing commas/colons are never split by the backend parser.
+      for (const [k, v] of Object.entries(params.attributes)) {
+        if (k.trim() === "" || v.trim() === "") continue;
+        query.append("attribute", `${k.trim()}:${v.trim()}`);
+      }
     }
 
     const qs = query.toString();

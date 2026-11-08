@@ -42,7 +42,7 @@ export default function OrderLookupContent() {
     setSearched(true);
     setOrder(null);
     try {
-      const res = await orderService.lookupOrder(email.trim(), orderNumber.trim());
+      const res = await orderService.lookupOrder(email.trim().toLowerCase(), orderNumber.trim());
       setOrder((res?.data ?? null) as Order | null);
       if (!res?.data) notify.error(t("notFound"));
     } catch (err) {

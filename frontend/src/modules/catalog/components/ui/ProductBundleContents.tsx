@@ -44,9 +44,9 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
         const product = normalizeProduct(raw as Parameters<typeof normalizeProduct>[0]) as unknown as {
           price?: string | number;
           extractedPrice?: number;
-          variants?: Array<{ extractedPrice?: number; price?: string | number; isDefault?: boolean }>;
+          variants?: Array<{ id?: string; sku?: string; extractedPrice?: number; price?: string | number; isDefault?: boolean }>;
         } | null;
-        return { slug: item.slug, price: product ? resolveItemPrice(product) : 0 };
+        return { slug: item.slug, price: product ? resolveItemPrice(product, item.variant) : 0 };
       }),
     ).then((results) => {
       if (!isMounted) return;

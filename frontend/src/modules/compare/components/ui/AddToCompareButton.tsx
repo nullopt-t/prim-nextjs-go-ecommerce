@@ -42,6 +42,8 @@ export function AddToCompareButton({
 					? t("toast.removed")
 					: t("toast.added", { name: productName || slug }),
 			);
+		} else if (!compared) {
+			notify.error(t("toast.limitReached"));
 		}
 	};
 

@@ -115,9 +115,8 @@ func TestProductList_AttributeFilterSQL(t *testing.T) {
 	repo := NewProductRepository()
 	qe := &captureQE{}
 
-	attrStr := "color:black,size:XL"
 	q := &ListProductsQuery{
-		Attribute: &attrStr,
+		Attribute: []string{"color:black,size:XL"},
 	}
 	q.Process(pagination.QueryOptions{})
 
