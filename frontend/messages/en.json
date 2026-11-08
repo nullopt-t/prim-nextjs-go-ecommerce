@@ -1828,7 +1828,8 @@
     "orderNumberInvalid": "Enter a valid order number (UUID)",
     "orderNumberLabel": "Order number",
     "subtitle": "Track any order with your email and order number — no account needed.",
-    "title": "Track your order"
+    "title": "Track your order",
+    "deletedProduct": "Item"
   },
   "orderDetails": {
     "backToOrders": "Back to orders",

@@ -1828,7 +1828,8 @@
     "orderNumberInvalid": "أدخل رقم طلب صحيحًا (UUID)",
     "orderNumberLabel": "رقم الطلب",
     "subtitle": "تتبّع أي طلب ببريدك ورقم الطلب — دون الحاجة إلى حساب.",
-    "title": "تتبّع طلبك"
+    "title": "تتبّع طلبك",
+    "deletedProduct": "منتج"
   },
   "orderDetails": {
     "backToOrders": "الرجوع إلى الطلبات",
