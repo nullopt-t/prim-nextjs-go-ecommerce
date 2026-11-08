@@ -2683,6 +2683,7 @@
       "filterAll": "All statuses",
       "form": {
         "brand": "Brand",
+        "bundle": "Bundle",
         "category": "Category",
         "chooseCategory": "Choose a category",
         "compareAtPrice": "Compare-at price",
@@ -2738,6 +2739,7 @@
         "titleTooLong": "Title must be at most 200 characters.",
         "slugInvalid": "Slug must use lowercase letters, numbers, and single hyphens only.",
         "axesRequired": "Enter at least one variation axis for variable products.",
+        "bundlePriceRequired": "Enter a bundle price greater than 0.",
         "priceInvalid": "Enter a selling or compare-at price greater than 0.",
         "compareAtTooLow": "Compare-at price cannot be lower than the selling price.",
         "currencyInvalid": "Currency must be a 3-letter code such as EGP.",
@@ -2897,6 +2899,13 @@
       "saveDraft": "Save draft",
       "savePublish": "Save & publish",
       "loadFailed": "The product could not be loaded.",
+      "bundle": {
+        "subtitle": "Pick the listed products in this kit and how many of each. The bundle sells as one product at the price you set.",
+        "loading": "Loading your products…",
+        "noProducts": "You need at least one existing product to build a bundle. Create a simple product first.",
+        "itemsRequired": "Add at least one product to the bundle.",
+        "itemsLoadFailed": "Your products could not be loaded."
+      },
       "review": {
         "categoryUnchanged": "Kept from the saved product",
         "note": "Saving creates this product as a draft. Publishing makes it visible to buyers immediately.",

@@ -1,6 +1,11 @@
 // Shared wizard types and pure helpers, extracted from the product wizard so
 // the step sections can be maintained independently.
 
+export interface BundleItemDraft {
+	productId: string;
+	quantity: string;
+}
+
 export interface ProductForm {
 	title: string;
 	slug: string;
@@ -8,13 +13,14 @@ export interface ProductForm {
 	categoryId: string;
 	description: string;
 	highlights: string;
-	productType: "simple" | "variable";
+	productType: "simple" | "variable" | "bundle";
 	variationAxes: string;
 	sku: string;
 	price: string;
 	crossesOutPrice: string;
 	currency: string;
 	initialStock: string;
+	bundleItems: BundleItemDraft[];
 }
 
 export const EMPTY_FORM: ProductForm = {
@@ -31,6 +37,7 @@ export const EMPTY_FORM: ProductForm = {
 	crossesOutPrice: "",
 	currency: "EGP",
 	initialStock: "0",
+	bundleItems: [{ productId: "", quantity: "1" }],
 };
 
 export type WizardStep = 0 | 1 | 2 | 3;
@@ -58,6 +65,17 @@ export function draftKeyFor(productId?: string) {
 // One composer row while building a single combination: an attribute plus
 // the one value it takes in that combination. Saved combinations are built
 // one at a time instead of expanding every value into a cartesian product.
+// Bundle payload rows: only a chosen product with a positive whole quantity is
+// sendable, so validation and submission share one rule.
+export function bundlePayloadItems(items: BundleItemDraft[]): { productId: string; quantity: number }[] {
+	return items.flatMap((item) => {
+		const quantity = Number(item.quantity);
+		return item.productId && Number.isInteger(quantity) && quantity > 0
+			? [{ productId: item.productId, quantity }]
+			: [];
+	});
+}
+
 export interface VariationRow {
 	key: string;
 	value: string;

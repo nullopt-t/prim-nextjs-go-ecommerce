@@ -21,6 +21,7 @@ import type {
 } from "./wizard/wizardTypes";
 import {
 	EMPTY_FORM,
+	bundlePayloadItems,
 	slugify,
 	parseMajorPrice,
 	draftKeyFor,
@@ -31,6 +32,7 @@ import {
 import { usePersistDraft } from "./wizard/useWizardDraft";
 import { CustomAttributeBuilder } from "./wizard/CustomAttributeBuilder";
 import { VariantPricing } from "./wizard/VariantPricing";
+import { BundleItems } from "./wizard/BundleItems";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 
@@ -64,6 +66,8 @@ export function SellerProductWizard() {
 	const [hydrated, setHydrated] = useState(false);
 	const [existingProduct, setExistingProduct] = useState<SellerProduct | null>(null);
 	const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+	const [bundleCandidates, setBundleCandidates] = useState<SellerProduct[]>([]);
+	const [bundleCandidatesState, setBundleCandidatesState] = useState<"idle" | "loading" | "ready">("idle");
 
 	const steps = useMemo(
 		() => [
@@ -74,6 +78,8 @@ export function SellerProductWizard() {
 		],
 		[t],
 	);
+
+	const validBundleItems = useMemo(() => bundlePayloadItems(formData.bundleItems), [formData.bundleItems]);
 
 	const readiness = useMemo(() => {
 		const checks = [
@@ -88,34 +94,39 @@ export function SellerProductWizard() {
 			{
 				label: steps[1],
 				done:
-					formData.productType === "simple" ||
-					formData.variationAxes.split(",").map((a) => a.trim()).filter(Boolean).length > 0,
+					formData.productType === "bundle"
+						? validBundleItems.length > 0
+						: formData.productType === "simple" ||
+							formData.variationAxes.split(",").map((a) => a.trim()).filter(Boolean).length > 0,
 			},
 			{
 				label: steps[2],
 				done:
 					mode === "edit" ||
-					(formData.productType === "variable"
-						? savedCombinations.length > 0 &&
-							savedCombinations.every((combination) => {
-								const price = variantOverrides[combinationKey(combination)]?.price;
-								return price !== undefined && parseMajorPrice(price) !== undefined;
-							}) &&
+					(formData.productType === "bundle"
+						? parseMajorPrice(formData.price) !== undefined &&
 							/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())
-						: (!formData.price || parseMajorPrice(formData.price) !== undefined) &&
-							(!formData.crossesOutPrice || parseMajorPrice(formData.crossesOutPrice) !== undefined) &&
-							(!formData.price ||
-								!formData.crossesOutPrice ||
-								(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
-							/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
-							Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
-							Number.parseInt(formData.initialStock, 10) >= 0),
+						: formData.productType === "variable"
+							? savedCombinations.length > 0 &&
+								savedCombinations.every((combination) => {
+									const price = variantOverrides[combinationKey(combination)]?.price;
+									return price !== undefined && parseMajorPrice(price) !== undefined;
+								}) &&
+								/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase())
+							: (!formData.price || parseMajorPrice(formData.price) !== undefined) &&
+								(!formData.crossesOutPrice || parseMajorPrice(formData.crossesOutPrice) !== undefined) &&
+								(!formData.price ||
+									!formData.crossesOutPrice ||
+									(parseMajorPrice(formData.crossesOutPrice) ?? 0) >= (parseMajorPrice(formData.price) ?? 0)) &&
+								/^[A-Z]{3}$/.test(formData.currency.trim().toUpperCase()) &&
+								Number.isInteger(Number.parseInt(formData.initialStock, 10)) &&
+								Number.parseInt(formData.initialStock, 10) >= 0),
 			},
 			{ label: steps[3], done: false },
 		];
 		const doneCount = checks.filter((c) => c.done).length;
 		return { checks, percent: Math.round((doneCount / checks.length) * 100) };
-	}, [formData, steps, mode, savedCombinations, variantOverrides]);
+	}, [formData, steps, mode, savedCombinations, variantOverrides, validBundleItems]);
 
 	const combinations = useMemo(
 		() => (formData.productType === "variable" ? savedCombinations : []),
@@ -245,6 +256,18 @@ export function SellerProductWizard() {
 		};
 	}, [formData.categoryId, t]);
 
+	// Bundle composition picks from the seller's own catalog, loaded on first
+	// use so non-bundle products never pay for the extra request.
+	useEffect(() => {
+		if (formData.productType !== "bundle" || bundleCandidatesState !== "idle") return;
+		setBundleCandidatesState("loading");
+		sellerService
+			.getProducts({ page: 1, pageSize: 100 })
+			.then((response) => setBundleCandidates(response.data ?? []))
+			.catch((error: unknown) => notify.error(apiErrorMessage(error, t("wizard.bundle.itemsLoadFailed"))))
+			.finally(() => setBundleCandidatesState("ready"));
+	}, [formData.productType, bundleCandidatesState, t]);
+
 	usePersistDraft(
 		draftKey,
 		{ formData, variantOverrides, savedCombinations, swatchImages },
@@ -281,9 +304,16 @@ export function SellerProductWizard() {
 				nextErrors.variationAxes = t("wizard.attributes.rowsIncomplete");
 			}
 		}
+		if (currentStep === 1 && formData.productType === "bundle" && validBundleItems.length === 0) {
+			nextErrors.bundleItems = t("wizard.bundle.itemsRequired");
+		}
 		if (currentStep === 2) {
 			const isVariableCreate = mode === "create" && formData.productType === "variable";
-			if (!isVariableCreate) {
+			const isBundleCreate = mode === "create" && formData.productType === "bundle";
+			if (isBundleCreate && parseMajorPrice(formData.price) === undefined) {
+				nextErrors.price = t("products.validation.bundlePriceRequired");
+			}
+			if (!isVariableCreate && !isBundleCreate) {
 				if (formData.price && parseMajorPrice(formData.price) === undefined) {
 					nextErrors.price = t("products.validation.priceInvalid");
 				}
@@ -405,6 +435,35 @@ export function SellerProductWizard() {
 		}
 		if (mode === "create" && !validateStep(2)) {
 			setStep(2);
+			return;
+		}
+
+		if (mode === "create" && formData.productType === "bundle") {
+			const bundlePrice = parseMajorPrice(formData.price);
+			if (bundlePrice === undefined) {
+				setStep(2);
+				return;
+			}
+			setSaving(true);
+			setPublishing(shouldPublish);
+			try {
+				const created = await sellerService.createBundle({
+					title: formData.title.trim(),
+					description: formData.description.trim() || undefined,
+					bundlePrice,
+					currency: formData.currency.trim().toUpperCase() || "EGP",
+					items: validBundleItems,
+				});
+				if (shouldPublish) await sellerService.publishProduct(created.data.productId);
+				notify.success(shouldPublish ? t("toasts.productPublished") : t("toasts.productAdded"));
+				sessionStorage.removeItem(draftKey);
+				router.replace("/seller/products");
+			} catch (error) {
+				notify.error(apiErrorMessage(error, t("products.saveFailed")));
+			} finally {
+				setSaving(false);
+				setPublishing(false);
+			}
 			return;
 		}
 
@@ -555,12 +614,26 @@ export function SellerProductWizard() {
 		{ label: t("products.form.slug"), value: formData.slug.trim() || slugify(formData.title) || "—" },
 		{ label: t("products.form.category"), value: categories.find((c) => c.id === formData.categoryId)?.name ?? (mode === "edit" ? t("wizard.review.categoryUnchanged") : "—") },
 		{ label: t("products.form.brand"), value: brands.find((b) => b.id === formData.brandId)?.name ?? t("products.form.noBrand") },
-		{ label: t("products.form.productType"), value: formData.productType === "variable" ? t("products.form.variable") : t("products.form.simple") },
+		{ label: t("products.form.productType"), value: t(`products.form.${formData.productType === "variable" ? "variable" : formData.productType === "bundle" ? "bundle" : "simple"}`) },
 		{ label: t("products.form.variationAxes"), value: savedCombinations.length > 0 ? uniqueKeys(savedCombinations).join(", ") : (formData.variationAxes.trim() || "—") },
 		{ label: t("products.form.skuCode"), value: formData.sku.trim() || "—" },
-		{ label: t("products.form.sellingPrice"), value: formData.price ? `${formData.currency.toUpperCase()} ${(Number(formData.price)).toFixed(2)}` : "—" },
+		{ label: t(formData.productType === "bundle" ? "bundles.bundlePrice" : "products.form.sellingPrice"), value: formData.price ? `${formData.currency.toUpperCase()} ${(Number(formData.price)).toFixed(2)}` : "—" },
 		{ label: t("products.form.compareAtPrice"), value: formData.crossesOutPrice ? `${formData.currency.toUpperCase()} ${Number(formData.crossesOutPrice).toFixed(2)}` : "—" },
 		{ label: t("products.form.initialStock"), value: formData.initialStock || "—" },
+		...(formData.productType === "bundle" && mode === "create"
+			? [
+					{
+						label: t("bundles.itemsTitle"),
+						value:
+							validBundleItems
+								.map((item) => {
+									const product = bundleCandidates.find((candidate) => candidate.id === item.productId);
+									return `${item.quantity}× ${product?.title ?? item.productId}`;
+								})
+								.join(" · ") || "—",
+					},
+				]
+			: []),
 	];
 
 	return (
@@ -709,17 +782,28 @@ export function SellerProductWizard() {
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div className="space-y-1">
 								<label htmlFor="wizard-type" className="text-sm font-medium text-foreground">{t("products.form.productType")}</label>
-								<Select value={formData.productType} onValueChange={(value) => setField("productType", value as "simple" | "variable")}>
+								<Select value={formData.productType} onValueChange={(value) => setField("productType", value as ProductForm["productType"])}>
 									<SelectTrigger id="wizard-type">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="simple">{t("products.form.simple")}</SelectItem>
 										<SelectItem value="variable">{t("products.form.variable")}</SelectItem>
+										{mode === "create" && <SelectItem value="bundle">{t("products.form.bundle")}</SelectItem>}
 									</SelectContent>
 								</Select>
 							</div>
 						</div>
+						{formData.productType === "bundle" && (
+							<BundleItems
+								products={bundleCandidates}
+								items={formData.bundleItems}
+								currency={formData.currency}
+								loading={bundleCandidatesState === "loading"}
+								onChange={(items) => setField("bundleItems", items)}
+								error={fieldError("bundleItems")}
+							/>
+						)}
 						{formData.productType === "variable" && (
 							<div className="space-y-3 rounded-md border border-border p-4">
 								<div className="flex flex-wrap items-center justify-between gap-2">
@@ -960,17 +1044,21 @@ export function SellerProductWizard() {
 					<div className="mt-5 space-y-4">
 					{!(mode === "create" && formData.productType === "variable") && (<>
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							{formData.productType !== "bundle" && (
+								<div className="space-y-1">
+									<label htmlFor="wizard-sku" className="text-sm font-medium text-foreground">{t("products.form.skuCode")}</label>
+									<input
+										id="wizard-sku"
+										value={formData.sku}
+										onChange={(e) => setField("sku", e.target.value)}
+										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+									/>
+								</div>
+							)}
 							<div className="space-y-1">
-								<label htmlFor="wizard-sku" className="text-sm font-medium text-foreground">{t("products.form.skuCode")}</label>
-								<input
-									id="wizard-sku"
-									value={formData.sku}
-									onChange={(e) => setField("sku", e.target.value)}
-									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-								/>
-							</div>
-							<div className="space-y-1">
-								<label htmlFor="wizard-price" className="text-sm font-medium text-foreground">{t("products.form.sellingPrice")}</label>
+								<label htmlFor="wizard-price" className="text-sm font-medium text-foreground">
+									{t(formData.productType === "bundle" ? "bundles.bundlePrice" : "products.form.sellingPrice")}
+								</label>
 								<input
 									id="wizard-price"
 									type="number"
@@ -984,19 +1072,21 @@ export function SellerProductWizard() {
 							</div>
 						</div>
 						<div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-							<div className="space-y-1">
-								<label htmlFor="wizard-compare" className="text-sm font-medium text-foreground">{t("products.form.compareAtPrice")}</label>
-								<input
-									id="wizard-compare"
-									type="number"
-									min="0"
-									step="0.01"
-									value={formData.crossesOutPrice}
-									onChange={(e) => setField("crossesOutPrice", e.target.value)}
-									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-								/>
-								{fieldError("crossesOutPrice")}
-							</div>
+							{formData.productType !== "bundle" && (
+								<div className="space-y-1">
+									<label htmlFor="wizard-compare" className="text-sm font-medium text-foreground">{t("products.form.compareAtPrice")}</label>
+									<input
+										id="wizard-compare"
+										type="number"
+										min="0"
+										step="0.01"
+										value={formData.crossesOutPrice}
+										onChange={(e) => setField("crossesOutPrice", e.target.value)}
+										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+									/>
+									{fieldError("crossesOutPrice")}
+								</div>
+							)}
 							<div className="space-y-1">
 								<label htmlFor="wizard-currency" className="text-sm font-medium text-foreground">{t("products.form.currency")}</label>
 								<input
@@ -1007,20 +1097,24 @@ export function SellerProductWizard() {
 								/>
 								{fieldError("currency")}
 							</div>
-							<div className="space-y-1">
-								<label htmlFor="wizard-stock" className="text-sm font-medium text-foreground">{t("products.form.initialStock")}</label>
-								<input
-									id="wizard-stock"
-									type="number"
-									min="0"
-									value={formData.initialStock}
-									onChange={(e) => setField("initialStock", e.target.value)}
-									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-								/>
-								{fieldError("initialStock")}
-							</div>
+							{formData.productType !== "bundle" && (
+								<div className="space-y-1">
+									<label htmlFor="wizard-stock" className="text-sm font-medium text-foreground">{t("products.form.initialStock")}</label>
+									<input
+										id="wizard-stock"
+										type="number"
+										min="0"
+										value={formData.initialStock}
+										onChange={(e) => setField("initialStock", e.target.value)}
+										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+									/>
+									{fieldError("initialStock")}
+								</div>
+							)}
 						</div>
-						<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
+						{formData.productType !== "bundle" && (
+							<p className="text-xs text-muted-foreground">{t("products.form.initialPurchaseNote")}</p>
+						)}
 						</>)}
 					{mode === "create" && formData.productType === "variable" && (
 						<VariantPricing
