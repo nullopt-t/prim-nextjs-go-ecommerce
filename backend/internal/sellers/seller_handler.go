@@ -1431,7 +1431,7 @@ func (h *Handler) UpdateVariant(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, derefString(req.ThumbnailURL), variant.UpdateVariantInput{
+	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, req.ThumbnailURL, variant.UpdateVariantInput{
 		SKU:             req.SKU,
 		Title:           req.Title,
 		Price:           req.Price,

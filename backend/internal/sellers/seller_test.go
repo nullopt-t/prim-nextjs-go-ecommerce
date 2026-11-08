@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -501,6 +502,9 @@ func (f *fakeProductCatalog) List(_ context.Context, q *product.ListProductsQuer
 }
 
 func TestSellerServiceSuite(t *testing.T) {
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("docker daemon unavailable; skipping PostgreSQL integration suite")
+	}
 	suite.Run(t, new(SellerServiceSuite))
 }
 
@@ -1276,7 +1280,7 @@ func (s *SellerServiceSuite) TestSellerCannotTouchForeignVariant() {
 	s.variants.mu.Unlock()
 
 	title := "Hijacked"
-	err := s.service.UpdateVariant(s.ctx, s.sellerUID, foreignVariant.ID, "", variant.UpdateVariantInput{Title: &title})
+	err := s.service.UpdateVariant(s.ctx, s.sellerUID, foreignVariant.ID, nil, variant.UpdateVariantInput{Title: &title})
 	apiErr := s.assertAPIError(err)
 	s.Equal(http.StatusNotFound, apiErr.Status)
 

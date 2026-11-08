@@ -185,16 +185,18 @@ func (s *Service) CreateVariant(
 }
 
 // UpdateVariant edits a variant of a merchant-owned product.
-func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, thumbnailURL string, in variant.UpdateVariantInput) error {
+func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, thumbnailURL *string, in variant.UpdateVariantInput) error {
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		if _, _, err := s.requireOwnedVariant(ctx, userID, variantID); err != nil {
 			return err
 		}
-		thumbnailID, err := s.resolveThumbnailURL(ctx, thumbnailURL)
-		if err != nil {
-			return err
+		if thumbnailURL != nil {
+			thumbnailID, err := s.resolveThumbnailURL(ctx, *thumbnailURL)
+			if err != nil {
+				return err
+			}
+			in.ThumbnailObjectID = thumbnailID
 		}
-		in.ThumbnailObjectID = thumbnailID
 		return s.variants.UpdateVariant(ctx, variantID, in)
 	})
 	if err != nil {

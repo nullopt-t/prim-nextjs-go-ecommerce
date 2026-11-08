@@ -439,6 +439,24 @@ func (vs *VariantService) CreateVariant(
 			})
 	}
 
+	if in.Price != nil && *in.Price < 0 {
+		return nil, apierr.BadRequestError("Validation error").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{
+				Field:   "price",
+				Message: "price cannot be negative",
+			})
+	}
+
+	if in.CrossedOutPrice != nil && *in.CrossedOutPrice < 0 {
+		return nil, apierr.BadRequestError("Validation error").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{
+				Field:   "crossed_out_price",
+				Message: "crossed_out_price cannot be negative",
+			})
+	}
+
 	title := strings.TrimSpace(in.Title)
 
 	sku := uuid.NewString()
@@ -817,6 +835,24 @@ func (vs *VariantService) UpdateVariant(
 		Currency:          in.Currency,
 		Attributes:        in.Attributes,
 		ThumbnailObjectID: in.ThumbnailObjectID,
+	}
+
+	if in.Price != nil && *in.Price < 0 {
+		return apierr.BadRequestError("Validation error").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{
+				Field:   "price",
+				Message: "price cannot be negative",
+			})
+	}
+
+	if in.CrossedOutPrice != nil && *in.CrossedOutPrice < 0 {
+		return apierr.BadRequestError("Validation error").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{
+				Field:   "crossed_out_price",
+				Message: "crossed_out_price cannot be negative",
+			})
 	}
 
 	if in.SKU != nil {

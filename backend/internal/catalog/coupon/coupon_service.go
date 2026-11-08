@@ -196,6 +196,24 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 			WithFields(api.FieldError{Field: "discountValue", Message: "fixed discount must be > 0"})
 	}
 
+	if in.MinCartAmount != nil && *in.MinCartAmount < 0 {
+		return nil, apierr.BadRequestError("Minimum cart amount cannot be negative").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{Field: "minCartAmount", Message: "minCartAmount must be >= 0"})
+	}
+
+	if in.UsageLimit != nil && *in.UsageLimit < 1 {
+		return nil, apierr.BadRequestError("Usage limit must be at least 1").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{Field: "usageLimit", Message: "usageLimit must be >= 1"})
+	}
+
+	if in.PerUserLimit != nil && *in.PerUserLimit < 1 {
+		return nil, apierr.BadRequestError("Per-user usage limit must be at least 1").
+			WithCode(apierr.CodeValidationFailed).
+			WithFields(api.FieldError{Field: "perUserLimit", Message: "perUserLimit must be >= 1"})
+	}
+
 	currency := in.Currency
 	if currency == "" {
 		currency = "EGP"
@@ -576,6 +594,16 @@ func (s *CouponService) RecordRedemption(
 			WithCode(apierr.CodeInvalidInput)
 	}
 	return s.runner.WithTx(ctx, func(ctx context.Context) error {
+		c, err := s.repo.GetByIDAndLock(ctx, couponID)
+		if err != nil {
+			return err
+		}
+		if err := s.validateGlobalUsageLimit(ctx, c); err != nil {
+			return err
+		}
+		if err := s.validateUserUsageLimit(ctx, c, &userID); err != nil {
+			return err
+		}
 		return s.repo.RecordRedemption(ctx, &model.CouponRedemption{
 			CouponID:       couponID,
 			UserID:         userID,

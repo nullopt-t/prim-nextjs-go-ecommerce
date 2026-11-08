@@ -60,7 +60,21 @@ func (cs *CategoryService) CreateCategory(
 		Name:     name,
 	}
 
+	if in.ParentID != nil && *in.ParentID == category.ID {
+		return nil, apierr.BadRequestError("A category cannot be set as its own parent").
+			WithCode(apierr.CodeInvalidInput).
+			WithFields(api.FieldError{
+				Field:   "parent_id",
+				Message: "category cannot reference itself as parent",
+			})
+	}
+
 	err := cs.dr.WithTx(ctx, func(ctx context.Context) error {
+		if in.ParentID != nil && *in.ParentID != uuid.Nil {
+			if _, err := cs.repo.GetByID(ctx, *in.ParentID); err != nil {
+				return err
+			}
+		}
 		return cs.repo.Create(ctx, category)
 	})
 

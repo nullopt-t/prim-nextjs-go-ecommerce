@@ -3,6 +3,7 @@ package inventory_test
 import (
 	"context"
 	"os"
+	"os/exec"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -749,5 +750,8 @@ func (s *InventoryTestSuite) Test09_ExpiredReservationOrderIDs() {
 }
 
 func TestInventoryTestSuite(t *testing.T) {
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("docker daemon unavailable; skipping PostgreSQL integration suite")
+	}
 	suite.Run(t, new(InventoryTestSuite))
 }

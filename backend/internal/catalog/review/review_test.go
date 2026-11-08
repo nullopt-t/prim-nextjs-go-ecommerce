@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -490,5 +491,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_04_RatingSummaryComputation() {
 }
 
 func TestReviewHTTPTestSuite(t *testing.T) {
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("docker daemon unavailable; skipping PostgreSQL integration suite")
+	}
 	suite.Run(t, new(ReviewHTTPTestSuite))
 }
