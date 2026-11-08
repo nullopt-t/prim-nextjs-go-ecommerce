@@ -10,6 +10,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { Check, Clock, Truck, Package, ExternalLink, XCircle, Download } from "lucide-react";
 import InvoicePrintView from "./InvoicePrintView";
+import { isSafeUrl } from "@/shared/lib/safeUrl";
 
 interface OrderItem {
   id: string;
@@ -189,18 +190,21 @@ export default function OrderDetailsContent() {
   const items = order.items ?? [];
   const statusBadge = STATUS_BADGE[order.status] ?? STATUS_BADGE.pending;
   const shortId = order.id?.slice(0, 8).toUpperCase() ?? "";
-  const placedDate = new Date(order.createdAt).toLocaleDateString(locale, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const placedDateRaw = new Date(order.createdAt);
+  const placedDate = Number.isNaN(placedDateRaw.getTime())
+    ? "—"
+    : placedDateRaw.toLocaleDateString(locale, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
   const itemsSubtotalCents = items.reduce(
     (acc, it) => acc + (it.priceAtPurchase || 0) * (it.quantity || 1),
     0
   );
-  const rawSubtotal = itemsSubtotalCents > 0 
-    ? (itemsSubtotalCents / 100).toFixed(2) 
-    : ((order.totalAmount + (order.discountAmount || 0)) / 100).toFixed(2);
+  const rawSubtotal = itemsSubtotalCents > 0
+    ? (itemsSubtotalCents / 100).toFixed(2)
+    : (((order.totalAmount ?? 0) + (order.discountAmount ?? 0) - (order.shippingAmount ?? 0) - (order.taxAmount ?? 0) - (order.codFee ?? 0)) / 100).toFixed(2);
   const discountVal = (order.discountAmount ?? 0) / 100;
   const formattedDiscount = discountVal > 0 ? discountVal.toFixed(2) : null;
   const shippingVal = (order.shippingAmount ?? 0) / 100;
@@ -346,7 +350,7 @@ export default function OrderDetailsContent() {
                   </span>
                 )}
               </div>
-              {order.trackingUrl && (
+              {isSafeUrl(order.trackingUrl) && (
                 <a
                   href={order.trackingUrl}
                   target="_blank"

@@ -8,6 +8,7 @@ import { orderService } from "@/modules/orders/api/orderService";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatMoney } from "@/shared/lib/money";
 import type { Order } from "@/modules/orders/types";
+import { isSafeUrl } from "@/shared/lib/safeUrl";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -63,6 +64,12 @@ export default function OrderLookupContent() {
     }
   };
 
+  function placedDateLabel(orderCreatedAt: string): string {
+    const raw = new Date(orderCreatedAt);
+    return Number.isNaN(raw.getTime())
+      ? "—"
+      : raw.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
+  }
   const statusLabel = (status: Order["status"]) => tOrders(`status.${status}`);
 
   return (
@@ -138,7 +145,7 @@ export default function OrderLookupContent() {
 
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
-              <p className="text-muted-foreground">{tDetails("placedOn", { date: new Date(order.createdAt).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" }) })}</p>
+              <p className="text-muted-foreground">{tDetails("placedOn", { date: placedDateLabel(order.createdAt) })}</p>
             </div>
             <div>
               <p className="text-muted-foreground">{tOrders("itemCount", { count: order.items?.length ?? 0 })}</p>
@@ -154,7 +161,7 @@ export default function OrderLookupContent() {
             <div className="flex flex-col gap-1 rounded-xl bg-secondary/50 p-4 text-sm">
               <p className="text-muted-foreground">{tDetails("trackingNumber")}: <span className="font-semibold text-foreground">{order.trackingNumber ?? "—"}</span></p>
               {order.carrier && <p className="text-muted-foreground">{tDetails("carrier")}: <span className="font-semibold text-foreground">{order.carrier}</span></p>}
-              {order.trackingUrl && (
+              {isSafeUrl(order.trackingUrl) && (
                 <a href={order.trackingUrl} target="_blank" rel="noreferrer" className="font-medium text-accent-brand hover:underline">
                   {tDetails("trackShipment")}
                 </a>
