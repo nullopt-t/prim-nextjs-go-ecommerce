@@ -83,7 +83,8 @@ export function ProductsCard({
     setIsAdding(true);
 
     try {
-      const defaultVariant = (cardDetails.variants && (cardDetails.variants[0] as { id?: string })) || null;
+      const variantList = (cardDetails.variants ?? []) as Array<{ id?: string; isDefault?: boolean }>;
+      const defaultVariant = variantList.find((v) => v.isDefault) ?? variantList[0] ?? null;
       const payload = {
         id: String(cardDetails.id),
         slug: cardDetails.slug || String(cardDetails.id),
@@ -160,9 +161,9 @@ export function ProductsCard({
               type="button"
               onClick={handleWishlistClick}
               aria-label={tCommon("header.wishlist")}
-              className="absolute top-2.5 end-2.5 flex items-center justify-center rounded-full size-7.5 transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
+              className="absolute top-2.5 end-2.5 flex size-11 items-center justify-center rounded-full transition-all shadow-xs cursor-pointer bg-accent-brand text-white hover:bg-accent-brand/90 scale-105"
             >
-              <Heart className="size-3.5 fill-current" />
+              <Heart className="size-5 fill-current" />
             </button>
           )}
         </div>
@@ -206,7 +207,7 @@ export function ProductsCard({
           type="button"
           onClick={handleCartClick}
           disabled={isAdding}
-          className={`w-full h-8 sm:h-9 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
+          className={`w-full min-h-11 rounded-xl font-medium text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
             justAdded
               ? "bg-emerald-600 text-white"
               : "bg-primary text-primary-foreground hover:opacity-90 active:scale-[0.98]"

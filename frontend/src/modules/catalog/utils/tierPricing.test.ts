@@ -46,4 +46,18 @@ describe("resolveTier", () => {
 		const withPrice = [{ minQuantity: 3, unitPrice: 88, discountPercent: 50 }];
 		expect(resolveTier(100, withPrice, 3).unitPrice).toBe(88);
 	});
+
+	it("resolves the highest met threshold even for unsorted tiers", () => {
+		const unsorted = [
+			{ minQuantity: 10, discountPercent: 15 },
+			{ minQuantity: 3, discountPercent: 5 },
+		];
+		expect(resolveTier(100, unsorted, 5).unitPrice).toBe(95);
+		expect(resolveTier(100, unsorted, 10).unitPrice).toBe(85);
+	});
+
+	it("drops discounts above 100% instead of yielding a negative price", () => {
+		expect(normalizeTiers([{ minQuantity: 2, discountPercent: 150 }])).toEqual([]);
+		expect(resolveTier(100, [{ minQuantity: 1, discountPercent: 150 }], 5).unitPrice).toBeGreaterThanOrEqual(0);
+	});
 });

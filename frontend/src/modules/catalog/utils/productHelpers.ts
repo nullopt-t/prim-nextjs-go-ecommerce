@@ -36,10 +36,13 @@ export function resolveVariantByAttributes(
     return variants.find((v) => v.isDefault) || variants[0];
   }
 
-  const hasAllSelections = axes.every((axis) => Boolean(selectedValues[axis.key]));
-  if (hasAllSelections) {
+  // Match on the axes the caller actually selected: a partial selection
+  // (e.g. color picked, size momentarily empty) still resolves to a variant
+  // carrying that color instead of silently falling back to the default.
+  const selectedAxes = axes.filter((axis) => Boolean(selectedValues[axis.key]));
+  if (selectedAxes.length > 0) {
     const match = variants.find((v) =>
-      axes.every((axis) => {
+      selectedAxes.every((axis) => {
         const value = v.attributes?.[axis.key];
         return value !== undefined && String(value) === selectedValues[axis.key];
       })

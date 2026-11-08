@@ -36,7 +36,10 @@ export function normalizeTiers(tiers: unknown): TierPricing[] {
 			record.discountPercent !== undefined ? Number(record.discountPercent) : undefined;
 		const hasUnitPrice = unitPrice !== undefined && Number.isFinite(unitPrice) && unitPrice > 0;
 		const hasPercent =
-			discountPercent !== undefined && Number.isFinite(discountPercent) && discountPercent > 0;
+			discountPercent !== undefined &&
+			Number.isFinite(discountPercent) &&
+			discountPercent > 0 &&
+			discountPercent <= 100;
 		if (!hasUnitPrice && !hasPercent) continue;
 		out.push({
 			minQuantity: Math.floor(minQuantity),
@@ -59,14 +62,19 @@ export function resolveTier(
 ): TierResolution {
 	const base = Number(baseUnitPrice) || 0;
 	const list = tiers ?? [];
+	// Scan all tiers (callers may pass unsorted lists): keep the highest
+	// threshold the quantity meets instead of stopping at the first miss.
 	let activeTier: TierPricing | null = null;
 	for (const tier of list) {
-		if (tier.minQuantity <= quantity) activeTier = tier;
-		else break;
+		if (tier.minQuantity <= quantity && (!activeTier || tier.minQuantity >= activeTier.minQuantity)) {
+			activeTier = tier;
+		}
 	}
 	if (!activeTier) return { unitPrice: base, activeTier: null, savingsPerUnit: 0 };
-	const unitPrice =
-		activeTier.unitPrice ?? base * (1 - (activeTier.discountPercent || 0) / 100);
+	const unitPrice = Math.max(
+		0,
+		activeTier.unitPrice ?? base * (1 - (activeTier.discountPercent || 0) / 100),
+	);
 	const rounded = Math.round(unitPrice * 100) / 100;
 	return { unitPrice: rounded, activeTier, savingsPerUnit: Math.max(0, base - rounded) };
 }

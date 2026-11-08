@@ -24,10 +24,14 @@ export function computeBundleSavings(
 	if (itemsTotal <= 0 || bundlePrice <= 0) return null;
 	const savings = itemsTotal - bundlePrice;
 	if (savings <= 0) return null;
+	// Round to cents so float accumulation (0.1 * 3) never drifts the totals.
+	const round = (n: number) => Math.round(n * 100) / 100;
+	const roundedTotal = round(itemsTotal);
+	const roundedSavings = round(savings);
 	return {
-		itemsTotal,
-		savings,
-		percentOff: Math.round((savings / itemsTotal) * 100),
+		itemsTotal: roundedTotal,
+		savings: roundedSavings,
+		percentOff: Math.round((roundedSavings / roundedTotal) * 100),
 	};
 }
 

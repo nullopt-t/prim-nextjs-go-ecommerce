@@ -88,7 +88,7 @@ export function ProductGallery({
                 type="button"
                 onClick={goToPrevious}
                 aria-label={t("gallery.previousImage")}
-                className="absolute start-3 top-1/2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-foreground opacity-100 shadow-sm backdrop-blur-sm transition-all hover:bg-background focus:opacity-100 sm:size-10 sm:opacity-0 sm:group-hover:opacity-100"
+                className="absolute start-3 top-1/2 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-foreground opacity-100 shadow-sm backdrop-blur-sm transition-all hover:bg-background focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <ChevronLeft className="size-4 rtl:rotate-180" />
               </button>
@@ -96,7 +96,7 @@ export function ProductGallery({
                 type="button"
                 onClick={goToNext}
                 aria-label={t("gallery.nextImage")}
-                className="absolute end-3 top-1/2 flex size-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-foreground opacity-100 shadow-sm backdrop-blur-sm transition-all hover:bg-background focus:opacity-100 sm:size-10 sm:opacity-0 sm:group-hover:opacity-100"
+                className="absolute end-3 top-1/2 flex size-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 text-foreground opacity-100 shadow-sm backdrop-blur-sm transition-all hover:bg-background focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <ChevronRight className="size-4 rtl:rotate-180" />
               </button>

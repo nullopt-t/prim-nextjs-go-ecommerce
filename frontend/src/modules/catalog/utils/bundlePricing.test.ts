@@ -62,6 +62,11 @@ describe("computeBundleSavings", () => {
 		expect(result).toEqual({ itemsTotal: 130, savings: 30, percentOff: 23 });
 	});
 
+	it("rounds float totals to cents instead of drifting", () => {
+		const result = computeBundleSavings([{ slug: "a", quantity: 3, price: 0.1 }], 0.2);
+		expect(result).toEqual({ itemsTotal: 0.3, savings: 0.1, percentOff: 33 });
+	});
+
 	it("returns null when the kit costs as much or more than its parts", () => {
 		expect(computeBundleSavings([{ slug: "a", quantity: 1, price: 10 }], 12)).toBeNull();
 		expect(computeBundleSavings([], 5)).toBeNull();

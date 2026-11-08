@@ -102,7 +102,7 @@ export function CartSidebar() {
             type="button"
             onClick={closeCart}
             aria-label={tUi("cart.closeCart")}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors cursor-pointer"
+            className="flex size-11 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition-colors cursor-pointer"
           >
             <X className="size-5" />
           </button>

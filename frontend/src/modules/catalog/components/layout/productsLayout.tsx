@@ -89,7 +89,7 @@ export default function ProductsLayout({
                 type="button"
                 disabled={page <= 1}
                 onClick={() => goToPage(page - 1)}
-                className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("pagination.previous")}
               </button>
@@ -100,7 +100,7 @@ export default function ProductsLayout({
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => goToPage(page + 1)}
-                className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t("pagination.next")}
               </button>

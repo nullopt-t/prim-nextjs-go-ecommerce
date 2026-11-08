@@ -21,8 +21,8 @@ export interface RawProductVariant {
 	id?: string;
 	sku?: string;
 	title?: string;
-	price?: string | number;
-	extractedPrice?: number;
+	price?: string | number | null;
+	extractedPrice?: number | null;
 	originalPrice?: string;
 	oldPrice?: string | number;
 	extractedOriginalPrice?: number;
@@ -135,7 +135,7 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 	const img = normalizeMediaUrl(rawImg);
 
 	// Price formatting - check p (inner product if wishlistItem, or raw) then fallback to raw
-	const rawPrice = p.extractedPrice !== undefined ? p.extractedPrice : raw.extractedPrice;
+	const rawPrice = p.extractedPrice != null ? p.extractedPrice : raw.extractedPrice;
 	const priceNum =
 		rawPrice !== undefined
 			? Number(rawPrice)
@@ -146,7 +146,7 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 					: parseFloat(String(p.price || raw.price || "0").replace(/[^0-9.-]+/g, "")) || 0;
 
 	const rawOldPrice =
-		p.extractedOriginalPrice !== undefined
+		p.extractedOriginalPrice != null
 			? p.extractedOriginalPrice
 			: raw.extractedOriginalPrice;
 	const rawOrigPriceStr = p.originalPrice || raw.originalPrice || p.oldPrice || raw.oldPrice;
@@ -302,14 +302,19 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 
 	const variants = Array.isArray(raw.variants)
 		? raw.variants.map((v: RawProductVariant) => {
-				const vPrice =
-					v.extractedPrice !== undefined
+				// A variant explicitly priced at 0 must stay 0 (free) — only a
+				// missing/non-numeric price falls back to the product price.
+				const parsedPrice =
+					v.extractedPrice != null
 						? Number(v.extractedPrice)
 						: typeof v.price === "number"
 							? v.price
-							: parseFloat(String(v.price || "0").replace(/[^0-9.-]+/g, "")) || priceNum;
+							: v.price != null && String(v.price).trim() !== ""
+								? parseFloat(String(v.price).replace(/[^0-9.-]+/g, ""))
+								: NaN;
+				const vPrice = Number.isFinite(parsedPrice) ? parsedPrice : priceNum;
 				const vOldPrice =
-					v.extractedOriginalPrice !== undefined
+					v.extractedOriginalPrice != null
 						? Number(v.extractedOriginalPrice)
 						: v.originalPrice || v.oldPrice
 							? parseFloat(String(v.originalPrice || v.oldPrice).replace(/[^0-9.-]+/g, ""))

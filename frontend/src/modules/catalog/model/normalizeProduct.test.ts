@@ -71,6 +71,30 @@ describe("normalizeProduct", () => {
 		expect(product?.price).toBe(50);
 	});
 
+	it("keeps an explicit zero variant price instead of falling back to the product price", () => {
+		const product = normalizeProduct({
+			id: "prod-3",
+			slug: "free-sample",
+			title: "Free Sample",
+			price: 99,
+			variationAxes: ["color"],
+			variants: [{ id: "var-free", price: 0, attributes: { color: "Red" } }],
+		});
+		expect(product?.variants[0]?.price).toBe(0);
+		expect(product?.variants[0]?.extractedPrice).toBe(0);
+	});
+
+	it("falls back to the product price when variant price fields are null", () => {
+		const product = normalizeProduct({
+			id: "prod-4",
+			slug: "null-price",
+			title: "Null Price",
+			price: 42,
+			variants: [{ id: "var-null", price: null, extractedPrice: null }],
+		});
+		expect(product?.variants[0]?.price).toBe(42);
+	});
+
 	it("returns null for an empty payload", () => {
 		expect(normalizeProduct(null)).toBeNull();
 	});

@@ -8,6 +8,8 @@ import { CardDetails } from "@/shared/ui/productsCard";
 import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/catalogContext";
 import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { catalogService } from "@/modules/catalog/api/catalogService";
+import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/publicSettingsContext";
+import { convertCurrency } from "@/shared/lib/currency";
 
 interface ContentProps {
   products?: ProductDetailsEntity[];
@@ -17,6 +19,8 @@ interface ContentProps {
 export default function Content({ products, category }: ContentProps) {
   const { products: contextProducts, loading: contextLoading, filters, setFilter, clearFilters } = useCatalogContext();
   const t = useTranslations("products");
+  const baseCurrency = useCurrency();
+  const displayCurrency = useDisplayCurrency();
   const [categoryProducts, setCategoryProducts] = useState<ProductDetailsEntity[] | null>(products ?? null);
   const [catLoading, setCatLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -175,16 +179,14 @@ export default function Content({ products, category }: ContentProps) {
       if (disc < filters.discount) return false;
     }
 
-    // Min price filter
-    if (filters.minPrice !== null) {
-      const priceVal = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
-      if (priceVal < filters.minPrice) return false;
-    }
-
-    // Max price filter
-    if (filters.maxPrice !== null) {
-      const priceVal = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
-      if (priceVal > filters.maxPrice) return false;
+    // Min/max price filters are typed in the *display* currency (what the
+    // shopper sees and types), so convert the base-currency price first —
+    // comparing raw base numbers would filter in the wrong currency.
+    if (filters.minPrice !== null || filters.maxPrice !== null) {
+      const rawPrice = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
+      const priceVal = convertCurrency(rawPrice, baseCurrency, displayCurrency);
+      if (filters.minPrice !== null && priceVal < filters.minPrice) return false;
+      if (filters.maxPrice !== null && priceVal > filters.maxPrice) return false;
     }
 
     // Attribute facet filter: one variant must match every selected key:value
