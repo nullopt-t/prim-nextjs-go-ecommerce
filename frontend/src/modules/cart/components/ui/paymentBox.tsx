@@ -5,14 +5,17 @@ import { useTranslations } from "next-intl";
 import { useCart } from "@/modules/cart/model/useCart";
 import { useRouter } from "@/shared/i18n/navigation";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
-import { Truck, Sparkles, ShieldCheck } from "lucide-react";
+import { Truck, Sparkles, ShieldCheck, Gift } from "lucide-react";
 import { formatMoney } from "@/shared/lib/money";
 
 import { calculateCartTotals } from "@/modules/cart/utils/cartCalculations";
 
+/** Display fallback until the backend owns the gift-wrap fee. */
+const DEFAULT_GIFT_WRAP_FEE = 25;
+
 export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("cart");
-  const { cartItems, appliedCoupon, closeCart } = useCart();
+  const { cartItems, appliedCoupon, closeCart, giftWrap, setGiftWrap } = useCart();
   const router = useRouter();
   const { settings: storeSettings } = usePublicSettings();
 
@@ -39,7 +42,8 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
     !storeSettings?.pricesIncludeTax && taxRate > 0
       ? Math.max(0, (subtotal - discount) * (taxRate / 100))
       : 0;
-  const total = Math.max(0, subtotal - discount + shippingCost + taxAmount);
+  const giftWrapFee = giftWrap ? (storeSettings?.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE) : 0;
+  const total = Math.max(0, subtotal - discount + shippingCost + taxAmount + giftWrapFee);
 
   const shippingLabel = !shippingKnown
     ? "—"
@@ -66,6 +70,20 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
             <span>{t("shippingUnlocked")}</span>
           </div>
         )}
+
+        <label className="flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-3 py-2 cursor-pointer border border-border/40">
+          <span className="flex items-center gap-1.5 text-xs text-foreground">
+            <Gift className="size-3.5 text-accent-brand shrink-0" aria-hidden="true" />
+            {t("giftWrap.label")}
+            <span className="text-muted-foreground">(+{formatMoney(storeSettings?.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE, currency)})</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={giftWrap}
+            onChange={(e) => setGiftWrap(e.target.checked)}
+            className="size-4 accent-accent-brand cursor-pointer"
+          />
+        </label>
 
         {/* Minimal Subtotal & Total Line */}
         <div className="flex items-baseline justify-between pt-1">
@@ -181,6 +199,30 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           </span>
           <span className="text-foreground font-medium">{formatMoney(taxAmount, currency)}</span>
         </p>
+
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3.5 py-3 cursor-pointer hover:border-accent-brand/50 transition-colors">
+          <span className="flex items-center gap-2 text-sm">
+            <Gift className="size-4 text-accent-brand" aria-hidden="true" />
+            <span>
+              <span className="block font-medium text-foreground">{t("giftWrap.label")}</span>
+              <span className="block text-xs text-muted-foreground">
+                {t("giftWrap.note", { fee: formatMoney(storeSettings?.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE, currency) })}
+              </span>
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={giftWrap}
+            onChange={(e) => setGiftWrap(e.target.checked)}
+            className="size-4 accent-accent-brand cursor-pointer"
+          />
+        </label>
+        {giftWrap && (
+          <p className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t("giftWrap.label")}</span>
+            <span className="text-foreground font-medium">{formatMoney(giftWrapFee, currency)}</span>
+          </p>
+        )}
       </div>
 
       <hr className="border-border/50" />

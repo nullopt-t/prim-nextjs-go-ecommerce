@@ -62,6 +62,8 @@ interface CartContextType {
   loading: boolean;
   errorMsg: string | null;
   appliedCoupon: CouponData | null;
+  giftWrap: boolean;
+  setGiftWrap: (enabled: boolean) => void;
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
@@ -92,6 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null);
+  const [giftWrap, setGiftWrap] = useState(false);
 
   const openCart = () => setIsCartOpen(true);
   const closeCart = () => setIsCartOpen(false);
@@ -107,6 +110,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       total: 0,
     });
     setAppliedCoupon(null);
+    setGiftWrap(false);
   }, []);
 
   const normalizeCartData = (res: ApiResponse<Cart> | Cart | null | undefined) => {
@@ -311,6 +315,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         loading,
         errorMsg,
         appliedCoupon,
+        giftWrap,
+        setGiftWrap,
         isCartOpen,
         openCart,
         closeCart,

@@ -92,6 +92,7 @@ export default function Coupon() {
               />
             </div>
           </div>
+          <p className="text-[11px] text-muted-foreground">{t("couponCodeHint")}</p>
         </>
       )}
     </div>
