@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -146,11 +147,28 @@ func (r *Repository) GetOrderByID(
 	ctx context.Context,
 	id uuid.UUID,
 ) (*model.Order, error) {
+	return r.getOrderByQuery(ctx, "WHERE o.id = $1", id)
+}
+
+// LookupOrderByIDAndEmail retrieves an order matching both ID and case-insensitive customer email.
+func (r *Repository) LookupOrderByIDAndEmail(
+	ctx context.Context,
+	id uuid.UUID,
+	email string,
+) (*model.Order, error) {
+	return r.getOrderByQuery(ctx, "WHERE o.id = $1 AND LOWER(o.customer_email) = LOWER($2)", id, strings.TrimSpace(email))
+}
+
+func (r *Repository) getOrderByQuery(
+	ctx context.Context,
+	whereClause string,
+	args ...any,
+) (*model.Order, error) {
 	qe, err := database.Executor(ctx)
 	if err != nil {
 		return nil, err
 	}
-	query := `
+	query := fmt.Sprintf(`
 		SELECT o.id, o.customer_id, o.customer_email, o.shipping_address,
 		       o.status, o.coupon_id, o.discount_amount, o.shipping_amount, o.tax_amount, o.cod_fee,
 		       o.total_amount, o.currency, o.payment_method, o.tracking_number,
@@ -159,9 +177,9 @@ func (r *Repository) GetOrderByID(
 		       c.code
 		FROM orders o
 		LEFT JOIN coupons c ON o.coupon_id = c.id
-		WHERE o.id = $1
-	`
-	row := qe.QueryRowContext(ctx, query, id)
+		%s
+	`, whereClause)
+	row := qe.QueryRowContext(ctx, query, args...)
 
 	var o model.Order
 	var shippingBytes []byte
@@ -200,7 +218,7 @@ func (r *Repository) GetOrderByID(
 	o.Carrier = carrier
 	o.TrackingURL = trackingURL
 	if err != nil {
-		return nil, fmt.Errorf("get order by id: %w", err)
+		return nil, fmt.Errorf("get order by query: %w", err)
 	}
 
 	if err := json.Unmarshal(shippingBytes, &o.ShippingAddress); err != nil {

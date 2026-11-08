@@ -326,6 +326,50 @@ func (h *OrderHandler) GetOrderByID(c *gin.Context) {
 	})
 }
 
+type GuestOrderLookupQuery struct {
+	Email       string `form:"email" binding:"required,email" example:"customer@example.com"`
+	OrderNumber string `form:"orderNumber" binding:"required,uuid" example:"10000000-0000-0000-0000-000000000001"`
+}
+
+// GuestLookupOrder godoc
+//
+//	@Summary		Lookup order for guests
+//	@Description	Allows guest shoppers or unauthenticated users to lookup their order status, tracking, and items by order number and billing/shipping email.
+//	@Tags			Orders
+//	@Produce		json
+//	@Param			q	query		GuestOrderLookupQuery					true	"Guest order lookup credentials"
+//	@Failure		400	{object}	api.BadRequestErrorResponse				"Invalid email or order number format"
+//	@Failure		404	{object}	api.NotFoundErrorResponse				"Order not found"
+//	@Failure		500	{object}	api.InternalServerErrorResponse			"Internal server error"
+//	@Success		200	{object}	api.DataResponse{data=OrderResponse}	"Order details"
+//	@Router			/orders/lookup [get]
+func (h *OrderHandler) GuestLookupOrder(c *gin.Context) {
+	var q GuestOrderLookupQuery
+	if err := c.ShouldBindQuery(&q); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	orderID, err := uuid.Parse(q.OrderNumber)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid order number format").WithFields(api.FieldError{
+			Field:   "orderNumber",
+			Message: "orderNumber must be a valid UUID",
+		}))
+		return
+	}
+
+	order, err := h.orderService.LookupOrderByGuest(c.Request.Context(), orderID, q.Email)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: mapOrderResponse(order),
+	})
+}
+
 // UpdateOrderStatus godoc
 //
 //	@Summary		Update order status (Admin)
@@ -403,6 +447,80 @@ func (h *OrderHandler) CancelOrder(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.MessageResponse{
 		Message: "Order cancelled successfully",
+	})
+}
+
+type OrderReturnItemRequest struct {
+	ItemID   string `json:"itemId" binding:"required,uuid" example:"91000000-0000-0000-0000-000000000001"`
+	Quantity int    `json:"quantity" binding:"required,gt=0" example:"1"`
+}
+
+type CreateOrderReturnRequest struct {
+	Reason string                   `json:"reason" binding:"required" example:"Item is defective or damaged"`
+	Items  []OrderReturnItemRequest `json:"items,omitempty"`
+}
+
+// RequestOrderReturn godoc
+//
+//	@Summary		Request return for order (RMA)
+//	@Description	Allows a customer to submit a return request for a delivered order with reason and items.
+//	@Tags			Orders
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string							true	"Order UUID"	format(uuid)
+//	@Param			body	body		CreateOrderReturnRequest		true	"Return details"
+//	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid input or order not eligible for return"
+//	@Failure		401		{object}	api.UnauthorizedErrorResponse	"Authentication required"
+//	@Failure		403		{object}	api.ForbiddenErrorResponse		"Not authorized to return this order"
+//	@Failure		404		{object}	api.NotFoundErrorResponse		"Order not found"
+//	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
+//	@Success		200		{object}	api.MessageResponse				"Return request confirmation"
+//	@Router			/orders/{id}/returns [post]
+func (h *OrderHandler) RequestOrderReturn(c *gin.Context) {
+	customerID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid order ID").WithFields(api.FieldError{
+			Field:   "id",
+			Message: "invalid order UUID format",
+		}))
+		return
+	}
+
+	var body CreateOrderReturnRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	items := make([]ReturnItemInput, 0, len(body.Items))
+	for _, it := range body.Items {
+		itemID, err := uuid.Parse(it.ItemID)
+		if err != nil {
+			_ = c.Error(apierr.BadRequestError("Invalid item ID").WithFields(api.FieldError{
+				Field:   "itemId",
+				Message: "invalid item UUID format",
+			}))
+			return
+		}
+		items = append(items, ReturnItemInput{
+			ItemID:   itemID,
+			Quantity: it.Quantity,
+		})
+	}
+
+	if err := h.orderService.RequestOrderReturn(c.Request.Context(), orderID, customerID, body.Reason, items); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.MessageResponse{
+		Message: "Return request submitted successfully",
 	})
 }
 

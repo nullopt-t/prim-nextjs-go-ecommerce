@@ -565,6 +565,34 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id uuid.UUID) (*model.O
 	return order, nil
 }
 
+// LookupOrderByGuest finds an order by UUID and verifying matching customer contact email.
+func (s *OrderService) LookupOrderByGuest(ctx context.Context, id uuid.UUID, email string) (*model.Order, error) {
+	var order *model.Order
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
+		res, err := s.orderRepo.LookupOrderByIDAndEmail(ctx, id, email)
+		if err != nil {
+			return err
+		}
+		order = res
+		return nil
+	})
+
+	if err != nil {
+		mappedErr := database.MapError(err)
+		switch {
+		case errors.Is(mappedErr, database.ErrNotFound):
+			return nil, apierr.NotFoundError("Order not found with provided email and order number").
+				WithCode(errcode.CodeOrderNotFound)
+		default:
+			return nil, apierr.InternalServerError("Failed to lookup order").
+				WithCode(apierr.CodeInternalError).
+				Wrap(err).
+				WithStack()
+		}
+	}
+	return order, nil
+}
+
 // GetCustomerOrders fetches all orders belonging to the specified customer UUID.
 func (s *OrderService) GetCustomerOrders(ctx context.Context, customerID uuid.UUID) ([]model.Order, error) {
 	var orders []model.Order
@@ -831,6 +859,68 @@ func (s *OrderService) CancelOrder(ctx context.Context, id uuid.UUID, customerID
 		s.notifyOrderCancelled(ctx, cancelledOrder, "Cancelled by customer", customerName)
 	}
 	return nil
+}
+
+// ReturnItemInput specifies a purchased item and quantity being returned.
+type ReturnItemInput struct {
+	ItemID   uuid.UUID
+	Quantity int
+}
+
+// RequestOrderReturn creates a customer-initiated return request for a delivered order.
+func (s *OrderService) RequestOrderReturn(ctx context.Context, id uuid.UUID, customerID uuid.UUID, reason string, items []ReturnItemInput) error {
+	trimmedReason := strings.TrimSpace(reason)
+	if trimmedReason == "" {
+		return apierr.BadRequestError("Return reason is required")
+	}
+
+	return s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, id)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
+			}
+			return s.handleError(err, "Failed to fetch order")
+		}
+
+		if ord.CustomerID == nil || *ord.CustomerID != customerID {
+			return apierr.ForbiddenError("You are not authorized to return this order")
+		}
+
+		if ord.Status != model.OrderStatusDelivered {
+			return apierr.BadRequestError("Return requests can only be submitted for delivered orders").WithCode(errcode.CodeInvalidOrderStatus)
+		}
+
+		orderItems, err := s.orderRepo.GetOrderItems(ctx, id)
+		if err != nil {
+			return s.handleError(err, "Failed to fetch order items")
+		}
+		itemMap := make(map[uuid.UUID]model.OrderItem, len(orderItems))
+		for _, it := range orderItems {
+			itemMap[it.ID] = it
+		}
+
+		for _, retItem := range items {
+			line, ok := itemMap[retItem.ItemID]
+			if !ok {
+				return apierr.BadRequestError("Item does not belong to this order")
+			}
+			if retItem.Quantity <= 0 || retItem.Quantity > line.Quantity {
+				return apierr.BadRequestError("Invalid return quantity")
+			}
+		}
+
+		itemCount := len(items)
+		if itemCount == 0 {
+			itemCount = len(orderItems)
+		}
+		note := fmt.Sprintf("Return requested (%d item(s)): %s", itemCount, trimmedReason)
+		if err := s.orderRepo.AddStatusHistory(ctx, id, ord.Status, &note); err != nil {
+			return s.handleError(err, "Failed to record return request")
+		}
+
+		return nil
+	})
 }
 
 // ReapExpiredReservations cancels pending orders whose checkout hold has expired

@@ -71,11 +71,15 @@ func (r *OrderRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	// Customer order endpoints group: protected by customer session authentication.
 	ordersGroup := vgroup.Group("/orders")
 	{
+		// GET /orders/lookup - unauthenticated guest order status lookup by email + orderNumber.
+		ordersGroup.GET("/lookup", r.handler.GuestLookupOrder)
 		// GET /orders - list all orders placed by the currently authenticated customer.
 		ordersGroup.GET("", middleware.Authenticate(r.sessionStore), r.handler.GetOrders)
 		// GET /orders/:id - get specific order details ensuring ownership access control.
 		ordersGroup.GET("/:id", middleware.Authenticate(r.sessionStore), r.handler.GetOrderByID)
 		// POST /orders/:id/cancel - request cancellation of a pending/confirmed order by customer.
 		ordersGroup.POST("/:id/cancel", middleware.Authenticate(r.sessionStore), r.handler.CancelOrder)
+		// POST /orders/:id/returns - submit return request (RMA) for a delivered order.
+		ordersGroup.POST("/:id/returns", middleware.Authenticate(r.sessionStore), r.handler.RequestOrderReturn)
 	}
 }
