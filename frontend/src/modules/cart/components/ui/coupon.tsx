@@ -6,10 +6,14 @@ import { useTranslations } from "next-intl";
 import { useCart } from "@/modules/cart/model/useCart";
 import { Tag, Check, X } from "lucide-react";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
+import { formatMoney } from "@/shared/lib/money";
+import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 
 export default function Coupon() {
   const t = useTranslations("cart");
   const { appliedCoupon, applyCoupon, removeCoupon } = useCart();
+  const { settings } = usePublicSettings();
+  const currency = settings?.currency?.trim() ?? "";
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +40,9 @@ export default function Coupon() {
 
   return (
     <div className="flex flex-col gap-3">
-      {appliedCoupon ? (
+      {/* Always render the input so a valid coupon can be replaced; applying
+          an invalid code keeps the current discount (see cartContext). */}
+      {appliedCoupon && (
         <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-sm">
           <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-400">
             <div className="p-1 rounded-full bg-emerald-500/20">
@@ -47,7 +53,7 @@ export default function Coupon() {
               ({appliedCoupon.discountPercent
                 ? `${appliedCoupon.discountPercent}% OFF`
                 : appliedCoupon.fixedDiscount
-                ? `EGP ${appliedCoupon.fixedDiscount} OFF`
+                ? `${formatMoney(appliedCoupon.fixedDiscount, currency)} OFF`
                 : appliedCoupon.freeShipping
                 ? t("coupon.freeShipping")
                 : t("coupon.appliedStatus")})
@@ -65,7 +71,7 @@ export default function Coupon() {
             <span>{t("coupon.remove", { defaultMessage: "Remove" })}</span>
           </button>
         </div>
-      ) : (
+      )}
         <>
           <div className="flex gap-4">
             <div className="flex-1 bg-card border border-border focus-within:border-accent-brand rounded-xl transition-colors overflow-hidden flex items-center px-4 h-12 shadow-xs">
@@ -94,7 +100,6 @@ export default function Coupon() {
           </div>
           <p className="text-[11px] text-muted-foreground">{t("couponCodeHint")}</p>
         </>
-      )}
     </div>
   );
 }

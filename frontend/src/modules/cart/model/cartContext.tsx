@@ -207,10 +207,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateCartItem = async (id: string, quantity: number) => {
-    // 1. Optimistic update
-    setCartItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
-    );
+    // 1. Optimistic update (capture previous for rollback on failure)
+    let previousItems: CartContextItem[] = [];
+    setCartItems((prev) => {
+      previousItems = prev;
+      return prev.map((item) => (item.id === id ? { ...item, quantity } : item));
+    });
 
     try {
       // 2. Delegate directly to cartService
@@ -219,6 +221,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       await fetchCart(false);
       return { success: true };
     } catch (err) {
+      // Roll the optimistic quantity back so a rejected update (e.g. stock
+      // limit) does not leave a stale quantity on screen.
+      setCartItems(previousItems);
       return { success: false, error: (err as { message?: string })?.message };
     }
   };
@@ -255,10 +260,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const applyCoupon = async (code: string) => {
     try {
-      const currentSubtotal = cartSummary.subtotal || cartItems.reduce((acc, item) => {
-        const raw = typeof item.productPrice === "number"
-          ? item.productPrice
-          : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
+      // Sum exact unit prices (minor/100), never parse the formatted display
+      // string back — and prefer live items over cartSummary, which can lag
+      // an optimistic quantity update.
+      const currentSubtotal = cartItems.reduce((acc, item) => {
+        const raw = typeof item.unitPrice === "number"
+          ? item.unitPrice
+          : typeof item.productPrice === "number"
+            ? item.productPrice
+            : parseFloat(String(item.productPrice || "").replace(/[^0-9.-]+/g, "")) || 0;
         return acc + raw * (item.quantity || 1);
       }, 0);
 

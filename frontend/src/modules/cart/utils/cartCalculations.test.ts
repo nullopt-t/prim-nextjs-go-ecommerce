@@ -33,4 +33,30 @@ describe("calculateCartTotals", () => {
 		expect(r.subtotal).toBe(0.3);
 		expect(r.total).toBe(0.5);
 	});
+
+	it("free shipping at exactly the threshold (backend >= rule)", () => {
+		const at = calculateCartTotals([item(150, 1)], null, 150, 9.99);
+		expect(at.isFreeShipping).toBe(true);
+		expect(at.shippingCost).toBe(0);
+		const below = calculateCartTotals([item(149.99, 1)], null, 150, 9.99);
+		expect(below.isFreeShipping).toBe(false);
+		expect(below.shippingCost).toBe(9.99);
+	});
+
+	it("percentage discount recomputes from the live subtotal", () => {
+		const r = calculateCartTotals(
+			[item(100, 2)],
+			{ code: "P10", discountType: "percentage", discountPercent: 10 },
+			500,
+			9.99,
+		);
+		expect(r.discount).toBe(20);
+		expect(r.total).toBe(189.99);
+	});
+
+	it("unknown shipping rules report shippingKnown=false and no invented cost", () => {
+		const r = calculateCartTotals([item(10, 1)], null, null, 9.99);
+		expect(r.shippingKnown).toBe(false);
+		expect(r.shippingCost).toBe(0);
+	});
 });

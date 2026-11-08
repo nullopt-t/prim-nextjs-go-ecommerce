@@ -45,7 +45,6 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
   // The backend/checkout never charges a gift-wrap fee (no such field on the
   // order), so adding it here made the cart total drift from the charged
   // total. Keep the opt-in state for display only; do not add it to the total.
-  const giftWrapFee = giftWrap ? (storeSettings?.giftWrapFee ?? DEFAULT_GIFT_WRAP_FEE) : 0;
   const total = Math.max(0, subtotal - discount + shippingCost + taxAmount);
 
   const shippingLabel = !shippingKnown
@@ -220,12 +219,8 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
             className="size-4 accent-accent-brand cursor-pointer"
           />
         </label>
-        {giftWrap && (
-          <p className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t("giftWrap.label")}</span>
-            <span className="text-foreground font-medium">{formatMoney(giftWrapFee, currency)}</span>
-          </p>
-        )}
+        {/* No fee row: the backend never charges gift wrap, so showing a fee
+            line here (outside the total) would still imply a charge. */}
       </div>
 
       <hr className="border-border/50" />

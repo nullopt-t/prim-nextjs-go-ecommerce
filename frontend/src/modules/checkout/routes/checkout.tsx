@@ -156,7 +156,10 @@ export function Checkout() {
 		// fall back to the standard rate instead of inventing a price. The backend
 		// remains the authority on the final charge.
 		const expressShippingCost = storeSettings?.expressShippingRate ?? standardShippingCost;
-		const shippingCost = shippingSpeed === "express" ? expressShippingCost : (isStandardFree ? 0 : standardShippingCost);
+		// The backend charges 0 at/above the free-shipping threshold regardless
+		// of speed (it has no express rate); mirror that so the displayed
+		// express total cannot drift from the charged total.
+		const shippingCost = isStandardFree ? 0 : shippingSpeed === "express" ? expressShippingCost : standardShippingCost;
 
 	// Tax is only charged on top when prices are configured as tax-exclusive.
 	const taxRate = storeSettings?.taxRatePercent ?? 0;
@@ -168,7 +171,7 @@ export function Checkout() {
 	// Cash-on-delivery surcharge, applied only when COD is the selected method.
 	const codFee = codAvailable ? (storeSettings?.codFee ?? 0) : 0;
 
-	const finalTotal = Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee);
+	const finalTotal = Math.round(Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee) * 100) / 100;
 
 	const resolvedAddressString = resolveShippingAddress(addresses, effectiveAddressId);
 
@@ -400,6 +403,21 @@ export function Checkout() {
 						</div>
 					</div>
 				</div>
+		);
+	}
+
+	// While the cart is still loading, show a skeleton instead of flashing the
+	// "cart empty" state (initial mount / hydration would otherwise show empty).
+	if (cartLoading) {
+		return (
+			<div role="status" aria-live="polite" aria-busy="true" className="max-w-2xl mx-auto py-16 px-4">
+				<div className="bg-card border border-border rounded-3xl p-8 sm:p-12 shadow-sm space-y-4">
+					<div className="h-6 w-40 animate-pulse rounded bg-secondary/70" />
+					<div className="h-4 w-full animate-pulse rounded bg-secondary/50" />
+					<div className="h-4 w-2/3 animate-pulse rounded bg-secondary/50" />
+					<div className="h-12 w-full animate-pulse rounded-xl bg-secondary/50" />
+				</div>
+			</div>
 		);
 	}
 
@@ -1189,7 +1207,9 @@ export function Checkout() {
 
 							{/* Clean Promo Code Input */}
 							<div className="pt-2 border-t border-border/60">
-								{appliedCoupon ? (
+								{/* Input stays visible so an applied coupon can be replaced;
+								    an invalid replacement keeps the current discount. */}
+								{appliedCoupon && (
 									<div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs">
 										<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
 											<Tag className="size-3.5 text-emerald-600 shrink-0" />
@@ -1212,8 +1232,8 @@ export function Checkout() {
 											<X className="size-3.5" />
 										</button>
 									</div>
-								) : (
-									<div className="flex gap-2">
+								)}
+									<div className="flex gap-2 mt-2">
 										<div className="flex-1 bg-secondary/30 border border-border focus-within:border-accent-brand rounded-xl overflow-hidden flex items-center px-3 h-9 transition-colors">
 											<Tag className="size-3.5 text-muted-foreground shrink-0 me-2" />
 											<input
@@ -1240,7 +1260,6 @@ export function Checkout() {
 											{applyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : tCart("coupon.apply")}
 										</button>
 									</div>
-								)}
 							</div>
 
 							<div className="flex flex-col gap-2.5 pt-4 border-t border-border/60 text-sm">
