@@ -84,7 +84,7 @@ export default function ProductsLayout({
         <div className="min-w-0 flex-1">
           <Content category={category} products={products} />
           {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between gap-3">
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
               <button
                 type="button"
                 disabled={page <= 1}
@@ -93,7 +93,7 @@ export default function ProductsLayout({
               >
                 {t("layout.pagination.previous")}
               </button>
-              <span className="text-xs text-muted-foreground text-center">
+              <span className="text-xs text-muted-foreground text-center min-w-0">
                 {t("layout.pagination.pageOf", { page, total: totalPages })}
               </span>
               <button

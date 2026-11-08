@@ -31,6 +31,60 @@ describe("isPasskeySupported", () => {
 		expect(await isPasskeySupported()).toBe(false);
 		vi.unstubAllGlobals();
 	});
+
+	it("is true when a platform authenticator is available", async () => {
+		vi.stubGlobal("window", {
+			PublicKeyCredential: {
+				isUserVerifyingPlatformAuthenticatorAvailable: vi.fn().mockResolvedValue(true),
+			},
+		});
+		vi.stubGlobal("navigator", {
+			credentials: { get: vi.fn() },
+		});
+		expect(await isPasskeySupported()).toBe(true);
+		vi.unstubAllGlobals();
+	});
+
+	it("falls back to conditional mediation when no platform authenticator", async () => {
+		vi.stubGlobal("window", {
+			PublicKeyCredential: {
+				isUserVerifyingPlatformAuthenticatorAvailable: vi.fn().mockResolvedValue(false),
+				isConditionalMediationAvailable: vi.fn().mockResolvedValue(true),
+			},
+		});
+		vi.stubGlobal("navigator", {
+			credentials: { get: vi.fn() },
+		});
+		expect(await isPasskeySupported()).toBe(true);
+		vi.unstubAllGlobals();
+	});
+
+	it("falls back to roaming authenticator when neither signal is available", async () => {
+		vi.stubGlobal("window", {
+			PublicKeyCredential: {
+				isUserVerifyingPlatformAuthenticatorAvailable: vi.fn().mockResolvedValue(false),
+				isConditionalMediationAvailable: vi.fn().mockResolvedValue(false),
+			},
+		});
+		vi.stubGlobal("navigator", {
+			credentials: { get: vi.fn() },
+		});
+		expect(await isPasskeySupported()).toBe(true);
+		vi.unstubAllGlobals();
+	});
+
+	it("treats a platform-API failure as fallback, not unsupported", async () => {
+		vi.stubGlobal("window", {
+			PublicKeyCredential: {
+				isUserVerifyingPlatformAuthenticatorAvailable: vi.fn().mockRejectedValue(new Error("boom")),
+			},
+		});
+		vi.stubGlobal("navigator", {
+			credentials: { get: vi.fn() },
+		});
+		expect(await isPasskeySupported()).toBe(true);
+		vi.unstubAllGlobals();
+	});
 });
 
 describe("signInWithPasskey", () => {

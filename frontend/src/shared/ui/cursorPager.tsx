@@ -59,8 +59,8 @@ export function CursorPager({
   const t = useTranslations("admin.pagination");
 
   return (
-    <div className="p-4 border-t border-border/80 bg-muted/10 flex items-center justify-between gap-4 text-xs text-muted-foreground">
-      <span>{typeof shown === "number" ? t("showing", { shown }) : null}</span>
+    <div className="p-4 border-t border-border/80 bg-muted/10 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
+      <span className="min-w-0">{typeof shown === "number" ? t("showing", { shown }) : null}</span>
 
       <div className="flex items-center gap-2">
         <button

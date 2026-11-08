@@ -43,18 +43,27 @@ export function base64UrlToArrayBuffer(value: string): ArrayBuffer {
 
 export async function isPasskeySupported(): Promise<boolean> {
 	if (typeof window === "undefined") return false;
-	if (
-		!("credentials" in navigator) ||
-		typeof window.PublicKeyCredential === "undefined" ||
-		typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== "function"
-	) {
-		return false;
+	if (!("credentials" in navigator) || typeof navigator.credentials?.get !== "function") return false;
+	if (typeof window.PublicKeyCredential === "undefined") return false;
+	const pkc = window.PublicKeyCredential as typeof PublicKeyCredential & {
+		isConditionalMediationAvailable?: unknown;
+	};
+	if (typeof pkc.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
+		try {
+			if (await pkc.isUserVerifyingPlatformAuthenticatorAvailable()) return true;
+		} catch {
+			// Fall through to roaming-authenticator fallback.
+		}
 	}
-	try {
-		return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-	} catch {
-		return false;
+	if (typeof pkc.isConditionalMediationAvailable === "function") {
+		try {
+			if (await (pkc.isConditionalMediationAvailable as () => Promise<boolean>)()) return true;
+		} catch {
+			// Fall through to roaming-authenticator fallback.
+		}
 	}
+	// Fallback: WebAuthn API present (roaming/security-key/phone passkeys).
+	return true;
 }
 
 /**

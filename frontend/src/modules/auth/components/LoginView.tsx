@@ -10,6 +10,7 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
 import { Fingerprint, Loader2 } from "lucide-react";
 import { authService } from "@/modules/auth/api/authService";
+import { ApiError } from "@/shared/api/client";
 import { isPasskeySupported, signInWithPasskey } from "@/modules/auth/lib/passkey";
 
 export function LoginView() {
@@ -82,7 +83,14 @@ export function LoginView() {
       const result = await signInWithPasskey({
         fetchOptions: async () => {
           const res = await authService.getPasskeyAuthenticationOptions();
-          return { ...res.data, userVerification: undefined };
+          const uv = res.data.userVerification;
+          return {
+            challenge: res.data.challenge,
+            rpId: res.data.rpId,
+            requestId: res.data.requestId,
+            userVerification:
+              uv === "required" || uv === "discouraged" ? uv : "preferred",
+          };
         },
         verify: async (credential, requestId) => {
           try {
@@ -104,7 +112,10 @@ export function LoginView() {
         notify.error(result.error || t("passkey.failed"));
       }
     } catch (err) {
-      if (err instanceof DOMException && (err.name === "AbortError" || err.name === "NotAllowedError")) {
+      if (err instanceof ApiError && (err.status === 404 || err.status === 501)) {
+        // Backend has not enabled passkeys yet: hide the entry point.
+        setPasskeySupported(false);
+      } else if (err instanceof DOMException && (err.name === "AbortError" || err.name === "NotAllowedError")) {
         notify.info(t("passkey.cancelled"));
       } else {
         notify.error(apiErrorMessage(err, t("passkey.failed")));

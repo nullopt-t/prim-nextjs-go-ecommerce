@@ -26,11 +26,18 @@ export const authService = {
     assertion: PasskeyAssertion,
   ) => {
     const response = assertion.response as AuthenticatorAssertionResponse;
-    const base64Url = (buffer: ArrayBuffer) =>
-      btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    // Chunked: spreading a large Uint8Array into fromCharCode overflows the stack.
+    const base64Url = (buffer: ArrayBuffer) => {
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      return btoa(binary)
         .replace(/\+/g, "-")
         .replace(/\//g, "_")
         .replace(/=+$/, "");
+    };
     return api.post<ApiResponse<User>>("/api/v1/auth/passkey/authentication/verify", {
       requestId,
       credential: {

@@ -43,14 +43,14 @@ export const CustomSelect = forwardRef<HTMLSelectElement, CustomSelectProps>(fun
 ) {
 	const hasValue = options.some((option) => option.value === value);
 	return (
-		<span className={cn("relative inline-flex", className)}>
+		<span className={cn("relative inline-flex max-w-full", className)}>
 			<select
 				ref={ref}
 				id={id}
 				name={name}
 				aria-label={ariaLabel}
 				className={cn(
-					"w-full cursor-pointer appearance-none rounded-md border border-border bg-background pe-8 text-foreground",
+					"w-full min-w-0 max-w-full cursor-pointer appearance-none rounded-md border border-border bg-background pe-8 text-foreground",
 					"focus:outline-none focus:ring-2 focus:ring-accent-brand/30",
 					"disabled:cursor-not-allowed disabled:opacity-50",
 					sizeClasses[size],
