@@ -11,6 +11,7 @@ import { StatusPill } from "@/shared/ui/statusPill";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { formatDateTime } from "@/shared/lib/datetime";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface InventoryItem {
   variantId: string;
@@ -404,16 +405,16 @@ export function AdminInventory() {
 
               <div>
                 <label className="text-sm font-medium text-foreground">{t("inventory.reasonLabel")}</label>
-                <select
-                  value={adjustReason}
-                  onChange={(e) => setAdjustReason(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="restock">{t("inventory.reasonRestock")}</option>
-                  <option value="adjustment">{t("inventory.reasonAdjustment")}</option>
-                  <option value="return">{t("inventory.reasonReturn")}</option>
-                  <option value="sale">{t("inventory.reasonSale")}</option>
-                </select>
+                <CustomSelect
+                	value={adjustReason}
+                	onChange={(value) => setAdjustReason(value)}
+                	options={[
+                		{ value: "restock", label: t("inventory.reasonRestock") },
+                		{ value: "adjustment", label: t("inventory.reasonAdjustment") },
+                		{ value: "return", label: t("inventory.reasonReturn") },
+                		{ value: "sale", label: t("inventory.reasonSale") },
+                	]}
+/>
               </div>
             </div>
 

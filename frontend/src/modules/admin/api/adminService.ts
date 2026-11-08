@@ -231,14 +231,15 @@ export const adminService = {
   },
 
   // Sellers Management
-  getSellers: async (params?: { status?: string; page?: number; pageSize?: number }): Promise<ApiPaginatedResponse<AdminSeller>> => {
+  getSellers: async (params?: { status?: string; cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<AdminSeller, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.status && params.status !== "all") query.set("status", params.status);
-    if (params?.page) query.set("page", String(params.page));
+    // The backend paginates sellers by keyset cursor; a page number is ignored.
+    if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     const qs = query.toString();
     const endpoint = `/api/v1/admin/sellers${qs ? `?${qs}` : ""}`;
-    return api.get<ApiPaginatedResponse<AdminSeller>>(endpoint);
+    return api.get<ApiPaginatedResponse<AdminSeller, CursorMeta>>(endpoint);
   },
 
   getSellerById: async (id: string): Promise<ApiResponse<AdminSeller>> => {

@@ -13,6 +13,8 @@ import { ConfirmDialog } from "@/shared/ui/confirmDialog";
 import { PromotionShareDialog, type PromotionShareContent } from "@/shared/ui/promotionShareDialog";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
+import { buildPromotionPayload } from "@/modules/admin/lib/promotionPayload";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 type SortKey = "code" | "discount" | "usage" | "validity" | "status" | "createdAt";
 type SortDir = "asc" | "desc";
@@ -146,23 +148,11 @@ export function AdminPromotions() {
 
   const handleCreatePromo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.code) return;
-
-    const isPct = formData.type === "Percentage";
-    const numVal = parseFloat(formData.value.replace(/[^0-9.]/g, "")) || 10;
-    const discountVal = isPct ? Math.min(100, Math.max(1, Math.round(numVal))) : Math.round(numVal * 100);
-
-    const payload = {
-      code: formData.code.toUpperCase().trim(),
-      discountType: isPct ? "percentage" : "fixed_amount",
-      discountValue: discountVal,
-      currency: "EGP",
-      minCartAmount: 5000,
-      usageLimit: Number(formData.usageLimit) || 100,
-      status: "active",
-      startsAt: new Date(formData.startDate).toISOString(),
-      expiresAt: new Date(formData.endDate).toISOString(),
-    };
+    const payload = buildPromotionPayload(formData);
+    if (!payload) {
+      notify.error(t("promotions.toast.createFailed"));
+      return;
+    }
 
     try {
       await adminService.createPromotion(payload);
@@ -418,15 +408,14 @@ export function AdminPromotions() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">{t("promotions.form.discountType")}</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                  >
-                    <option value="Percentage">{t("promotions.form.typePercentage")}</option>
-                    <option value="Fixed Amount">{t("promotions.form.typeFixed")}</option>
-                    <option value="Free Shipping">{t("promotions.form.typeFreeShipping")}</option>
-                  </select>
+                  <CustomSelect
+                  	value={formData.type}
+                  	onChange={(value) => setFormData({ ...formData, type: value })}
+                  	options={[
+                  		{ value: "Percentage", label: t("promotions.form.typePercentage") },
+                  		{ value: "Fixed Amount", label: t("promotions.form.typeFixed") },
+                  	]}
+/>
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-medium text-foreground">{t("promotions.form.valueLabel")}</label>
@@ -449,6 +438,28 @@ export function AdminPromotions() {
                   onChange={(e) => setFormData({ ...formData, usageLimit: Number(e.target.value) || 0 })}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-foreground">{t("promotions.form.startDate")}</label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-foreground">{t("promotions.form.endDate")}</label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    min={formData.startDate || undefined}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 border-t border-border pt-3">

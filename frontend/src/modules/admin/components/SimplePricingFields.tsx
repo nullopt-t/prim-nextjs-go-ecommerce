@@ -14,6 +14,7 @@ import {
 	FormLabel,
 	FormMessage,
 } from "@/shared/ui/form/form";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 export interface SimplePricingValues {
 	sku: string;
@@ -196,29 +197,23 @@ export function SimplePricingFields({
 										{t("products.form.auditReason")}
 									</FormLabel>
 									<FormControl>
-										<select
-											{...field}
-											className="w-full px-3.5 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-											onChange={(e) => {
-												field.onChange(e);
-												onChange({
-													adjustmentReason: e.target.value,
-												});
+										<CustomSelect
+											name={field.name}
+											ref={field.ref}
+											value={field.value ?? ""}
+											onChange={(value) => {
+												field.onChange(value);
+												onChange({ adjustmentReason: value });
 											}}
-										>
-											<option value="adjustment">
-												{t("products.form.reasonAdjustment")}
-											</option>
-											<option value="restock">
-												{t("products.form.reasonRestock")}
-											</option>
-											<option value="return">
-												{t("products.form.reasonReturn")}
-											</option>
-											<option value="sale">
-												{t("products.form.reasonSale")}
-											</option>
-										</select>
+											options={[
+												{ value: "adjustment", label: t("products.form.reasonAdjustment") },
+												{ value: "restock", label: t("products.form.reasonRestock") },
+												{ value: "return", label: t("products.form.reasonReturn") },
+												{ value: "sale", label: t("products.form.reasonSale") },
+											]}
+											size="sm"
+											className="w-full"
+										/>
 									</FormControl>
 									<p className="text-[11px] text-muted-foreground">
 										{t("products.form.auditNote")}

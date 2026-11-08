@@ -105,9 +105,9 @@ export function AdminPayments() {
 
   const filtered = payments.filter(
     (p) =>
-      p.id.toLowerCase().includes(search.toLowerCase()) ||
-      p.orderId.toLowerCase().includes(search.toLowerCase()) ||
-      p.customerEmail?.toLowerCase().includes(search.toLowerCase())
+      (p.id ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (p.orderId ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (p.customerEmail ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
   if (loadError) {

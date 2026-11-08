@@ -8,6 +8,7 @@ import { adminService } from "@/modules/admin/api/adminService";
 import { PUBLIC_SETTINGS_UPDATED_EVENT } from "@/shared/lib/settingsEvents";
 import { revalidatePublicSettings } from "@/app/actions/revalidatePublicSettings";
 import { useTranslations } from "next-intl";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 type SettingsTab = "general" | "shipping" | "payments" | "notifications" | "security";
 
@@ -237,14 +238,14 @@ export function AdminSettings() {
                   <label className="text-sm font-medium text-foreground">
                     {t("settings.fields.defaultLocale")}
                   </label>
-                  <select
-                    value={settings.defaultLocale || "ar"}
-                    onChange={(e) => setSettings({ ...settings, defaultLocale: e.target.value })}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/30"
-                  >
-                    <option value="ar">العربية (Arabic - RTL)</option>
-                    <option value="en">English (LTR)</option>
-                  </select>
+                  <CustomSelect
+                  	value={settings.defaultLocale || "ar"}
+                  	onChange={(value) => setSettings({ ...settings, defaultLocale: value })}
+                  	options={[
+                  		{ value: "ar", label: "العربية (Arabic - RTL)" },
+                  		{ value: "en", label: "English (LTR)" },
+                  	]}
+/>
                 </div>
               </div>
             </div>

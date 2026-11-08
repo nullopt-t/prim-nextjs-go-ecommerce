@@ -7,6 +7,7 @@ import { adminService, type SalesReport, type ReportExportType } from "@/modules
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -99,15 +100,15 @@ export function AdminReports() {
           className={inputClass}
           aria-label={t("reports.to")}
         />
-        <select
-          value={groupBy}
-          onChange={(e) => setGroupBy(e.target.value as "day" | "month")}
-          className={inputClass}
-          aria-label={t("reports.groupBy")}
-        >
-          <option value="day">{t("reports.groupByDay")}</option>
-          <option value="month">{t("reports.groupByMonth")}</option>
-        </select>
+        <CustomSelect
+        	value={groupBy}
+        	onChange={(value) => setGroupBy(value as "day" | "month")}
+        	options={[
+        		{ value: "day", label: t("reports.groupByDay") },
+        		{ value: "month", label: t("reports.groupByMonth") },
+        	]}
+        	ariaLabel={t("reports.groupBy")}
+/>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

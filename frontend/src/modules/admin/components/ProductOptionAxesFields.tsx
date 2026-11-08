@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Plus, X } from "lucide-react";
 import { notify } from "@/shared/lib/notify";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 export interface ProductOptionAxesValues {
 	variationAxes: string[];
@@ -100,18 +101,19 @@ export function ProductOptionAxesFields({
 			{/* Dropdown to add from existing category options */}
 			{!locked && inactiveCandidates.length > 0 && (
 				<div className="flex items-center gap-2 pt-2 border-t border-border">
-					<select
+					<CustomSelect
 						value={formAxisToAdd}
-						onChange={(e) => setFormAxisToAdd(e.target.value)}
-						className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground"
-					>
-						<option value="">{t("products.variants.addAxis")}</option>
-						{inactiveCandidates.map((attribute) => (
-							<option key={attribute.key} value={attribute.key}>
-								{attribute.label || attribute.key}
-							</option>
-						))}
-					</select>
+						onChange={(value) => setFormAxisToAdd(value)}
+						options={[
+							{ value: "", label: t("products.variants.addAxis") },
+							...inactiveCandidates.map((attribute) => ({
+							value: attribute.key,
+							label: attribute.label || attribute.key,
+							})),
+						]}
+						size="sm"
+						className="min-w-0 flex-1"
+/>
 					<button
 						type="button"
 						onClick={() => handleAddAxis(formAxisToAdd)}

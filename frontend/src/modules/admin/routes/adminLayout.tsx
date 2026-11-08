@@ -87,7 +87,8 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshStats();
+    // The dashboard page fetches its own stats; skip the duplicate call there.
+    if (pathname !== "/admin") refreshStats();
 
     const handleRefresh = () => {
       refreshStats();
@@ -112,7 +113,7 @@ export function AdminLayout({ children }: { children?: React.ReactNode }) {
         const orderId = orderData.id;
         const orderNum = orderData.orderNumber || `PRIM-${String(orderId).slice(0, 8).toUpperCase()}`;
         const customerName = orderData.customerName || (orderData.customerEmail ? orderData.customerEmail.split("@")[0] : "Customer");
-        const formattedAmount = `EGP ${((orderData.totalAmount || 0) / 100).toFixed(2)}`;
+        const formattedAmount = `${orderData.currency || "EGP"} ${((orderData.totalAmount || 0) / 100).toFixed(2)}`;
 
         // Increment dynamic pending count
         setPendingOrdersCount((prev) => (prev !== null ? prev + 1 : 1));

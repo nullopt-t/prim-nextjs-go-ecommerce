@@ -11,6 +11,7 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { Check, Clock, Truck, Package, ExternalLink, XCircle, Download } from "lucide-react";
 import InvoicePrintView from "./InvoicePrintView";
 import { isSafeUrl } from "@/shared/lib/safeUrl";
+import { MILESTONES, resolveMilestone, stepState } from "@/modules/account/lib/fulfillmentProgress";
 
 interface OrderItem {
   id: string;
@@ -33,6 +34,9 @@ interface Order {
   customerEmail: string;
   shippingAddress?: Address;
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
+  /** Granular fulfillment milestone from the backend (see docs/order-milestones.md). */
+  substatus?: string | null;
+  milestonePercent?: number | null;
   totalAmount: number;
   discountAmount: number;
   shippingAmount?: number;
@@ -216,20 +220,23 @@ export default function OrderDetailsContent() {
   const totalPaid = ((order.totalAmount ?? 0) / 100).toFixed(2);
   const formattedAddress = formatAddress(order.shippingAddress);
 
-  const statusStepMap: Record<Order["status"], number> = {
-    pending: 0,
-    processing: 1,
-    shipped: 2,
-    delivered: 3,
-    cancelled: -1,
-    refunded: -1,
-  };
-  const currentStep = statusStepMap[order.status] ?? 0;
+  // Backend substatus/milestonePercent wins; the status-based derivation in
+  // the helper is only a fallback for payloads that predate those fields.
+  const resolved = resolveMilestone(
+    order.status,
+    order.substatus,
+    order.milestonePercent,
+    Boolean(order.trackingNumber),
+  );
+  const currentStep = resolved.index;
+  const trackPercent = resolved.percent;
 
   const steps = [
-    { key: "placed", label: t("timeline.placed"), icon: Clock },
-    { key: "processing", label: t("timeline.processing"), icon: Package },
-    { key: "shipped", label: t("timeline.shipped"), icon: Truck },
+    { key: "pre_transit", label: t("timeline.placed"), icon: Clock },
+    { key: "picked_at_warehouse", label: t("timeline.pickedAtWarehouse"), icon: Package },
+    { key: "arrived_regional_hub", label: t("timeline.arrivedRegionalHub"), icon: Truck },
+    { key: "arrived_local_depot", label: t("timeline.arrivedLocalDepot"), icon: Truck },
+    { key: "out_for_delivery", label: t("timeline.outForDelivery"), icon: Truck },
     { key: "delivered", label: t("timeline.delivered"), icon: Check },
   ];
 
@@ -300,13 +307,18 @@ export default function OrderDetailsContent() {
           <div className="relative flex items-center justify-between">
             <div className="absolute top-1/2 -translate-y-1/2 left-6 right-6 h-1 bg-secondary rounded-full -z-0" />
             <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={trackPercent}
               className="absolute top-1/2 -translate-y-1/2 left-6 h-1 bg-accent-brand rounded-full transition-all duration-500 -z-0"
-              style={{ width: `${Math.min(100, Math.max(0, (currentStep / (steps.length - 1)) * 100))}%` }}
+              style={{ width: `${Math.min(100, Math.max(0, trackPercent))}%` }}
             />
             {steps.map((st, idx) => {
               const Icon = st.icon;
-              const isDone = idx < currentStep;
-              const isCurrent = idx === currentStep;
+              const state = stepState(idx, currentStep);
+              const isDone = state === "done";
+              const isCurrent = state === "current";
               return (
                 <div key={st.key} className="flex flex-col items-center gap-2 z-10">
                   <div
@@ -326,6 +338,9 @@ export default function OrderDetailsContent() {
                     }`}
                   >
                     {st.label}
+                    <span className="block text-[10px] font-semibold tabular-nums opacity-80">
+                      {MILESTONES[idx].percent}%
+                    </span>
                   </span>
                 </div>
               );

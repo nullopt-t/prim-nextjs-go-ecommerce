@@ -12,6 +12,7 @@ import type { Order, OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface OrderViewItem {
   id: string;
@@ -214,41 +215,35 @@ export function AdminOrderDetails() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-          onChange={(e) => handleUpdateFulfillment(e.target.value.toLowerCase())}
-          disabled={order.status === "cancelled" || order.status === "delivered"}
-          aria-label={t("orderDetails.statusLabel")}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-        >
-            {order.status === "pending" && (
-              <>
-                <option value="pending" disabled>{t("status.pending")}</option>
-                <option value="processing">{t("status.processing")}</option>
-                <option value="cancelled">{t("status.cancelled")}</option>
-              </>
-            )}
-            {order.status === "processing" && (
-              <>
-                <option value="processing" disabled>{t("status.processing")}</option>
-                <option value="shipped">{t("status.shipped")}</option>
-                <option value="cancelled">{t("status.cancelled")}</option>
-              </>
-            )}
-            {order.status === "shipped" && (
-              <>
-                <option value="shipped" disabled>{t("status.shipped")}</option>
-                <option value="delivered">{t("status.delivered")}</option>
-                <option value="cancelled">{t("status.cancelled")}</option>
-              </>
-            )}
-            {order.status === "delivered" && (
-              <option value="delivered">{t("status.deliveredFinal")}</option>
-            )}
-            {(order.status === "cancelled") && (
-              <option value="cancelled">{t("status.cancelledFinal")}</option>
-            )}
-          </select>
+        <CustomSelect
+        	value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+        	onChange={(value) => handleUpdateFulfillment(value.toLowerCase())}
+        	disabled={order.status === "cancelled" || order.status === "delivered"}
+        	options={
+        		order.status === "pending"
+        		? [
+        		{ value: "Pending", label: t("status.pending"), disabled: true },
+        		{ value: "Processing", label: t("status.processing") },
+        		{ value: "Cancelled", label: t("status.cancelled") },
+        		]
+        		: order.status === "processing"
+        		? [
+        		{ value: "Processing", label: t("status.processing"), disabled: true },
+        		{ value: "Shipped", label: t("status.shipped") },
+        		{ value: "Cancelled", label: t("status.cancelled") },
+        		]
+        		: order.status === "shipped"
+        		? [
+        		{ value: "Shipped", label: t("status.shipped"), disabled: true },
+        		{ value: "Delivered", label: t("status.delivered") },
+        		{ value: "Cancelled", label: t("status.cancelled") },
+        		]
+        		: order.status === "delivered"
+        		? [{ value: "Delivered", label: t("status.deliveredFinal") }]
+        		: [{ value: "Cancelled", label: t("status.cancelledFinal") }]
+        	}
+        	ariaLabel={t("orderDetails.statusLabel")}
+/>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

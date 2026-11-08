@@ -3,6 +3,7 @@
 import SideBarTitle from "@/modules/catalog/components/ui/sideBarTitle";
 import { useCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { useTranslations } from "next-intl";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 export default function SideBarPrice() {
   const { filters, setFilter } = useCatalogContext();
@@ -53,17 +54,13 @@ export default function SideBarPrice() {
       {/* Sort selection */}
       <div className="mt-3">
         <label className="block text-xs text-muted-foreground mb-1">{t("sort")}</label>
-        <select
+        <CustomSelect
           value={filters.sort ?? ""}
-          onChange={(e) => setFilter("sort", e.target.value || null)}
-          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand cursor-pointer"
-        >
-          {sortOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => setFilter("sort", value || null)}
+          options={sortOptions}
+          size="sm"
+          className="w-full"
+        />
       </div>
     </div>
   );

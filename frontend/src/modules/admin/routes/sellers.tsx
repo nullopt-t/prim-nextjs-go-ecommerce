@@ -10,6 +10,9 @@ import type { AdminSeller } from "@/modules/admin/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { Link } from "@/shared/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
+import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 const STATUS_LABEL_KEYS: Record<string, string> = {
   pending: "status.pending",
@@ -26,9 +29,11 @@ export function AdminSellers() {
     return t(key);
   };
   const [sellers, setSellers] = useState<AdminSeller[]>([]);
+  const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const { cursor, hasPrev, next, prev, reset, page } = useCursorPagination();
 
   const loadSellers = useCallback(async () => {
     setLoading(true);
@@ -36,15 +41,17 @@ export function AdminSellers() {
     try {
       const res = await adminService.getSellers({
         status: statusFilter === "all" ? undefined : statusFilter,
-        pageSize: 100,
+        cursor: cursor || undefined,
+        pageSize: 20,
       });
       setSellers(res.data || []);
+      if (res.meta) setMeta(res.meta);
     } catch {
       setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [cursor, statusFilter]);
 
   useEffect(() => {
     void loadSellers();
@@ -89,18 +96,21 @@ export function AdminSellers() {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          aria-label={t("status.all")}
-        >
-          <option value="all">{t("status.all")}</option>
-          <option value="pending">{t("status.pending")}</option>
-          <option value="active">{t("status.active")}</option>
-          <option value="suspended">{t("status.suspended")}</option>
-          <option value="rejected">{t("status.rejected")}</option>
-        </select>
+        <CustomSelect
+        	value={statusFilter}
+        	onChange={(value) => {
+        		setStatusFilter(value);
+        		reset();
+        	}}
+        	options={[
+        		{ value: "all", label: t("status.all") },
+        		{ value: "pending", label: t("status.pending") },
+        		{ value: "active", label: t("status.active") },
+        		{ value: "suspended", label: t("status.suspended") },
+        		{ value: "rejected", label: t("status.rejected") },
+        	]}
+        	ariaLabel={t("status.all")}
+/>
         <span className="text-xs text-muted-foreground">
           {t("sellers.count", { count: sellers.length })}
         </span>
@@ -189,6 +199,16 @@ export function AdminSellers() {
             </tbody>
           </ResponsiveTable>
         </div>
+
+        <CursorPager
+          hasPrev={hasPrev}
+          hasMore={meta.hasMore}
+          page={page}
+          onPrev={prev}
+          onNext={() => next(meta.nextCursor)}
+          loading={loading}
+          shown={sellers.length}
+        />
       </div>
     </div>
   );

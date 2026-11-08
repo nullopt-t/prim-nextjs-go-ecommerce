@@ -26,6 +26,27 @@ const (
 	OrderStatusRefunded OrderStatus = "refunded"
 )
 
+// OrderMilestone is an Amazon-granular fulfillment sub-status derived from the
+// order lifecycle status (and, once shipped, whether a carrier tracking number
+// exists). See docs/order-milestones.md for the contract and percent table.
+type OrderMilestone string
+
+const (
+	// OrderMilestonePreTransit: order placed, not yet picked (0%).
+	OrderMilestonePreTransit OrderMilestone = "pre_transit"
+	// OrderMilestonePickedAtWarehouse: picked/packed at the warehouse (5%).
+	OrderMilestonePickedAtWarehouse OrderMilestone = "picked_at_warehouse"
+	// OrderMilestoneArrivedRegionalHub: in transit, arrived at regional hub (10%).
+	OrderMilestoneArrivedRegionalHub OrderMilestone = "arrived_regional_hub"
+	// OrderMilestoneArrivedLocalDepot: arrived at the local depot (25%).
+	// Reserved for future carrier scan events; derivation does not emit it yet.
+	OrderMilestoneArrivedLocalDepot OrderMilestone = "arrived_local_depot"
+	// OrderMilestoneOutForDelivery: out for final delivery (50%).
+	OrderMilestoneOutForDelivery OrderMilestone = "out_for_delivery"
+	// OrderMilestoneDelivered: delivered to the customer (100%).
+	OrderMilestoneDelivered OrderMilestone = "delivered"
+)
+
 // OrderItem represents an immutable purchased line item inside a finalized Order.
 type OrderItem struct {
 	// ID is the unique database UUID for this order line item record.

@@ -10,6 +10,7 @@ import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { formatDateTime } from "@/shared/lib/datetime";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 const STAFF_ROLES = ["all", "superadmin", "admin", "support", "seller"] as const;
 
@@ -79,18 +80,15 @@ export function AdminSessions() {
       />
 
       <div className="flex items-center justify-between gap-3">
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          aria-label={t("sessions.colRole")}
-        >
-          {STAFF_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {role === "all" ? t("sessions.allRoles") : roleLabel(role)}
-            </option>
-          ))}
-        </select>
+        <CustomSelect
+        	value={roleFilter}
+        	onChange={(value) => setRoleFilter(value)}
+        	options={STAFF_ROLES.map((role) => ({
+        		value: role,
+        		label: role === "all" ? t("sessions.allRoles") : roleLabel(role),
+        	}))}
+        	ariaLabel={t("sessions.colRole")}
+/>
         <span className="text-xs text-muted-foreground">
           {t("sessions.count", { count: sessions.length })}
         </span>

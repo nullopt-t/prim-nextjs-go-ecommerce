@@ -12,6 +12,8 @@ import { PageHeader } from "@/shared/ui/pageHeader";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
+import { orderStatusOptions } from "@/modules/admin/lib/orderStatusOptions";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface OrderView {
   id: string;
@@ -194,21 +196,21 @@ export function AdminOrders() {
             className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
             aria-label={t("reports.to")}
           />
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              reset();
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          >
-            <option value="all">{t("status.all")}</option>
-            <option value="pending">{t("status.pending")}</option>
-            <option value="processing">{t("status.processing")}</option>
-            <option value="shipped">{t("status.shipped")}</option>
-            <option value="delivered">{t("status.delivered")}</option>
-            <option value="cancelled">{t("status.cancelled")}</option>
-          </select>
+          <CustomSelect
+	value={statusFilter}
+	onChange={(value) => {
+		setStatusFilter(value);
+		reset();
+	}}
+	options={[
+		{ value: "all", label: t("status.all") },
+		{ value: "pending", label: t("status.pending") },
+		{ value: "processing", label: t("status.processing") },
+		{ value: "shipped", label: t("status.shipped") },
+		{ value: "delivered", label: t("status.delivered") },
+		{ value: "cancelled", label: t("status.cancelled") },
+	]}
+/>
         </div>
       </div>
 
@@ -256,40 +258,17 @@ export function AdminOrders() {
                     </StatusPill>
                   </td>
                   <td className="py-3">
-                    <select
-                      value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      onChange={(e) => handleUpdateStatus(order.id, e.target.value.toLowerCase())}
-                      disabled={order.status === "cancelled" || order.status === "delivered"}
-                      className="px-2.5 py-1 bg-secondary/50 border border-border rounded-lg text-xs font-semibold text-foreground focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {order.status === "pending" && (
-                        <>
-                          <option value="pending" disabled>{t("status.pending")}</option>
-                          <option value="processing">{t("status.processing")}</option>
-                          <option value="cancelled">{t("status.cancelled")}</option>
-                        </>
-                      )}
-                      {order.status === "processing" && (
-                        <>
-                          <option value="processing" disabled>{t("status.processing")}</option>
-                          <option value="shipped">{t("status.shipped")}</option>
-                          <option value="cancelled">{t("status.cancelled")}</option>
-                        </>
-                      )}
-                      {order.status === "shipped" && (
-                        <>
-                          <option value="shipped" disabled>{t("status.shipped")}</option>
-                          <option value="delivered">{t("status.delivered")}</option>
-                          <option value="cancelled">{t("status.cancelled")}</option>
-                        </>
-                      )}
-                      {order.status === "delivered" && (
-                        <option value="delivered">{t("status.deliveredFinal")}</option>
-                      )}
-                      {(order.status === "cancelled") && (
-                        <option value="cancelled">{t("status.cancelledFinal")}</option>
-                      )}
-                    </select>
+                    <CustomSelect
+	value={order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+	onChange={(value) => handleUpdateStatus(order.id, value.toLowerCase())}
+	disabled={order.status === "cancelled" || order.status === "delivered"}
+	options={orderStatusOptions(order.status).map((status) => ({
+		value: status.charAt(0).toUpperCase() + status.slice(1),
+		label: status === order.status && (order.status === "delivered" || order.status === "cancelled") ? t(`status.${status}Final`) : t(`status.${status}`),
+		disabled: status === order.status,
+	}))}
+	size="sm"
+/>
                   </td>
                   <td className="py-3 pe-4 text-end">
                     <button

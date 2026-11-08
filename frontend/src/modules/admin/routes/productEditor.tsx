@@ -44,6 +44,7 @@ import { normalizeMediaUrl } from "@/shared/lib/media";
 import type { AdminCategory, Brand, Product, ProductDetails } from "@/modules/catalog/types";
 import type { ProductVariant } from "@/modules/catalog/types";
 import type { AdminAttribute } from "@/modules/admin/types";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface VariantFormState {
   mode: "create" | "edit";
@@ -2528,16 +2529,18 @@ export function AdminProductEditor({ mode: initialMode }: AdminProductEditorProp
                 <label className="text-xs font-semibold text-foreground">
                   {t("products.form.auditReason")}
                 </label>
-                <select
-                  value={quickStockReason}
-                  onChange={(e) => setQuickStockReason(e.target.value)}
-                  className="w-full px-3 py-2 bg-secondary/20 border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
-                >
-                  <option value="restock">{t("products.form.reasonRestock")}</option>
-                  <option value="adjustment">{t("products.form.reasonAdjustment")}</option>
-                  <option value="return">{t("products.form.reasonReturn")}</option>
-                  <option value="sale">{t("products.form.reasonSale")}</option>
-                </select>
+                <CustomSelect
+                	value={quickStockReason}
+                	onChange={(value) => setQuickStockReason(value)}
+                	options={[
+                		{ value: "restock", label: t("products.form.reasonRestock") },
+                		{ value: "adjustment", label: t("products.form.reasonAdjustment") },
+                		{ value: "return", label: t("products.form.reasonReturn") },
+                		{ value: "sale", label: t("products.form.reasonSale") },
+                	]}
+                	size="sm"
+                	className="w-full"
+/>
               </div>
             </div>
 

@@ -14,6 +14,7 @@ import { ErrorState } from "@/shared/ui/errorState";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { revalidateCatalog } from "@/app/actions/revalidateCatalog";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface CategoryItem {
   id: string;
@@ -444,17 +445,16 @@ export function AdminCategories() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium text-foreground">{t("categories.form.parent")}</label>
-                <select
-                  value={formData.parentId}
-                  onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-                >
-                  <option value="">{t("categories.form.root")}</option>
-                  {allCategories.filter(c => !editingCategory || c.id !== editingCategory.id).map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <CustomSelect
+                	value={formData.parentId}
+                	onChange={(value) => setFormData({ ...formData, parentId: value })}
+                	options={[
+                		{ value: "", label: t("categories.form.root") },
+                		...allCategories
+                		.filter((c) => !editingCategory || c.id !== editingCategory.id)
+                		.map((c) => ({ value: c.id, label: c.name })),
+                	]}
+/>
               </div>
               <div className="flex justify-end gap-2 border-t border-border pt-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">{t("actions.cancel")}</button>
@@ -492,15 +492,16 @@ export function AdminCategories() {
                   onChange={(e) => setNewLinkedAttrName(e.target.value)}
                   className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
                 />
-                <select
-                  value={newLinkedAttrType}
-                  onChange={(e) => setNewLinkedAttrType(e.target.value)}
-                  className="px-3 py-2 bg-secondary/30 border border-border rounded-xl text-xs text-foreground focus:outline-hidden"
-                >
-                  <option value="text">{t("categories.attrs.types.text")}</option>
-                  <option value="number">{t("categories.attrs.types.number")}</option>
-                  <option value="boolean">{t("categories.attrs.types.boolean")}</option>
-                </select>
+                <CustomSelect
+                	value={newLinkedAttrType}
+                	onChange={(value) => setNewLinkedAttrType(value)}
+                	options={[
+                		{ value: "text", label: t("categories.attrs.types.text") },
+                		{ value: "number", label: t("categories.attrs.types.number") },
+                		{ value: "boolean", label: t("categories.attrs.types.boolean") },
+                	]}
+                	size="sm"
+/>
               </div>
               <div className="flex items-center gap-2">
                 <input

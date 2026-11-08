@@ -86,7 +86,7 @@ export function AdminDashboard() {
           id: o.id,
           customer: o.customerEmail ? o.customerEmail.split("@")[0] : "—",
           status: o.status ? String(o.status).toLowerCase() : "pending",
-          total: `EGP ${((o.totalAmount || 0) / 100).toFixed(2)}`,
+          total: `${o.currency || "EGP"} ${((o.totalAmount || 0) / 100).toFixed(2)}`,
           createdAt: o.createdAt,
         })),
       );
@@ -136,7 +136,7 @@ export function AdminDashboard() {
           return prev;
         });
       }
-      loadLowStockData();
+      // State was patched above; no refetch needed per stock event.
     };
 
     window.addEventListener("admin-stock-updated", handleStockUpdate);

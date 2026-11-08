@@ -17,6 +17,7 @@ import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { CursorPager, useCursorPagination } from "@/shared/ui/cursorPager";
 import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface ProductView {
   id: string;
@@ -228,34 +229,33 @@ export function AdminProducts() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={selectedCategory}
-            onChange={(e) => {
-              setSelectedCategory(e.target.value);
-              reset();
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
-          >
-            <option value="All">{t("products.allCategories")}</option>
-            {categories.map((c, idx) => (
-              <option key={c.id ? `cat-opt-${c.id}` : `cat-opt-${idx}`} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedStatus}
-            onChange={(e) => {
-              setSelectedStatus(e.target.value);
-              reset();
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
-          >
-            <option value="All">{t("status.all")}</option>
-            <option value="draft">{t("status.draft")}</option>
-            <option value="published">{t("status.published")}</option>
-            <option value="archived">{t("status.archived")}</option>
-          </select>
+          <CustomSelect
+	value={selectedCategory}
+	onChange={(value) => {
+		setSelectedCategory(value);
+		reset();
+	}}
+	options={[
+		{ value: "All", label: t("products.allCategories") },
+		...categories.map((c) => ({
+		value: c.name,
+		label: c.name,
+	})),
+	]}
+/>
+          <CustomSelect
+	value={selectedStatus}
+	onChange={(value) => {
+		setSelectedStatus(value);
+		reset();
+	}}
+	options={[
+		{ value: "All", label: t("status.all") },
+		{ value: "draft", label: t("status.draft") },
+		{ value: "published", label: t("status.published") },
+		{ value: "archived", label: t("status.archived") },
+	]}
+/>
         </div>
       </div>
 

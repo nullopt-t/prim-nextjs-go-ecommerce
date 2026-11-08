@@ -4,6 +4,7 @@ import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
 import { CatalogImage } from "@/shared/ui/catalogImage";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 interface ProductReviewsProps {
   stars?: number;
@@ -301,39 +302,40 @@ export function ProductReviews({
               <label className="sr-only" htmlFor="review-rating-filter">
                 {t("filterByRating")}
               </label>
-              <select
+              <CustomSelect
                 id="review-rating-filter"
-                value={ratingFilter}
-                onChange={(e) =>
-                  changeRatingFilter(e.target.value === "all" ? "all" : Number(e.target.value))
+                value={String(ratingFilter)}
+                onChange={(value) =>
+                  changeRatingFilter(value === "all" ? "all" : Number(value))
                 }
-                className="cursor-pointer rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-accent-brand/30"
-              >
-                <option value="all">{t("allRatings")}</option>
-                {[5, 4, 3, 2, 1].map((rating) => (
-                  <option key={rating} value={rating}>
-                    {t("starLabel", { star: rating })}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: "all", label: t("allRatings") },
+                  ...[5, 4, 3, 2, 1].map((rating) => ({
+                    value: String(rating),
+                    label: t("starLabel", { star: rating }),
+                  })),
+                ]}
+                size="sm"
+              />
 
               <label className="sr-only" htmlFor="review-sort">
                 {t("sortBy")}
               </label>
-              <select
+              <CustomSelect
                 id="review-sort"
                 value={sort}
-                onChange={(e) => {
-                  setSort(e.target.value as ReviewSort);
+                onChange={(value) => {
+                  setSort(value as ReviewSort);
                   setVisibleCount(5);
                 }}
-                className="cursor-pointer rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-accent-brand/30"
-              >
-                <option value="newest">{t("sortNewest")}</option>
-                <option value="helpful">{t("sortMostHelpful")}</option>
-                <option value="highest">{t("sortHighest")}</option>
-                <option value="lowest">{t("sortLowest")}</option>
-              </select>
+                options={[
+                  { value: "newest", label: t("sortNewest") },
+                  { value: "helpful", label: t("sortMostHelpful") },
+                  { value: "highest", label: t("sortHighest") },
+                  { value: "lowest", label: t("sortLowest") },
+                ]}
+                size="sm"
+              />
             </div>
           </div>
           )}

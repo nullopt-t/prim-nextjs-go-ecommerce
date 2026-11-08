@@ -13,6 +13,7 @@ import {
 	FormItem,
 	FormLabel,
 } from "@/shared/ui/form/form";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 export interface ProductBrandFormatValues {
 	brandId: string;
@@ -83,32 +84,28 @@ export function ProductBrandFormatFields({
 								</span>
 							</div>
 							<FormControl>
-								<select
-									{...field}
-									className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-accent-brand/30"
-									onChange={(e) => {
-										field.onChange(e);
-										const brand = brands.find(
-											(b) => b.id === e.target.value,
-										);
+								<CustomSelect
+									name={field.name}
+									ref={field.ref}
+									value={field.value ?? ""}
+									onChange={(value) => {
+										field.onChange(value);
+										const brand = brands.find((b) => b.id === value);
 										onChange({
-											brandId: e.target.value,
+											brandId: value,
 											brand: brand?.name || "",
 										});
 									}}
-								>
-									<option value="">
-										{t("products.form.noBrand")}
-									</option>
-									{brands.map((brand, index) => (
-										<option
-											key={`brand-opt-${brand.id || index}`}
-											value={brand.id}
-										>
-											{brand.name}
-										</option>
-									))}
-								</select>
+									options={[
+										{ value: "", label: t("products.form.noBrand") },
+										...brands.map((brand) => ({
+											value: brand.id,
+											label: brand.name,
+										})),
+									]}
+									size="sm"
+									className="w-full"
+								/>
 							</FormControl>
 						</FormItem>
 					)}

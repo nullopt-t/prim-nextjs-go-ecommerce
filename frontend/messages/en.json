@@ -293,6 +293,7 @@
       "title": "User & Staff Management",
       "toast": {
         "deleted": "User deleted",
+        "deleteFailed": "Failed to delete user",
         "loadFailed": "Failed to load user records",
         "reactivated": "User account reactivated",
         "roleFailed": "Failed to update role",
@@ -942,6 +943,8 @@
         "typeFixed": "Fixed EGP OFF",
         "typeFreeShipping": "Free Shipping",
         "typePercentage": "Percentage OFF",
+        "endDate": "End Date",
+        "startDate": "Start Date",
         "usageLimit": "Usage Limit (Max Uses)",
         "valueLabel": "Value Label",
         "valuePlaceholder": "e.g. 25% OFF"
@@ -1289,13 +1292,13 @@
   },
   "auth": {
     "backToLogin": "Back to login",
- "passkey": {
-  "button": "Sign in with Passkey",
-  "cancelled": "Passkey sign-in cancelled",
-  "failed": "Passkey sign-in failed. Try email sign-in instead.",
-  "or": "or",
-  "success": "Signed in with passkey!"
- },
+    "passkey": {
+      "button": "Sign in with Passkey",
+      "cancelled": "Passkey sign-in cancelled",
+      "failed": "Passkey sign-in failed. Try email sign-in instead.",
+      "or": "or",
+      "success": "Signed in with passkey!"
+    },
     "guestCart": {
       "decreaseQty": "Decrease quantity",
       "increaseQty": "Increase quantity",
@@ -1871,6 +1874,10 @@
     "timeline": {
       "cancelled": "Cancelled",
       "delivered": "Delivered",
+      "arrivedLocalDepot": "Arrived at Local Depot",
+      "arrivedRegionalHub": "Arrived at Regional Hub",
+      "outForDelivery": "Out for Delivery",
+      "pickedAtWarehouse": "Picked at Warehouse",
       "placed": "Order Placed",
       "processing": "Processing",
       "shipped": "Shipped"
@@ -2854,7 +2861,12 @@
       "bulkPublished": "{count, plural, =1 {1 product published} other {# products published}}",
       "bulkArchived": "{count, plural, =1 {1 product archived} other {# products archived}}",
       "bulkPartial": "{failed, plural, =1 {1 change failed} other {# changes failed}}",
-      "clear": "Clear selection"
+      "clear": "Clear selection",
+      "editPrice": {
+        "current": "Current price",
+        "newPrice": "New price",
+        "defaultVariantNote": "Only the price of the default variant ({variant}) is edited here. All other product details cannot change after creation."
+      }
     },
     "profileLoadDescription": "Your merchant profile could not be loaded. Register as a seller or try again.",
     "profileLoadTitle": "Seller profile required",

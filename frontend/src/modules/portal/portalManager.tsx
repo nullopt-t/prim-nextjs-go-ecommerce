@@ -2,11 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/shared/i18n/navigation";
+import { useAuthContext } from "@/modules/auth/model/authContext";
+import { hasRoleRank, ROLE_RANKS } from "@/shared/lib/roles";
 import { Store, Building2, ShieldCheck, ArrowRight, Sparkles, Layers, CheckCircle2 } from "lucide-react";
 
 export function PortalManager() {
   const navigate = useRouter();
   const t = useTranslations("portal");
+  const { user } = useAuthContext();
 
   const portals = [
     {
@@ -19,7 +22,8 @@ export function PortalManager() {
       color: "from-blue-500/10 to-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 hover:border-indigo-500/50",
       iconBg: "bg-indigo-500 text-white",
       buttonColor: "bg-indigo-600 hover:bg-indigo-700 text-white",
-      route: "/home",
+      route: "/",
+      minRank: 0,
       features: [
         t("cards.public.features.catalog"),
         t("cards.public.features.cart"),
@@ -38,6 +42,7 @@ export function PortalManager() {
       iconBg: "bg-emerald-500 text-white",
       buttonColor: "bg-emerald-600 hover:bg-emerald-700 text-white",
       route: "/seller",
+      minRank: ROLE_RANKS.seller,
       features: [
         t("cards.seller.features.analytics"),
         t("cards.seller.features.submission"),
@@ -56,6 +61,7 @@ export function PortalManager() {
       iconBg: "bg-accent-brand text-white",
       buttonColor: "bg-accent-brand hover:bg-accent-brand/90 text-white",
       route: "/admin",
+      minRank: ROLE_RANKS.admin,
       features: [
         t("cards.admin.features.sales"),
         t("cards.admin.features.catalog"),
@@ -64,6 +70,10 @@ export function PortalManager() {
       ]
     }
   ];
+
+  // Hide consoles the session cannot enter (RequireRole would bounce them to
+  // /auth anyway); the backend remains the authorization authority.
+  const visiblePortals = portals.filter((p) => hasRoleRank(user?.role, p.minRank ?? 0));
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
@@ -102,7 +112,7 @@ export function PortalManager() {
 
         {/* Portal Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {portals.map((portal) => {
+          {visiblePortals.map((portal) => {
             const Icon = portal.icon;
             return (
               <div

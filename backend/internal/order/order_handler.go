@@ -69,6 +69,11 @@ type OrderResponse struct {
 	ShippingAddress AddressResponse `json:"shippingAddress"`
 	// Status is the current state of the order lifecycle.
 	Status model.OrderStatus `json:"status"`
+	// Substatus is the granular fulfillment milestone derived from Status
+	// (see docs/order-milestones.md).
+	Substatus model.OrderMilestone `json:"substatus"`
+	// MilestonePercent is the 0-100 fulfillment percent of Substatus.
+	MilestonePercent int `json:"milestonePercent"`
 	// CouponID is the optional applied promotional voucher or coupon UUID.
 	CouponID *string `json:"couponId,omitempty"`
 	// CouponCode is the human-readable applied voucher or coupon code.
@@ -103,10 +108,13 @@ type OrderResponse struct {
 
 // mapOrderResponse converts internal domain model.Order into the external OrderResponse DTO.
 func mapOrderResponse(o *model.Order) OrderResponse {
+	milestone := DeriveMilestone(o.Status, o.TrackingNumber != "")
 	res := OrderResponse{
 		ID:            o.ID.String(),
 		CustomerEmail: o.CustomerEmail,
 		Status:         o.Status,
+		Substatus:      milestone,
+		MilestonePercent: MilestonePercent[milestone],
 		DiscountAmount: o.DiscountAmount,
 		ShippingAmount: o.ShippingAmount,
 		TaxAmount:      o.TaxAmount,

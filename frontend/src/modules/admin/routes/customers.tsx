@@ -17,6 +17,7 @@ import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { ROLE_RANKS } from "@/shared/lib/roles";
+import { CustomSelect } from "@/shared/ui/customSelect";
 
 export function AdminCustomers() {
   const { user: currentUser } = useAuthContext();
@@ -163,35 +164,32 @@ export function AdminCustomers() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={roleFilter}
-            onChange={(e) => {
-              setRoleFilter(e.target.value);
-              reset();
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-            aria-label={t("customers.colRole")}
-          >
-            {["all", "customer", "seller", "admin", "superadmin"].map((r) => (
-              <option key={r} value={r}>
-                {t(`customers.roles.${r}`)}
-              </option>
-            ))}
-          </select>
+          <CustomSelect
+	value={roleFilter}
+	onChange={(value) => {
+		setRoleFilter(value);
+		reset();
+	}}
+	options={["all", "customer", "seller", "admin", "superadmin"].map((r) => ({
+		value: r,
+		label: t(`customers.roles.${r}`),
+	}))}
+	ariaLabel={t("customers.colRole")}
+/>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              reset();
-            }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-            aria-label={t("customers.colStatus")}
-          >
-            <option value="all">{t("customers.allStatuses")}</option>
-            <option value="active">{t("customers.activeOnly")}</option>
-            <option value="suspended">{t("customers.suspendedOnly")}</option>
-          </select>
+          <CustomSelect
+	value={statusFilter}
+	onChange={(value) => {
+		setStatusFilter(value);
+		reset();
+	}}
+	options={[
+		{ value: "all", label: t("customers.allStatuses") },
+		{ value: "active", label: t("customers.activeOnly") },
+		{ value: "suspended", label: t("customers.suspendedOnly") },
+	]}
+	ariaLabel={t("customers.colStatus")}
+/>
         </div>
       </div>
 
@@ -278,14 +276,15 @@ export function AdminCustomers() {
                       {/* Status */}
                       <td className="whitespace-nowrap px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         {canManageUser ? (
-                          <select
-                            value={u.status}
-                            onChange={(e) => handleStatusSelect(u, e.target.value as AdminUser["status"])}
-                            className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground"
-                          >
-                            <option value="active">{t("status.active")}</option>
-                            <option value="suspended">{t("status.suspended")}</option>
-                          </select>
+                          <CustomSelect
+	value={u.status}
+	onChange={(value) => handleStatusSelect(u, value as AdminUser["status"])}
+	options={[
+		{ value: "active", label: t("status.active") },
+		{ value: "suspended", label: t("status.suspended") },
+	]}
+	size="sm"
+/>
                         ) : (
                           <StatusPill tone={statusTone(u.status)}>
                             {t(`status.${String(u.status).toLowerCase()}`) || u.status}
