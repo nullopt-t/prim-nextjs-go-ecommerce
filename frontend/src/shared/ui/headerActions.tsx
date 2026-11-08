@@ -106,7 +106,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				<Link
 					href="/wishlist"
 					aria-label={t("wishlist")}
-					className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+					className="hidden sm:inline-flex size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative items-center justify-center border border-border/40 hover:border-accent-brand/40 shadow-2xs"
 				>
 					<Heart className="size-4.5 sm:size-5" />
 					{wishlistCount > 0 && (

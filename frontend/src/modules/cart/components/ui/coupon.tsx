@@ -44,11 +44,11 @@ export default function Coupon() {
           an invalid code keeps the current discount (see cartContext). */}
       {appliedCoupon && (
         <div className="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-sm">
-          <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-400">
+          <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-400 min-w-0">
             <div className="p-1 rounded-full bg-emerald-500/20">
               <Check className="size-3.5" />
             </div>
-            <span className="font-semibold tracking-wide font-mono uppercase">{appliedCoupon.code}</span>
+            <span className="font-semibold tracking-wide font-mono uppercase min-w-0 truncate">{appliedCoupon.code}</span>
             <span className="text-xs opacity-90">
               ({appliedCoupon.discountPercent
                 ? `${appliedCoupon.discountPercent}% OFF`
@@ -73,8 +73,8 @@ export default function Coupon() {
         </div>
       )}
         <>
-          <div className="flex gap-4">
-            <div className="flex-1 bg-card border border-border focus-within:border-accent-brand rounded-xl transition-colors overflow-hidden flex items-center px-4 h-12 shadow-xs">
+          <div className="flex gap-2 sm:gap-4">
+            <div className="flex-1 min-w-0 bg-card border border-border focus-within:border-accent-brand rounded-xl transition-colors overflow-hidden flex items-center px-4 h-12 shadow-xs">
               <Tag className="size-4 text-muted-foreground me-2.5 shrink-0" />
               <input
                 type="text"

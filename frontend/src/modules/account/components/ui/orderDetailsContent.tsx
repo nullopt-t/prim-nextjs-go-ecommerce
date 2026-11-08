@@ -266,7 +266,7 @@ export default function OrderDetailsContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5">
           {order.status === "pending" && (
             <button
               type="button"
@@ -304,14 +304,16 @@ export default function OrderDetailsContent() {
         </div>
       ) : (
         <div className="p-5 rounded-2xl bg-card border border-border/70 shadow-2xs">
-          <div className="relative flex items-center justify-between">
-            <div className="absolute top-1/2 -translate-y-1/2 left-6 right-6 h-1 bg-secondary rounded-full -z-0" />
+          <div className="relative flex items-start justify-between">
+            {/* Icon centers sit 18px from the row top, so the track is pinned there
+                instead of the block middle (labels wrap unevenly at 320px). */}
+            <div className="absolute top-[18px] -translate-y-1/2 start-6 end-6 h-1 bg-secondary rounded-full -z-0" />
             <div
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={trackPercent}
-              className="absolute top-1/2 -translate-y-1/2 left-6 h-1 bg-accent-brand rounded-full transition-all duration-500 -z-0"
+              className="absolute top-[18px] -translate-y-1/2 start-6 h-1 bg-accent-brand rounded-full transition-all duration-500 -z-0"
               style={{ width: `${Math.min(100, Math.max(0, trackPercent))}%` }}
             />
             {steps.map((st, idx) => {

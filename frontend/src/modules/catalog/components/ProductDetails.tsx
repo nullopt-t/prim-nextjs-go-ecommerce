@@ -604,22 +604,22 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       <CatalogFeedLoader />
       {/* Breadcrumb */}
       <nav className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
-        <Link href="/" className="hover:text-foreground transition-colors">
+        <Link href="/" className="py-1 hover:text-foreground transition-colors">
           {t("header.home")}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
-        <Link href="/products" className="hover:text-foreground transition-colors">
+        <Link href="/products" className="py-1 hover:text-foreground transition-colors">
           {tProducts("details.products")}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
         <Link
           href={`/products?category=${product.categoryId || product.category}`}
-          className="hover:text-foreground transition-colors capitalize"
+          className="py-1 hover:text-foreground transition-colors capitalize"
         >
           {product.category?.replace?.("-", " ") || product.category}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
-        <span className="text-foreground font-medium truncate max-w-[200px]">{productName}</span>
+        <span className="py-1 text-foreground font-medium truncate max-w-[200px]">{productName}</span>
       </nav>
 
       {/* Main Product Layout */}

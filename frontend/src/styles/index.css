@@ -8,6 +8,9 @@ body {
 	min-height: 100dvh;
 	background-color: var(--page-bg);
 	font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
+	/* Off-canvas drawers (cart, nav) translate past the viewport edge; without
+	   this they widen the scroll area and clip RTL pages at 320px. */
+	overflow-x: clip;
 }
 
 [lang="ar"],

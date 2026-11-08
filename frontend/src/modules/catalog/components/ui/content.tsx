@@ -222,7 +222,7 @@ export default function Content({ products, category }: ContentProps) {
 
   if (loading && filtered.length === 0) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="aspect-square bg-secondary/50 rounded-xl animate-pulse" />
         ))}
@@ -249,7 +249,7 @@ export default function Content({ products, category }: ContentProps) {
   return (
     <ProductsGrid
       products={filtered as unknown as CardDetails[]}
-      className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+      className="grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
     />
   );
 }

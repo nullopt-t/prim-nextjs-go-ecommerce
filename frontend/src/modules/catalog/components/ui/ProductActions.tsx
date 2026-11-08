@@ -163,7 +163,7 @@ export function ProductActions({
                     role="radio"
                     aria-checked={isSelected}
                     onClick={() => onSelectAxis(axis.key, value)}
-                    className={`min-w-11 cursor-pointer rounded-lg border px-3.5 py-2 text-sm transition-colors ${
+                    className={`min-h-11 min-w-11 cursor-pointer rounded-lg border px-3.5 py-2 text-sm transition-colors ${
                       isSelected
                         ? "border-foreground bg-foreground font-semibold text-background"
                         : "border-border bg-background text-foreground hover:border-foreground/50"
@@ -219,7 +219,7 @@ export function ProductActions({
           <button
             type="button"
             onClick={onNotifyMe}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-brand px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent-brand px-4 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90"
           >
             <Bell className="size-3.5" aria-hidden="true" />
             {t("notifyMe.open")}
@@ -230,7 +230,7 @@ export function ProductActions({
           <button
             type="button"
             onClick={onToggleWishlist}
-            className={`flex-1 cursor-pointer rounded-lg border px-4 py-2.5 text-xs font-medium transition-colors ${
+            className={`min-h-11 flex-1 cursor-pointer rounded-lg border px-4 py-2.5 text-xs font-medium transition-colors ${
               isWishlisted
                 ? "border-foreground/30 bg-secondary text-foreground"
                 : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
@@ -242,14 +242,14 @@ export function ProductActions({
           <button
             type="button"
             onClick={onShare}
-            className="cursor-pointer rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="min-h-11 cursor-pointer rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             {t("actions.share")}
           </button>
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 border-t border-border/70 pt-5">
+      <div className="mt-6 grid grid-cols-1 gap-4 border-t border-border/70 pt-5 sm:grid-cols-2">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {t("actions.freeDelivery")}

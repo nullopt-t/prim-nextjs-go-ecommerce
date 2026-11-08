@@ -27,7 +27,7 @@ export function TierPricingTable({ tiers, baseUnitPrice, quantity, currency }: T
 				<BadgePercent className="size-4 text-accent-brand" aria-hidden="true" />
 				{t("tierPricing.title")}
 			</h2>
-			<div className="mt-4 overflow-hidden rounded-xl border border-border/70">
+			<div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
 				<table className="w-full text-start text-xs sm:text-sm">
 					<thead>
 						<tr className="bg-secondary/60 text-muted-foreground">

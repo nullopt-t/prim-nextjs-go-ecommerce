@@ -122,7 +122,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
           </div>
 
           {/* Price */}
-          <div className="text-xs sm:text-sm font-bold text-foreground shrink-0 text-end">
+          <div className="text-xs sm:text-sm font-bold text-foreground shrink-0 text-end tabular-nums whitespace-nowrap">
             {orderDetails.productPrice}
           </div>
         </div>

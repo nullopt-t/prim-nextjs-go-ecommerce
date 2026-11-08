@@ -75,7 +75,7 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
   );
 
   return (
-    <section className="mt-8 rounded-2xl border border-border bg-card p-5 shadow-sm sm:mt-10 sm:p-7">
+    <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm sm:mt-10 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-foreground sm:text-xl">{t("title")}</h2>

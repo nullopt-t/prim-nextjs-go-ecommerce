@@ -25,7 +25,7 @@ export function Brand() {
           primary
         )}
         {secondary && (
-          <span className="ms-1 text-[0.6em] font-bold tracking-normal text-muted-foreground">
+          <span className="ms-1 hidden sm:inline text-[0.6em] font-bold tracking-normal text-muted-foreground">
             {secondary}
           </span>
         )}

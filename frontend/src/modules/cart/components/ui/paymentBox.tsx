@@ -53,6 +53,10 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
       ? t("orderSummary.free")
       : formatMoney(shippingCost, currency);
 
+  // Money values render with tabular-nums + no-wrap so long totals (e.g.
+  // "EGP 1,234,567.89") never wrap mid-number in justify-between rows.
+  const money = "tabular-nums whitespace-nowrap";
+
   if (compact) {
     return (
       <div className="flex flex-col gap-3">
@@ -93,7 +97,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
             <span className="text-xs text-muted-foreground">
               {t("orderSummary.total", { defaultMessage: "Total" })}
             </span>
-            <span className="text-xl font-bold text-foreground tracking-tight">
+            <span className={`text-xl font-bold text-foreground tracking-tight ${money}`}>
               {formatMoney(total, currency)}
             </span>
           </div>
@@ -168,16 +172,16 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.subtotal", { defaultMessage: "Subtotal" })}
           </span>
-          <span className="text-foreground font-medium">{formatMoney(subtotal, currency)}</span>
+          <span className={`text-foreground font-medium ${money}`}>{formatMoney(subtotal, currency)}</span>
         </p>
 
         {discount > 0 && (
           <p className="flex justify-between text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-            <span className="flex items-center gap-1">
-              <Sparkles className="size-3.5" />
-              {t("discountLabel", { code: appliedCoupon?.code ?? "" })}
+            <span className="flex items-center gap-1 min-w-0">
+              <Sparkles className="size-3.5 shrink-0" />
+              <span className="truncate">{t("discountLabel", { code: appliedCoupon?.code ?? "" })}</span>
             </span>
-            <span>-{formatMoney(discount, currency)}</span>
+            <span className={money}>-{formatMoney(discount, currency)}</span>
           </p>
         )}
 
@@ -185,7 +189,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.shipping", { defaultMessage: "Shipping" })}
           </span>
-          <span className="text-foreground font-medium">
+          <span className={`text-foreground font-medium ${money}`}>
             {isFreeShipping ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                 {t("orderSummary.free")}
@@ -199,7 +203,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-muted-foreground">
             {t("orderSummary.tax", { defaultMessage: "Estimated Tax" })}
           </span>
-          <span className="text-foreground font-medium">{formatMoney(taxAmount, currency)}</span>
+          <span className={`text-foreground font-medium ${money}`}>{formatMoney(taxAmount, currency)}</span>
         </p>
 
         <label className="flex flex-col items-start justify-between gap-3 rounded-xl border border-border/60 px-3.5 py-3 cursor-pointer transition-colors hover:border-accent-brand/50 min-[400px]:flex-row min-[400px]:items-center">
@@ -230,7 +234,7 @@ export default function PaymentBox({ compact = false }: { compact?: boolean }) {
           <span className="text-foreground font-semibold">
             {t("orderSummary.total", { defaultMessage: "Total" })}
           </span>
-          <span className="text-foreground font-bold text-2xl">{formatMoney(total, currency)}</span>
+          <span className={`text-foreground font-bold text-2xl ${money}`}>{formatMoney(total, currency)}</span>
         </p>
       </div>
 

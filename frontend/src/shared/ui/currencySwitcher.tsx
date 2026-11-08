@@ -62,9 +62,9 @@ export function CurrencySwitcher({ variant = "header" }: CurrencySwitcherProps) 
 				}
 			>
 				<Coins className="size-4" aria-hidden="true" />
-				{displayCurrency || "—"}
+				<span className={variant === "header" ? "hidden sm:inline" : undefined}>{displayCurrency || "—"}</span>
 				<ChevronDown
-					className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+					className={`size-3.5 transition-transform ${variant === "header" ? "hidden sm:block" : ""} ${open ? "rotate-180" : ""}`}
 					aria-hidden="true"
 				/>
 			</button>

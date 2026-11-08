@@ -858,7 +858,7 @@ export function Checkout() {
 									)}
 
 									{/* Step 1 Actions */}
-									<div className="flex items-center justify-between pt-6 border-t border-border mt-8">
+									<div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border mt-8">
 										<button
 											type="button"
 											onClick={() => router.push("/cart")}
@@ -891,11 +891,11 @@ export function Checkout() {
 								>
 									{/* Recap of Step 1 */}
 									<div className="bg-secondary/30 border border-border/80 rounded-2xl p-4 flex items-center justify-between">
-										<div className="flex items-start gap-3">
+										<div className="flex items-start gap-3 min-w-0">
 											<div className="p-2 rounded-xl bg-secondary text-foreground shrink-0 mt-0.5">
 												<MapPin className="size-4 text-accent-brand" />
 											</div>
-											<div>
+											<div className="min-w-0">
 												<span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("summary.shipTo")}</span>
 												<p className="text-xs sm:text-sm font-semibold text-foreground line-clamp-1">{resolvedAddressString}</p>
 											</div>
@@ -1010,7 +1010,7 @@ export function Checkout() {
 										</div>
 
 										{/* Step 2 Actions */}
-										<div className="flex items-center justify-between pt-6 border-t border-border mt-8">
+										<div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border mt-8">
 											<button
 												type="button"
 												onClick={() => setCurrentStep(1)}
@@ -1045,11 +1045,11 @@ export function Checkout() {
 									{/* Recaps of Step 1 & Step 2 */}
 									<div className="bg-secondary/30 border border-border/80 rounded-2xl p-4 divide-y divide-border/60 space-y-3">
 										<div className="flex items-center justify-between">
-											<div className="flex items-start gap-3">
+											<div className="flex items-start gap-3 min-w-0">
 												<div className="p-2 rounded-xl bg-secondary text-foreground shrink-0 mt-0.5">
 													<MapPin className="size-4 text-accent-brand" />
 												</div>
-												<div>
+												<div className="min-w-0">
 													<span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("summary.shipTo")}</span>
 													<p className="text-xs sm:text-sm font-semibold text-foreground line-clamp-1">{resolvedAddressString}</p>
 												</div>
@@ -1065,7 +1065,7 @@ export function Checkout() {
 										</div>
 
 										<div className="flex items-center justify-between pt-3">
-											<div className="flex items-start gap-3">
+											<div className="flex items-start gap-3 min-w-0">
 												<div className="p-2 rounded-xl bg-secondary text-foreground shrink-0 mt-0.5">
 													<Truck className="size-4 text-accent-brand" />
 												</div>
@@ -1140,7 +1140,7 @@ export function Checkout() {
 										)}
 
 										{/* Step 3 Actions */}
-										<div className="flex items-center justify-between pt-6 border-t border-border mt-8">
+										<div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border mt-8">
 											<button
 												type="button"
 												onClick={() => setCurrentStep(2)}
@@ -1188,7 +1188,7 @@ export function Checkout() {
 							<div className="flex flex-col gap-3.5 max-h-[240px] overflow-y-auto pr-1">
 								{cartItems?.map((item) => (
 									<div key={item.id} className="flex items-center justify-between gap-3 text-sm py-2 border-b border-border/40 last:border-0">
-										<div className="flex items-center gap-3">
+										<div className="flex items-center gap-3 min-w-0">
 											<div className="w-12 h-12 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50">
 												<img
 													src={normalizeMediaUrl(item.img)}
@@ -1196,12 +1196,12 @@ export function Checkout() {
 													className="w-full h-full object-cover"
 												/>
 											</div>
-											<div className="flex flex-col">
+											<div className="flex flex-col min-w-0">
 												<span className="font-medium text-foreground line-clamp-1">{(typeof item.productName === "object" ? item.productName?.en : item.productName) || t("summary.product")}</span>
 												<span className="text-xs text-muted-foreground">{t("summary.qty", { count: item.quantity || 1 })}</span>
 											</div>
 										</div>
-										<span className="font-semibold text-foreground">{item.productPrice}</span>
+										<span className="font-semibold text-foreground shrink-0 tabular-nums whitespace-nowrap">{item.productPrice}</span>
 									</div>
 								))}
 							</div>
@@ -1212,9 +1212,9 @@ export function Checkout() {
 								    an invalid replacement keeps the current discount. */}
 								{appliedCoupon && (
 									<div className="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/25 rounded-xl text-xs">
-										<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium">
+										<div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium min-w-0">
 											<Tag className="size-3.5 text-emerald-600 shrink-0" />
-											<span className="font-bold tracking-wider font-mono uppercase">{appliedCoupon.code}</span>
+											<span className="font-bold tracking-wider font-mono uppercase min-w-0 truncate">{appliedCoupon.code}</span>
 											<span className="text-[11px] opacity-80">
 												({appliedCoupon.discountPercent
 													? t("summary.percentOff", { percent: appliedCoupon.discountPercent })
@@ -1235,7 +1235,7 @@ export function Checkout() {
 									</div>
 								)}
 									<div className="flex gap-2 mt-2">
-										<div className="flex-1 bg-secondary/30 border border-border focus-within:border-accent-brand rounded-xl overflow-hidden flex items-center px-3 h-9 transition-colors">
+										<div className="flex-1 min-w-0 bg-secondary/30 border border-border focus-within:border-accent-brand rounded-xl overflow-hidden flex items-center px-3 h-9 transition-colors">
 											<Tag className="size-3.5 text-muted-foreground shrink-0 me-2" />
 											<input
 												type="text"
@@ -1266,22 +1266,22 @@ export function Checkout() {
 							<div className="flex flex-col gap-2.5 pt-4 border-t border-border/60 text-sm">
 								<div className="flex justify-between text-muted-foreground">
 									<span>{tCart("orderSummary.subtotal")}</span>
-									<span className="font-medium text-foreground">{formatMoney(subtotal, currency)}</span>
+									<span className="font-medium text-foreground tabular-nums whitespace-nowrap">{formatMoney(subtotal, currency)}</span>
 								</div>
 
 								{discount > 0 && (
 									<div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
-										<span className="flex items-center gap-1">
-											<Sparkles className="size-3.5" />
-											{t("summary.discount", { code: appliedCoupon?.code ?? "" })}
+										<span className="flex items-center gap-1 min-w-0">
+											<Sparkles className="size-3.5 shrink-0" />
+											<span className="truncate">{t("summary.discount", { code: appliedCoupon?.code ?? "" })}</span>
 										</span>
-										<span>-{formatMoney(discount, currency)}</span>
+										<span className="tabular-nums whitespace-nowrap">-{formatMoney(discount, currency)}</span>
 									</div>
 								)}
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>{t("summary.shipping", { speed: shippingSpeed === "express" ? t("summary.express") : t("summary.standard") })}</span>
-									<span className="font-medium text-foreground">
+									<span className="font-medium text-foreground tabular-nums whitespace-nowrap">
 										{shippingCost === 0 ? (
 											<span className="text-emerald-600 font-medium">{tCart("orderSummary.free")}</span>
 										) : (
@@ -1292,19 +1292,19 @@ export function Checkout() {
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>{t("summary.taxes")}</span>
-									<span className="font-medium text-foreground">{formatMoney(taxAmount, currency)}</span>
+									<span className="font-medium text-foreground tabular-nums whitespace-nowrap">{formatMoney(taxAmount, currency)}</span>
 								</div>
 
 								{codFee > 0 && (
 									<div className="flex justify-between text-muted-foreground">
 										<span>{t("summary.codFee")}</span>
-										<span className="font-medium text-foreground">{formatMoney(codFee, currency)}</span>
+										<span className="font-medium text-foreground tabular-nums whitespace-nowrap">{formatMoney(codFee, currency)}</span>
 									</div>
 								)}
 
 								<div className="flex justify-between items-center text-lg font-bold text-foreground pt-3 border-t border-border">
 									<span>{t("summary.total")}</span>
-									<span className="text-2xl font-extrabold text-foreground">{formatMoney(finalTotal, currency)}</span>
+									<span className="text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap">{formatMoney(finalTotal, currency)}</span>
 								</div>
 							</div>
 

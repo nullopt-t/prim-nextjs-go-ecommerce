@@ -71,7 +71,7 @@ export default function ProductsLayout({
           title={displayTitle}
           subtitle={
             totalItems !== undefined
-              ? t("pagination.results", { count: totalItems })
+              ? t("layout.pagination.results", { count: totalItems })
               : displaySubtitle
           }
           className="mb-0"
@@ -89,20 +89,20 @@ export default function ProductsLayout({
                 type="button"
                 disabled={page <= 1}
                 onClick={() => goToPage(page - 1)}
-                className="min-h-11 rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 shrink-0 whitespace-nowrap rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {t("pagination.previous")}
+                {t("layout.pagination.previous")}
               </button>
-              <span className="text-xs text-muted-foreground">
-                {t("pagination.pageOf", { page, total: totalPages })}
+              <span className="text-xs text-muted-foreground text-center">
+                {t("layout.pagination.pageOf", { page, total: totalPages })}
               </span>
               <button
                 type="button"
                 disabled={page >= totalPages}
                 onClick={() => goToPage(page + 1)}
-                className="min-h-11 rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                className="min-h-11 shrink-0 whitespace-nowrap rounded-md border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {t("pagination.next")}
+                {t("layout.pagination.next")}
               </button>
             </div>
           )}

@@ -128,10 +128,14 @@ export default function Hero({ products = [] }: { products?: ProductDetailsEntit
 									onClick={() => setCurrentIndex(idx)}
 									aria-label={t("goToSlide", { slide: idx + 1 })}
 									aria-current={isActive ? "true" : undefined}
-									className={`h-2.5 rounded-full transition-all duration-200 ${
-										isActive ? "w-7 bg-foreground" : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-									} px-1 py-1`}
-								/>
+									className="flex min-h-6 min-w-6 items-center justify-center p-1"
+								>
+									<span
+										className={`rounded-full transition-all duration-200 ${
+											isActive ? "h-2.5 w-7 bg-foreground" : "h-2.5 w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+										}`}
+									/>
+								</button>
 							);
 						})}
 					</div>

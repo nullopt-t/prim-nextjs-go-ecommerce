@@ -150,7 +150,7 @@ export function ProductsCard({
 
           {/* Discount Badge */}
           {cardDetails.discountPercentage && (
-            <span className="absolute top-2.5 start-2.5 bg-[#d4183d] text-white rounded-md px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
+            <span className="absolute top-2.5 start-2.5 bg-[#d4183d] text-white rounded-md px-1.5 py-0.5 text-[11px] font-bold shadow-xs">
               {cardDetails.discountPercentage}
             </span>
           )}
@@ -179,8 +179,8 @@ export function ProductsCard({
             </h4>
           </Link>
 
-          {/* Ratings */}
-          <div className="flex items-center gap-1.5 mt-1 mb-2">
+          {/* Ratings: wrap at 320px so the count never clips the stars */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 mb-2">
             <Stars starsNum={cardDetails.stars} />
             <span className="text-muted-foreground text-[10px] sm:text-[11px]">
               ({cardDetails.reviews})
