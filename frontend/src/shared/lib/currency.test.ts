@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	convertCurrency,
+	convertCurrencyRounded,
 	getStoredCurrency,
 	isSupportedCurrency,
 	normalizeCurrency,
@@ -43,6 +44,22 @@ describe("convertCurrency", () => {
 		expect(convertCurrency(50, "GBP", "USD")).toBe(50);
 		expect(convertCurrency(50, "USD", null)).toBe(50);
 		expect(convertCurrency(50, null, "USD")).toBe(50);
+	});
+});
+
+describe("convertCurrencyRounded", () => {
+	it("rounds to cents like the display formatter", () => {
+		expect(convertCurrencyRounded(970, "EGP", "USD")).toBe(20);
+		expect(convertCurrencyRounded(999.99, "EGP", "USD")).toBe(20.62);
+	});
+
+	it("matches the displayed price at filter thresholds", () => {
+		// 970.23765 EGP converts to 20.0049... USD, which displays as 20.00.
+		// The raw float would fail a maxPrice=20 filter; the rounded value passes.
+		const raw = convertCurrency(970.23765, "EGP", "USD");
+		expect(raw).toBeGreaterThan(20);
+		expect(convertCurrencyRounded(970.23765, "EGP", "USD")).toBe(20);
+		expect(convertCurrencyRounded(970.23765, "EGP", "USD") <= 20).toBe(true);
 	});
 });
 

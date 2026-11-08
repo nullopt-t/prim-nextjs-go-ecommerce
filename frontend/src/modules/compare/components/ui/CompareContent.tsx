@@ -160,7 +160,7 @@ export default function CompareContent() {
 					</Link>
 				</div>
 			) : (
-				<div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-2xs">
+				<div className="overflow-auto max-h-[80vh] rounded-2xl border border-border bg-card shadow-2xs">
 					<table className="w-full min-w-[640px] border-collapse text-sm">
 						<thead>
 							<tr className="border-b border-border/70">

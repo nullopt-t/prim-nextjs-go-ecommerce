@@ -45,6 +45,17 @@ export function convertCurrency(amount: number, from: string | null | undefined,
 	return amountInEgp / UNITS_PER_EGP[toCode];
 }
 
+/**
+ * `convertCurrency` rounded to cents — the same rounding `formatMoney`
+ * applies for display. Use this when comparing a converted price against a
+ * user-entered threshold (min/max filters) so the decision matches the
+ * price the shopper actually sees; comparing the raw float would exclude a
+ * product displaying exactly at the threshold.
+ */
+export function convertCurrencyRounded(amount: number, from: string | null | undefined, to: string | null | undefined): number {
+	return Math.round(convertCurrency(amount, from, to) * 100) / 100;
+}
+
 /** Cookie + localStorage persistence for the visitor's explicit choice. */
 export const CURRENCY_COOKIE_NAME = "prim_currency";
 const CURRENCY_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;

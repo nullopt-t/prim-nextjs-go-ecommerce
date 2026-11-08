@@ -9,7 +9,7 @@ import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/cat
 import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/publicSettingsContext";
-import { convertCurrency } from "@/shared/lib/currency";
+import { convertCurrencyRounded } from "@/shared/lib/currency";
 
 interface ContentProps {
   products?: ProductDetailsEntity[];
@@ -184,7 +184,7 @@ export default function Content({ products, category }: ContentProps) {
     // comparing raw base numbers would filter in the wrong currency.
     if (filters.minPrice !== null || filters.maxPrice !== null) {
       const rawPrice = typeof p.price === "number" ? p.price : (p.extractedPrice ?? 0);
-      const priceVal = convertCurrency(rawPrice, baseCurrency, displayCurrency);
+      const priceVal = convertCurrencyRounded(rawPrice, baseCurrency, displayCurrency);
       if (filters.minPrice !== null && priceVal < filters.minPrice) return false;
       if (filters.maxPrice !== null && priceVal > filters.maxPrice) return false;
     }
