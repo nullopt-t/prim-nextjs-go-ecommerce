@@ -192,7 +192,7 @@ export default function CompareContent() {
 											<button
 												type="button"
 												onClick={() => removeFromCompare(slug)}
-												className="text-xs font-medium text-destructive hover:underline"
+												className="min-h-11 px-3 py-2.5 text-xs font-medium text-destructive hover:underline"
 											>
 												{t("remove")}
 											</button>

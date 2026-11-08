@@ -8,6 +8,7 @@
  */
 
 export interface PasskeyOptions {
+	requestId?: string;
 	challenge: string;
 	rpId?: string;
 	userVerification?: "preferred" | "required" | "discouraged";
@@ -82,6 +83,6 @@ export async function signInWithPasskey(deps: {
 		throw err;
 	}
 	if (!credential) return { ok: false, error: "cancelled" };
-	const requestId = (options as { requestId?: string }).requestId;
+	const requestId: string | undefined = options.requestId ? String(options.requestId) : undefined;
 	return deps.verify(credential, requestId);
 }

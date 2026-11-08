@@ -115,7 +115,8 @@
       "fullName": "Enter the recipient's full name.",
       "line1": "Enter the street address and building number.",
       "phone": "Enter a valid Egyptian mobile number (e.g. +2010..., 010...).",
-      "postalCode": "Postal code must be exactly 5 digits."
+      "postalCode": "Postal code must be exactly 5 digits.",
+      "fullNameTooLong": "Name must be at most 120 characters."
     },
     "validationError": "Please fill in all mandatory fields (Name, Street address, City, Country)"
   },
@@ -1906,7 +1907,8 @@
       "delivered": "Delivered",
       "pending": "Order Placed",
       "processing": "Preparing for Dispatch",
-      "shipped": "Shipped / On the way"
+      "shipped": "Shipped / On the way",
+      "refunded": "Refunded"
     },
     "subtitle": "Track packages, check receipt details, or reorder previous items.",
     "tabs": {
@@ -2303,7 +2305,8 @@
       "subtitle": "Your registered account identity and contact details.",
       "title": "Personal Information",
       "saved": "Profile saved.",
-      "invalidPhone": "Enter a valid Egyptian mobile number (e.g. +2010..., 010...)."
+      "invalidPhone": "Enter a valid Egyptian mobile number (e.g. +2010..., 010...).",
+      "invalidName": "Enter your display name."
     },
     "preferences": {
       "darkMode": "Dark Mode",
@@ -2706,35 +2709,35 @@
       "loadFailed": "Promotions could not be loaded."
     },
     "bundles": {
-    "title": "Product bundles",
-    "subtitle": "Combine your existing products into a kit with its own price. The bundle sells as a single product.",
-    "createTitle": "Create a bundle",
-    "bundleTitle": "Bundle title",
-    "description": "Description",
-    "descriptionPlaceholder": "Describe the kit and what each item is for…",
-    "bundlePrice": "Bundle price",
-    "currency": "Currency",
-    "thumbnail": "Cover image (optional)",
-    "itemsTitle": "Kit contents",
-    "itemsTotal": "Items total",
-    "addItem": "Add item",
-    "product": "Product",
-    "variant": "Variant (optional)",
-    "wholeProduct": "Whole product",
-    "quantity": "Qty",
-    "create": "Create bundle",
-    "created": "Bundle created",
-    "updated": "Bundle updated",
-    "published": "Bundle published",
-    "edit": "Edit",
-    "publish": "Publish",
-    "save": "Save changes",
-    "deleted": "Bundle deleted",
-    "price": "Price",
-    "empty": "No bundles yet. Create your first kit above.",
-    "loadFailed": "Bundles could not be loaded."
-  },
-  "register": {
+      "title": "Product bundles",
+      "subtitle": "Combine your existing products into a kit with its own price. The bundle sells as a single product.",
+      "createTitle": "Create a bundle",
+      "bundleTitle": "Bundle title",
+      "description": "Description",
+      "descriptionPlaceholder": "Describe the kit and what each item is for…",
+      "bundlePrice": "Bundle price",
+      "currency": "Currency",
+      "thumbnail": "Cover image (optional)",
+      "itemsTitle": "Kit contents",
+      "itemsTotal": "Items total",
+      "addItem": "Add item",
+      "product": "Product",
+      "variant": "Variant (optional)",
+      "wholeProduct": "Whole product",
+      "quantity": "Qty",
+      "create": "Create bundle",
+      "created": "Bundle created",
+      "updated": "Bundle updated",
+      "published": "Bundle published",
+      "edit": "Edit",
+      "publish": "Publish",
+      "save": "Save changes",
+      "deleted": "Bundle deleted",
+      "price": "Price",
+      "empty": "No bundles yet. Create your first kit above.",
+      "loadFailed": "Bundles could not be loaded."
+    },
+    "register": {
       "description": "Description",
       "descriptionPlaceholder": "Tell buyers what your store sells (optional).",
       "pendingNote": "Your application is pending admin approval. You can start listing products once approved.",

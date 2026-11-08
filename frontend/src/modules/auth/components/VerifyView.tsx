@@ -33,6 +33,14 @@ export function VerifyView() {
     }
   }, []);
 
+  // Sync sessionStorage when state changes to avoid stale data
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("identifier", email);
+      sessionStorage.setItem("merge_cart", String(mergeCart));
+    }
+  }, [email, mergeCart]);
+
   const handleToggleMerge = (val: boolean) => {
     setMergeCart(val);
     if (typeof window !== "undefined") {

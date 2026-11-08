@@ -98,6 +98,20 @@ describe("createAddressSchema", () => {
 		}
 	});
 
+	it("rejects a full name longer than 120 characters with the localized message", () => {
+		const result = schema.safeParse({
+			...INITIAL_ADDRESS,
+			fullName: "a".repeat(121),
+			line1: "Street",
+			city: "Cairo",
+			country: "Egypt",
+		});
+
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.error.issues[0]?.message).toBe("validation.fullNameTooLong");
+	});
+
 	it("validates 5-digit postal codes", () => {
 		const validCodes = ["", "  ", "11511", "12345"];
 		for (const postalCode of validCodes) {

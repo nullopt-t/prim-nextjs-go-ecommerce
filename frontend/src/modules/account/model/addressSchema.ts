@@ -62,7 +62,7 @@ export function createAddressSchema(t: (key: string) => string) {
 			.string()
 			.trim()
 			.min(1, t("validation.fullName"))
-			.max(120),
+			.max(120, t("validation.fullNameTooLong")),
 		phone: z
 			.string()
 			.trim()

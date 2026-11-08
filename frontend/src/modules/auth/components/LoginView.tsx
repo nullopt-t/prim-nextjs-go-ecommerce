@@ -26,7 +26,7 @@ export function LoginView() {
     isPasskeySupported().then(setPasskeySupported).catch(() => setPasskeySupported(false));
   }, []);
 
-  // Sync merge preference with sessionStorage
+  // Sync merge preference with sessionStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem("merge_cart");
@@ -35,6 +35,13 @@ export function LoginView() {
       }
     }
   }, []);
+
+  // Sync sessionStorage when mergeCart state changes to avoid stale data
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("merge_cart", String(mergeCart));
+    }
+  }, [mergeCart]);
 
   const handleToggleMerge = (val: boolean) => {
     setMergeCart(val);
@@ -51,6 +58,8 @@ export function LoginView() {
         notify.error(apiErrorMessage(res, t("sign.sendFailed")));
         return;
       }
+      // Store identifier in sessionStorage for pre-filling on return
+      // Clear stale entries on new submission
       if (typeof window !== "undefined") {
         sessionStorage.setItem("identifier", email.trim());
         sessionStorage.setItem("merge_cart", String(mergeCart));

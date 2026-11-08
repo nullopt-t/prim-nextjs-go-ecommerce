@@ -24,6 +24,10 @@ export default function PersonalInfoForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      notify.error(t("invalidName"));
+      return;
+    }
     if (phone.trim() && !isValidEgyptianPhone(phone)) {
       notify.error(t("invalidPhone"));
       return;

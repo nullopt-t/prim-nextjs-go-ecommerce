@@ -145,7 +145,7 @@ export default function OrderLookupContent() {
             </div>
             <div className="sm:text-end">
               <p className="font-bold text-foreground">
-                {tDetails("total")}: {formatMoney(order.totalAmount / 100, order.currency)}
+                {tDetails("total")}: {formatMoney((order.totalAmount ?? 0) / 100, order.currency)}
               </p>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function OrderLookupContent() {
           <div className="divide-y divide-border/70">
             {(order.items ?? []).map((item) => {
               const snapshotTitle = parseSnapshotTitle(item.productSnapshot);
-              const displayName = item.title || snapshotTitle || t("deletedProduct", { defaultMessage: "Item" }) + ` (#${item.variantId.slice(0, 8)})`;
+              const displayName = item.title || snapshotTitle || t("deletedProduct", { defaultMessage: "Item" }) + ` (#${(item.variantId ?? "").slice(0, 8)})`;
               return (
                 <div key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
                   <div className="min-w-0">

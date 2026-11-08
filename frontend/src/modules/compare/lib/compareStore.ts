@@ -32,9 +32,9 @@ export function getCompareSlugs(): string[] {
 		const raw = window.localStorage.getItem(STORAGE_KEY);
 		const parsed = raw ? JSON.parse(raw) : [];
 		if (!Array.isArray(parsed)) return [];
-		return parsed
-			.filter((value): value is string => typeof value === "string" && value.length > 0)
-			.slice(0, MAX_COMPARE_ITEMS);
+		return [...new Set(
+			parsed.filter((value): value is string => typeof value === "string" && value.length > 0),
+		)].slice(0, MAX_COMPARE_ITEMS);
 	} catch {
 		return [];
 	}

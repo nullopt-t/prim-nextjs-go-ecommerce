@@ -31,7 +31,7 @@ interface Order {
   id: string;
   customerEmail: string;
   shippingAddress?: Address;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
   totalAmount: number;
   discountAmount: number;
   shippingAmount?: number;
@@ -101,6 +101,9 @@ const STATUS_BADGE: Record<
   },
   cancelled: {
     className: "text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50",
+  },
+  refunded: {
+    className: "text-zinc-600 bg-zinc-100 dark:bg-zinc-800/50 dark:text-zinc-300 border border-zinc-300/50",
   },
 };
 
@@ -185,7 +188,7 @@ export default function OrderDetailsContent() {
 
   const items = order.items ?? [];
   const statusBadge = STATUS_BADGE[order.status] ?? STATUS_BADGE.pending;
-  const shortId = order.id.slice(0, 8).toUpperCase();
+  const shortId = order.id?.slice(0, 8).toUpperCase() ?? "";
   const placedDate = new Date(order.createdAt).toLocaleDateString(locale, {
     year: "numeric",
     month: "long",
@@ -206,7 +209,7 @@ export default function OrderDetailsContent() {
   const formattedTax = taxVal > 0 ? taxVal.toFixed(2) : null;
   const codVal = (order.codFee ?? 0) / 100;
   const formattedCod = codVal > 0 ? codVal.toFixed(2) : null;
-  const totalPaid = (order.totalAmount / 100).toFixed(2);
+  const totalPaid = ((order.totalAmount ?? 0) / 100).toFixed(2);
   const formattedAddress = formatAddress(order.shippingAddress);
 
   const statusStepMap: Record<Order["status"], number> = {
@@ -215,6 +218,7 @@ export default function OrderDetailsContent() {
     shipped: 2,
     delivered: 3,
     cancelled: -1,
+    refunded: -1,
   };
   const currentStep = statusStepMap[order.status] ?? 0;
 
@@ -371,7 +375,7 @@ export default function OrderDetailsContent() {
               const snap = parseSnapshot(item.productSnapshot);
               const title = snap.title || snap.name || "Purchased Product";
               const imgSrc = resolveItemImage(snap);
-              const itemPrice = `${(item.priceAtPurchase / 100).toFixed(2)} ${order.currency.toUpperCase()}`;
+              const itemPrice = `${(item.priceAtPurchase / 100).toFixed(2)} ${(order.currency ?? "").toUpperCase()}`;
               const productTarget = snap.slug || snap.productId;
               const productHref = productTarget ? `/products/${productTarget}` : null;
 
@@ -463,7 +467,7 @@ export default function OrderDetailsContent() {
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("subtotal")}</span>
-                <span className="font-medium text-foreground">{rawSubtotal} {order.currency.toUpperCase()}</span>
+                <span className="font-medium text-foreground">{rawSubtotal} {(order.currency ?? "").toUpperCase()}</span>
               </div>
               {formattedDiscount && (
                 <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
@@ -476,14 +480,14 @@ export default function OrderDetailsContent() {
                     )}
                   </div>
                   <span className="font-medium font-mono">
-                    -{formattedDiscount} {order.currency.toUpperCase()}
+                    -{formattedDiscount} {(order.currency ?? "").toUpperCase()}
                   </span>
                 </div>
               )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">{t("shipping")}</span>
                 {formattedShipping ? (
-                  <span className="font-medium text-foreground">{formattedShipping} {order.currency.toUpperCase()}</span>
+                  <span className="font-medium text-foreground">{formattedShipping} {(order.currency ?? "").toUpperCase()}</span>
                 ) : (
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">{t("freeShipping")}</span>
                 )}
@@ -491,18 +495,18 @@ export default function OrderDetailsContent() {
               {formattedTax && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">{t("invoice.tax")}</span>
-                  <span className="font-medium text-foreground">{formattedTax} {order.currency.toUpperCase()}</span>
+                  <span className="font-medium text-foreground">{formattedTax} {(order.currency ?? "").toUpperCase()}</span>
                 </div>
               )}
               {formattedCod && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">{t("invoice.codFee")}</span>
-                  <span className="font-medium text-foreground">{formattedCod} {order.currency.toUpperCase()}</span>
+                  <span className="font-medium text-foreground">{formattedCod} {(order.currency ?? "").toUpperCase()}</span>
                 </div>
               )}
               <div className="border-t border-border/50 pt-2.5 mt-2.5 flex items-center justify-between font-bold text-xs sm:text-sm">
                 <span className="text-foreground">{t("total")}</span>
-                <span className="text-foreground font-mono">{totalPaid} {order.currency.toUpperCase()}</span>
+                <span className="text-foreground font-mono">{totalPaid} {(order.currency ?? "").toUpperCase()}</span>
               </div>
             </div>
           </div>

@@ -47,4 +47,60 @@ describe("signInWithPasskey", () => {
 		expect(result).toEqual({ ok: false, error: "cancelled" });
 		vi.unstubAllGlobals();
 	});
+
+	it("handles undefined requestId gracefully when no credential obtained", async () => {
+		// When navigator.credentials.get returns null (e.g. user cancelled)
+		vi.stubGlobal("navigator", {
+			credentials: {
+				get: vi.fn().mockResolvedValue(null),
+			},
+		});
+		const result = await signInWithPasskey({
+			fetchOptions: async () => ({ challenge: "AQID", rpId: "example.com" } as any),
+			verify: vi.fn(),
+		});
+		expect(result).toEqual({ ok: false, error: "cancelled" }); // no credential = cancelled
+		vi.unstubAllGlobals();
+	});
+
+	it("handles undefined requestId gracefully when credential obtained but verify fails", async () => {
+		// When credential is obtained but verify returns false
+		vi.stubGlobal("navigator", {
+			credentials: {
+				get: vi.fn().mockResolvedValue({
+					id: "cred-id",
+					type: "public-key",
+					trawId: new Uint8Array([1,2,3,4]).buffer,
+					response: { authenticatorData: new Uint8Array([]).buffer, clientDataJSON: new Uint8Array([]).buffer, signature: new Uint8Array([]).buffer, userHandle: null } as any,
+				}) as any,
+			},
+		});
+		const result = await signInWithPasskey({
+			fetchOptions: async () => ({ challenge: "AQID", rpId: "example.com" } as any),
+			verify: vi.fn().mockResolvedValue({ ok: false, error: "test error" }),
+		});
+		expect(result).toEqual({ ok: false, error: "test error" }); // verify called with undefined requestId
+		vi.unstubAllGlobals();
+	});
+
+	it("handles requestId when provided by backend", async () => {
+		// When backend provides requestId, it should be passed through
+		vi.stubGlobal("navigator", {
+			credentials: {
+				get: vi.fn().mockResolvedValue({
+					id: "cred-id",
+					type: "public-key",
+					trawId: new Uint8Array([1,2,3,4]).buffer,
+					response: { authenticatorData: new Uint8Array([]).buffer, clientDataJSON: new Uint8Array([]).buffer, signature: new Uint8Array([]).buffer, userHandle: null } as any,
+				}) as any,
+			},
+		});
+		const mockRequestId = "req-12345";
+		const result = await signInWithPasskey({
+			fetchOptions: async () => ({ challenge: "AQID", rpId: "example.com", requestId: mockRequestId } as any),
+			verify: vi.fn().mockResolvedValue({ ok: true }),
+		});
+		expect(result).toEqual({ ok: true }); // verify called with requestId
+		vi.unstubAllGlobals();
+	});
 });
