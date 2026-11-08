@@ -8,6 +8,7 @@ package order_test
 import (
 	"context"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -348,5 +349,8 @@ func (s *OrderLifecycleSuite) TestUpdatePaymentStatus_CaptureFailureRollsBackPay
 }
 
 func TestOrderLifecycleSuite(t *testing.T) {
+	if err := exec.Command("docker", "info").Run(); err != nil {
+		t.Skip("docker daemon unavailable; skipping PostgreSQL integration suite")
+	}
 	suite.Run(t, new(OrderLifecycleSuite))
 }
