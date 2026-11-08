@@ -760,7 +760,7 @@ export function Checkout() {
 											<div className="h-4 w-2/3 animate-pulse rounded bg-secondary/60" />
 										</div>
 									) : addresses && addresses.length > 0 ? (
-										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+										<div className="grid grid-cols-1 sm:grid-cols-2 gap-4" role="radiogroup" aria-label={tAddresses("title")}>
 											{addresses.map((addr) => {
 												const isSelected = effectiveAddressId === addr.id;
 												return (
@@ -768,6 +768,8 @@ export function Checkout() {
 														type="button"
 														key={addr.id}
 														onClick={() => setSelectedAddressId(addr.id)}
+														role="radio"
+														aria-checked={isSelected}
 														aria-pressed={isSelected}
 														className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between text-start ${
 															isSelected

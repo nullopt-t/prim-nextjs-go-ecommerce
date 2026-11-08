@@ -5,7 +5,7 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
-import { isValidEgyptianPhone } from "@/modules/account/model/addressSchema";
+import { isValidEgyptianPhone, normalizeEgyptianPhone } from "@/modules/account/model/addressSchema";
 
 export default function PersonalInfoForm() {
   const { user, refreshUser } = useAuthContext();
@@ -32,7 +32,7 @@ export default function PersonalInfoForm() {
     try {
       await userService.updateProfile({
         fullName: name.trim(),
-        phone: phone.trim() || undefined,
+        phone: phone.trim() ? normalizeEgyptianPhone(phone) : undefined,
       });
       await refreshUser();
       notify.success(t("saved"));

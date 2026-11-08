@@ -50,7 +50,7 @@ describe("createAddressSchema", () => {
 		expect(result.country).toBe("Egypt");
 	});
 
-	it("validates Egyptian phone numbers", () => {
+	it("validates Egyptian phone numbers and normalizes them", () => {
 		const validPhones = ["", "01012345678", "+201012345678", "00201112345678", "+20 12 3456 7890", "015-1234-5678"];
 		for (const phone of validPhones) {
 			const res = schema.safeParse({
@@ -63,6 +63,26 @@ describe("createAddressSchema", () => {
 			});
 			expect(res.success).toBe(true);
 		}
+
+		const parsedLocal = schema.parse({
+			...INITIAL_ADDRESS,
+			fullName: "User",
+			line1: "Street",
+			city: "Cairo",
+			country: "Egypt",
+			phone: "01012345678",
+		});
+		expect(parsedLocal.phone).toBe("+201012345678");
+
+		const parsedPrefix = schema.parse({
+			...INITIAL_ADDRESS,
+			fullName: "User",
+			line1: "Street",
+			city: "Cairo",
+			country: "Egypt",
+			phone: "0020 111 234 5678",
+		});
+		expect(parsedPrefix.phone).toBe("+201112345678");
 
 		const invalidPhones = ["abc", "+441234567890", "011234", "01312345678", "+2012345678901"];
 		for (const phone of invalidPhones) {
