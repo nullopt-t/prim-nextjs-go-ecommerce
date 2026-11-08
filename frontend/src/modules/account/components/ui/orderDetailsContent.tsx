@@ -8,7 +8,8 @@ import { LazyImage } from "@/shared/ui/lazyImage";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { useTranslations, useLocale } from "next-intl";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
-import { Check, Clock, Truck, Package, ExternalLink, XCircle } from "lucide-react";
+import { Check, Clock, Truck, Package, ExternalLink, XCircle, Download } from "lucide-react";
+import InvoicePrintView from "./InvoicePrintView";
 
 interface OrderItem {
   id: string;
@@ -33,6 +34,9 @@ interface Order {
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
   totalAmount: number;
   discountAmount: number;
+  shippingAmount?: number;
+  taxAmount?: number;
+  codFee?: number;
   couponCode?: string | null;
   couponId?: string | null;
   currency: string;
@@ -216,7 +220,8 @@ export default function OrderDetailsContent() {
   ];
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-12">
+    <>
+    <div className="w-full flex flex-col gap-6 pb-12 no-print">
       {/* ── Top Bar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/70 pb-5">
         <div>
@@ -251,6 +256,14 @@ export default function OrderDetailsContent() {
               {cancelling ? t("cancelling") : t("cancelOrder")}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold border border-border bg-background text-foreground hover:bg-secondary transition-colors shadow-xs"
+          >
+            <Download className="size-3.5" aria-hidden="true" />
+            {t("downloadInvoice")}
+          </button>
           <Link
             href="/products"
             className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-accent-brand text-white hover:opacity-90 transition-opacity shadow-xs"
@@ -495,5 +508,7 @@ export default function OrderDetailsContent() {
         </div>
       </div>
     </div>
+    <InvoicePrintView order={order} />
+    </>
   );
 }
