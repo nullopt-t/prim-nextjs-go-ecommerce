@@ -18,7 +18,7 @@ export function CustomButton({
 }: CustomButtonProps) {
   return (
     <button
-      className={`p-2.5 rounded-xl font-medium text-txt-sm md:text-txt-md transition-all cursor-pointer ${
+      className={`min-h-11 p-2.5 rounded-xl font-medium text-txt-sm md:text-txt-md transition-all cursor-pointer ${
         className.includes("bg-") ? "" : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
       } ${className}`}
       onClick={onClick}

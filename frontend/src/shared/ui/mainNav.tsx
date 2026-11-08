@@ -59,19 +59,19 @@ export function MobileNav() {
         onClick={() => setMobileOpen((prev) => !prev)}
         aria-expanded={mobileOpen}
         aria-label={t("header.menu")}
-        className="flex size-9 items-center justify-center rounded-xl border border-border/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
+        className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground"
       >
         {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
       </button>
       {mobileOpen ? (
-        <ul className="absolute start-0 top-full z-50 mt-2 w-48 rounded-lg border border-border bg-background p-2 shadow-lg">
+        <ul className="absolute start-0 top-full z-50 mt-2 w-48 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-background p-2 shadow-lg">
           {NAV_LINKS.map((item) => (
             <li key={item.id}>
               <Link
                 href={item.path}
                 onClick={() => setMobileOpen(false)}
                 aria-current={isActive(item.path) ? "page" : undefined}
-                className={`block rounded-md px-3 py-2 text-sm font-medium ${
+                className={`block min-h-11 content-center rounded-md px-3 py-2.5 text-sm font-medium ${
                   isActive(item.path)
                     ? "text-accent-brand"
                     : "text-muted-foreground hover:text-foreground"

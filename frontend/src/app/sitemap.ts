@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getProducts } from "@/shared/lib/server/catalog";
+import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { routing } from "@/shared/i18n/routing";
 
 function siteUrl(): string {
@@ -21,9 +22,23 @@ const STATIC_ROUTES = [
 	"/wishlist",
 ];
 
+/** Fetch every product so the sitemap stays complete past a single page. */
+async function getAllProducts(): Promise<ProductDetailsEntity[]> {
+	const products: ProductDetailsEntity[] = [];
+	let page = 1;
+	const pageSize = 200;
+	for (;;) {
+		const batch = await getProducts({ page, pageSize }).catch(() => []);
+		products.push(...batch);
+		if (batch.length < pageSize) break;
+		page += 1;
+	}
+	return products;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const base = siteUrl();
-	const products = await getProducts({ pageSize: 500 }).catch(() => []);
+	const products = await getAllProducts();
 	const now = new Date();
 
 	const staticEntries: MetadataRoute.Sitemap = routing.locales.flatMap((locale) =>
