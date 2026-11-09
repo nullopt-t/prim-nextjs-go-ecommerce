@@ -102,7 +102,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				</button>
 			)}
 
-			{!isSettingsContext && (
+			{isAuthenticated && !isSettingsContext && (
 				<Link
 					href="/wishlist"
 					aria-label={t("wishlist")}
