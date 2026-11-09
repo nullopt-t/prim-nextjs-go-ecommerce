@@ -29,8 +29,21 @@ function getMediaOrigin(): string {
 export function normalizeMediaUrl(url?: string | null): string {
 	if (!url) return PLACEHOLDER_PRODUCT_IMAGE;
 
-	const result = url.trim();
+	let result = url.trim();
 	if (!result) return PLACEHOLDER_PRODUCT_IMAGE;
+
+	// In the browser on a mobile or remote LAN device, replace localhost MinIO host with current hostname
+	if (
+		typeof window !== "undefined" &&
+		window.location.hostname &&
+		window.location.hostname !== "localhost" &&
+		window.location.hostname !== "127.0.0.1"
+	) {
+		result = result.replace(
+			/^http:\/\/(localhost|127\.0\.0\.1):9000/,
+			`${window.location.protocol}//${window.location.hostname}:9000`
+		);
+	}
 
 	// Absolute URLs are passed through untouched.
 	if (/^https?:\/\//i.test(result) || result.startsWith("data:") || result.startsWith("blob:")) {

@@ -4,11 +4,25 @@ export const dynamic = "force-dynamic";
 
 function getBackendOrigin(): string {
   const url =
-    process.env.API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
+    process.env["API_URL"] ||
+    process.env["NEXT_PUBLIC_API_URL"] ||
     "http://127.0.0.1:8081";
   return url.replace(/\/+$/, "");
 }
+
+const HOP_BY_HOP_HEADERS = new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "content-encoding",
+  "content-length",
+  "set-cookie",
+]);
 
 async function proxyRequest(request: NextRequest): Promise<NextResponse> {
   const backendOrigin = getBackendOrigin();
@@ -19,7 +33,12 @@ async function proxyRequest(request: NextRequest): Promise<NextResponse> {
   const forwardHeaders = new Headers();
   request.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
-    if (lower !== "host" && lower !== "connection" && lower !== "content-length") {
+    if (
+      lower !== "host" &&
+      lower !== "connection" &&
+      lower !== "content-length" &&
+      lower !== "accept-encoding" // Let Node.js fetch handle stream decoding cleanly
+    ) {
       forwardHeaders.set(key, value);
     }
   });
@@ -53,7 +72,7 @@ async function proxyRequest(request: NextRequest): Promise<NextResponse> {
 
     const responseHeaders = new Headers();
     upstream.headers.forEach((value, key) => {
-      if (key.toLowerCase() !== "set-cookie") {
+      if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
         responseHeaders.set(key, value);
       }
     });
@@ -62,7 +81,9 @@ async function proxyRequest(request: NextRequest): Promise<NextResponse> {
       ? upstream.headers.getSetCookie()
       : [upstream.headers.get("set-cookie")].filter(Boolean) as string[];
 
-    const response = new NextResponse(upstream.body, {
+    const isNoContent = upstream.status === 204 || upstream.status === 304;
+
+    const response = new NextResponse(isNoContent ? null : upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: responseHeaders,
