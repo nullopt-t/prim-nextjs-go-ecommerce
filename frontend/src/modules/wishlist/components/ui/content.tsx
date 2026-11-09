@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { useTranslations } from "next-intl";
 import { useWishlist } from "@/modules/wishlist/model/useWishlist";
@@ -9,10 +9,11 @@ import { useCartContext } from "@/modules/cart/model/cartContext";
 import { notify } from "@/shared/lib/notify";
 import { normalizeProduct } from "@/modules/catalog/model/catalogContext";
 import { CardDetails } from "@/shared/ui/productsCard";
-import { Link } from "@/shared/i18n/navigation";
+import { Link, useRouter, usePathname } from "@/shared/i18n/navigation";
 import { ConfirmDialog } from "@/shared/ui/confirmDialog";
 import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
 import { formatMoney } from "@/shared/lib/money";
+import { Loader2 } from "lucide-react";
 
 interface WishlistItemView {
   id: string;
@@ -29,7 +30,9 @@ interface WishlistItemView {
 
 export default function WishlistContent() {
   const t = useTranslations("wishlist");
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, loading: authLoading } = useAuthContext();
+  const router = useRouter();
+  const pathname = usePathname();
   const { wishlistItems, loading, clearWishlist, removeFromWishlist, removeWishlistItem } = useWishlist();
   const { addToCart } = useCartContext();
   const currency = useCurrency();
@@ -37,6 +40,21 @@ export default function WishlistContent() {
 
   const [isAddingAll, setIsAddingAll] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      const returnUrl = encodeURIComponent(pathname || "/wishlist");
+      router.replace(`/auth?redirect=${returnUrl}`);
+    }
+  }, [authLoading, isAuthenticated, router, pathname]);
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="size-8 animate-spin text-accent-brand" />
+      </div>
+    );
+  }
 
   const items: WishlistItemView[] = Array.isArray(wishlistItems)
     ? wishlistItems.map(normalizeProduct).filter(Boolean) as WishlistItemView[]
@@ -166,20 +184,10 @@ export default function WishlistContent() {
             {t("empty.title")}
           </h2>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-md leading-relaxed">
-            {!isAuthenticated
-              ? t("empty.guestSubtitle")
-              : t("empty.userSubtitle")}
+            {t("empty.userSubtitle")}
           </p>
 
           <div className="flex items-center gap-3 mt-4">
-            {!isAuthenticated ? (
-              <Link
-                href="/auth"
-                className="px-4 py-2 rounded-lg bg-accent-brand text-white text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs"
-              >
-                {t("empty.signIn")}
-              </Link>
-            ) : null}
             <Link
               href="/products"
               className="px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground border border-border text-xs font-semibold transition-colors shadow-xs"

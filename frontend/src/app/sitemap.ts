@@ -19,7 +19,6 @@ const STATIC_ROUTES = [
 	"/returns",
 	"/careers",
 	"/press",
-	"/wishlist",
 ];
 
 /** Fetch every product so the sitemap stays complete past a single page. */

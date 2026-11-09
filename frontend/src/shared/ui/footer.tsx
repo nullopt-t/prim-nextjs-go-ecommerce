@@ -4,6 +4,7 @@ import { Brand } from "@/shared/ui/Brand";
 import { StoreContactInfo } from "@/shared/ui/storeContactInfo";
 import { CurrencySwitcher } from "@/shared/ui/currencySwitcher";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
+import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useTranslations } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
 
@@ -12,6 +13,7 @@ const currentDate = new Date().getFullYear();
 export function Footer() {
   const t = useTranslations("common");
   const { settings } = usePublicSettings();
+  const { isAuthenticated } = useAuthContext();
   const storeName = settings?.storeName?.trim() || t("footer.defaultStore");
 
   const sections = [
@@ -29,11 +31,15 @@ export function Footer() {
           nameKey: "footer.categories",
           path: "/categories",
         },
-        {
-          id: "cat_wishlist",
-          nameKey: "footer.wishlist",
-          path: "/wishlist",
-        },
+        ...(isAuthenticated
+          ? [
+              {
+                id: "cat_wishlist",
+                nameKey: "footer.wishlist",
+                path: "/wishlist",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -74,7 +80,7 @@ export function Footer() {
         {
           id: "comp_orders",
           nameKey: "footer.trackOrders",
-          path: "/user/orders",
+          path: isAuthenticated ? "/user/orders" : "/order-lookup",
         },
         {
           id: "comp_sell",
