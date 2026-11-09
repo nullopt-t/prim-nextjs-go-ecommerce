@@ -264,6 +264,22 @@ func TestUpdateOrderStatus_RollbackDoesNotNotify(t *testing.T) {
 	assert.Empty(t, notifier.shipped)
 }
 
+func TestUpdateOrderStatus_SameStatusAppendsNote(t *testing.T) {
+	notifier := &fakeOrderNotifier{}
+	orderID := uuid.New()
+	svc := lifecycleService(lifecycleRunner{
+		order: model.Order{
+			ID:            orderID,
+			CustomerEmail: "buyer@example.com",
+			Status:        model.OrderStatusProcessing,
+		},
+	}, nil, notifier)
+
+	note := "Operational update: carrier pickup scheduled"
+	require.NoError(t, svc.UpdateOrderStatus(context.Background(), orderID, model.OrderStatusProcessing, &note))
+	assert.Empty(t, notifier.shipped)
+}
+
 func TestUpdateOrderTracking_DoesNotDuplicateShippedNotification(t *testing.T) {
 	orderID := uuid.New()
 	notifier := &fakeOrderNotifier{}

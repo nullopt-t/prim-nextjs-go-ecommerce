@@ -29,6 +29,14 @@ export type OrderStatus =
   | "cancelled"
   | "refunded";
 
+export interface OrderStatusHistoryEntry {
+  id: string;
+  orderId?: string;
+  status: OrderStatus | string;
+  notes?: string | null;
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   customerId?: string;
@@ -49,6 +57,7 @@ export interface Order {
   carrier?: string | null;
   trackingUrl?: string | null;
   items: OrderItem[];
+  statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;
   updatedAt: string;
 }

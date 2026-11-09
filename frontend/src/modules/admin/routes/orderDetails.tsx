@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -24,8 +24,10 @@ interface OrderViewItem {
 }
 
 interface OrderViewHistory {
+  id?: string;
+  status: string;
   date: string;
-  note: string;
+  note: string | null;
 }
 
 interface OrderView {
@@ -64,6 +66,8 @@ export function AdminOrderDetails() {
   const [carrier, setCarrier] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
   const [noteInput, setNoteInput] = useState("");
+  const [targetStatus, setTargetStatus] = useState("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
   const fetchOrderFromApi = async () => {
@@ -122,22 +126,26 @@ export function AdminOrderDetails() {
           }),
           history:
             rawHistory.length > 0
-              ? rawHistory.map((item) => ({
+              ? rawHistory.map((item, idx) => ({
+                  id: item.id || `history-${idx}`,
+                  status: String(item.status || remoteOrder.status || "pending").toLowerCase(),
                   date: formatDateTime(
                     item.createdAt || item.created_at || remoteOrder.createdAt,
                     locale
                   ),
-                  note: item.notes
-                    ? item.notes
-                    : t(`status.${String(item.status).toLowerCase()}`, {
-                        defaultValue: item.status,
-                      }),
+                  note: item.notes || null,
                 }))
               : [
-                  { date: formatDateTime(remoteOrder.createdAt, locale), note: t("orderDetails.orderPlaced") },
+                  {
+                    id: "init-order-placed",
+                    status: String(remoteOrder.status || "pending").toLowerCase(),
+                    date: formatDateTime(remoteOrder.createdAt, locale),
+                    note: t("orderDetails.orderPlaced"),
+                  },
                 ]
         };
         setOrder(formatted);
+        setTargetStatus(formatted.status);
         setTrackingNumber(formatted.trackingNumber);
         setCarrier(formatted.carrier);
         setTrackingUrl(formatted.trackingUrl);
@@ -193,6 +201,51 @@ export function AdminOrderDetails() {
       fetchOrderFromApi();
     } catch (err) {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.trackingFailed")));
+    }
+  };
+
+  const statusSelectOptions = useMemo(() => {
+    if (!order) return [];
+    const cur = order.status.toLowerCase();
+    const transitions: Record<string, string[]> = {
+      pending: ["processing", "cancelled"],
+      processing: ["shipped", "cancelled"],
+      shipped: ["delivered", "cancelled"],
+      delivered: [],
+      cancelled: [],
+    };
+    const allowed = [cur, ...(transitions[cur] ?? [])];
+    return allowed.map((st) => ({
+      value: st.charAt(0).toUpperCase() + st.slice(1),
+      label: t(`status.${st}`, { defaultValue: st.charAt(0).toUpperCase() + st.slice(1) }),
+    }));
+  }, [order?.status, t]);
+
+  const handleUpdateProgress = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!order) return;
+    const nextSt = (targetStatus || order.status).toLowerCase();
+    const note = noteInput.trim();
+
+    if (nextSt === order.status && !note) {
+      return;
+    }
+
+    setUpdatingStatus(true);
+    try {
+      await adminService.updateOrderStatus(order.id, nextSt, note || undefined);
+      notify.success(
+        nextSt !== order.status
+          ? t("orderDetails.toast.statusUpdated", { status: t(`status.${nextSt}`, { defaultValue: nextSt }) })
+          : t("orderDetails.toast.noteAdded")
+      );
+      setNoteInput("");
+      window.dispatchEvent(new CustomEvent("refresh-admin-stats"));
+      await fetchOrderFromApi();
+    } catch (err) {
+      notify.error(apiErrorMessage(err, t("orderDetails.toast.statusFailed")));
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -344,32 +397,87 @@ export function AdminOrderDetails() {
             </div>
           </section>
 
-          {/* History Timeline */}
+          {/* History Timeline & Progress Manager */}
           <section className="space-y-4 rounded-lg border border-border bg-background p-4">
-            <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.timeline")}</h2>
-            <div className="space-y-3">
-              {order.history.map((log: OrderViewHistory, idx: number) => (
-                <div key={idx} className="flex items-start gap-3 text-xs">
-                  <div className="size-2 rounded-full bg-accent-brand mt-1.5 shrink-0"></div>
-                  <div>
-                    <div className="font-medium text-foreground">{log.note}</div>
-                    <div className="text-[10px] text-muted-foreground">{log.date}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">{t("orderDetails.timeline")}</h2>
+                <p className="text-xs text-muted-foreground">{t("orderDetails.progressControlSubtitle")}</p>
+              </div>
+              <StatusPill tone={statusTone(order.status)}>
+                {t(`status.${order.status}`, { defaultValue: order.status })}
+              </StatusPill>
             </div>
 
-            <form onSubmit={handleAddTimelineNote} className="pt-3 border-t border-border flex gap-2">
-              <input
-                type="text"
-                placeholder={t("orderDetails.notePlaceholder")}
-                value={noteInput}
-                onChange={(e) => setNoteInput(e.target.value)}
-                className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-              />
-              <button type="submit" className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
-                {t("orderDetails.addNote")}
-              </button>
+            {/* Vertical timeline of all history events */}
+            <div className="relative ps-6 space-y-4 before:absolute before:start-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border/70">
+              {order.history.map((log: OrderViewHistory, idx: number) => {
+                const isLatest = idx === order.history.length - 1;
+                const statusKey = log.status || order.status;
+                const statusLabel = t(`status.${statusKey}`, { defaultValue: statusKey });
+
+                return (
+                  <div key={log.id || idx} className="relative flex flex-col gap-1.5">
+                    <div
+                      className={`absolute -start-6 top-1.5 size-2.5 rounded-full border-2 transition-transform ${
+                        isLatest
+                          ? "border-accent-brand bg-accent-brand ring-4 ring-accent-brand/15 scale-110"
+                          : "border-border bg-background"
+                      }`}
+                    />
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <StatusPill tone={statusTone(statusKey)}>{statusLabel}</StatusPill>
+                      <span className="text-[11px] text-muted-foreground">{log.date}</span>
+                    </div>
+                    {log.note && (
+                      <div className="rounded-md bg-secondary/50 border border-border/60 p-2.5 text-xs text-foreground leading-relaxed whitespace-pre-wrap">
+                        {log.note}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress Update & Timeline Message Action Card */}
+            <form onSubmit={handleUpdateProgress} className="pt-4 border-t border-border space-y-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="w-full sm:w-52">
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    {t("orderDetails.targetStatus")}
+                  </label>
+                  <CustomSelect
+                    value={targetStatus ? targetStatus.charAt(0).toUpperCase() + targetStatus.slice(1) : order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    onChange={(val) => setTargetStatus(val.toLowerCase())}
+                    disabled={updatingStatus || order.status === "cancelled" || order.status === "delivered"}
+                    options={statusSelectOptions}
+                    ariaLabel={t("orderDetails.targetStatus")}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    {t("orderDetails.statusMessage")}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={t("orderDetails.statusMessagePlaceholder")}
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    disabled={updatingStatus}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent-brand focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button
+                  type="submit"
+                  disabled={updatingStatus || (!noteInput.trim() && targetStatus === order.status)}
+                  className="rounded-md bg-accent-brand text-white px-4 py-2 text-sm font-medium hover:bg-accent-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                >
+                  {updatingStatus ? t("orderDetails.updating") : t("orderDetails.updateProgressBtn")}
+                </button>
+              </div>
             </form>
           </section>
         </div>

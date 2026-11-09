@@ -9,6 +9,7 @@ import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatMoney } from "@/shared/lib/money";
 import type { Order } from "@/modules/orders/types";
 import { isSafeUrl } from "@/shared/lib/safeUrl";
+import { OrderTimelineHistory } from "./OrderTimelineHistory";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -168,6 +169,8 @@ export default function OrderLookupContent() {
               )}
             </div>
           )}
+
+          <OrderTimelineHistory history={order.statusHistory} createdAt={order.createdAt} />
 
           <div className="divide-y divide-border/70">
             {(order.items ?? []).map((item) => {

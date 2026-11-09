@@ -65,7 +65,7 @@ export interface AdminOrderStatusHistoryEntry {
   id: string;
   status: string;
   notes?: string;
-  createdAt?: string;
+  createdAt: string;
   created_at?: string;
 }
 

@@ -818,6 +818,17 @@ func (s *OrderService) UpdateOrderStatus(ctx context.Context, id uuid.UUID, stat
 			return err
 		}
 
+		if ord.Status == status {
+			if notes != nil && strings.TrimSpace(*notes) != "" {
+				trimmed := strings.TrimSpace(*notes)
+				if err := s.orderRepo.AddStatusHistory(ctx, id, status, &trimmed); err != nil {
+					return err
+				}
+				return nil
+			}
+			return nil
+		}
+
 		if !CanTransitionOrderStatus(ord.Status, status) {
 			return apierr.BadRequestError(
 				fmt.Sprintf("Cannot transition order status from '%s' to '%s'", ord.Status, status),

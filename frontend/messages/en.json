@@ -617,11 +617,16 @@
       "orderPlaced": "Order placed successfully.",
       "paymentDetails": "Payment Details",
       "placedOn": "Placed on {date}",
+      "progressControlSubtitle": "Transition order fulfillment status and log timeline messages",
+      "progressControlTitle": "Update Order Progress & Timeline",
       "qty": "Qty: {count}",
       "saveTracking": "Save Tracking",
       "shipmentTracking": "Shipment Tracking",
       "shippingAddress": "Shipping Address",
       "statusLabel": "Status:",
+      "statusMessage": "Timeline Message / Note",
+      "statusMessagePlaceholder": "Add an update message (e.g. Dispatched with courier, customs cleared)...",
+      "targetStatus": "Target Status",
       "timeline": "Fulfillment History & Timeline",
       "title": "Order Details",
       "toast": {
@@ -636,7 +641,9 @@
       },
       "totalPaid": "Total Paid",
       "trackingPlaceholder": "Enter tracking number...",
-      "trackingUrlPlaceholder": "Direct tracking link (optional)..."
+      "trackingUrlPlaceholder": "Direct tracking link (optional)...",
+      "updateProgressBtn": "Update Progress",
+      "updating": "Updating..."
     },
     "orders": {
       "colAction": "Action",
@@ -2046,6 +2053,7 @@
     "status": "Order Status",
     "subtotal": "Items Subtotal",
     "timeline": {
+      "title": "Order Timeline & History",
       "cancelled": "Cancelled",
       "delivered": "Delivered",
       "arrivedLocalDepot": "Arrived at Local Depot",

@@ -12,6 +12,8 @@ import { Check, Clock, Truck, Package, ExternalLink, XCircle, Download } from "l
 import InvoicePrintView from "./InvoicePrintView";
 import { isSafeUrl } from "@/shared/lib/safeUrl";
 import { MILESTONES, resolveMilestone, stepState } from "@/modules/account/lib/fulfillmentProgress";
+import { OrderTimelineHistory } from "@/modules/orders/components/ui/OrderTimelineHistory";
+import type { OrderStatusHistoryEntry } from "@/modules/orders/types";
 
 interface OrderItem {
   id: string;
@@ -49,6 +51,7 @@ interface Order {
   trackingNumber?: string | null;
   trackingUrl?: string | null;
   items: OrderItem[];
+  statusHistory?: OrderStatusHistoryEntry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -552,6 +555,9 @@ export default function OrderDetailsContent() {
               <p className="text-xs font-mono text-foreground truncate">{order.customerEmail}</p>
             </div>
           </div>
+
+          {/* Timeline & Status History */}
+          <OrderTimelineHistory history={order.statusHistory} createdAt={order.createdAt} />
         </div>
       </div>
     </div>

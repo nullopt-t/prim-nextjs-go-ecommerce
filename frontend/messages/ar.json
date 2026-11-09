@@ -617,11 +617,16 @@
       "orderPlaced": "تم تقديم الطلب بنجاح.",
       "paymentDetails": "تفاصيل الدفع",
       "placedOn": "تم الطلب في {date}",
+      "progressControlSubtitle": "تغيير حالة تجهيز الطلب وتسجيل رسائل وملاحظات الجدول الزمني",
+      "progressControlTitle": "تحديث تقدم الطلب والجدول الزمني",
       "qty": "الكمية: {count}",
       "saveTracking": "حفظ التتبع",
       "shipmentTracking": "تتبع الشحنة",
       "shippingAddress": "عنوان الشحن",
       "statusLabel": "الحالة:",
+      "statusMessage": "رسالة / ملاحظة الجدول الزمني",
+      "statusMessagePlaceholder": "أضف رسالة تحديث (مثل تم التجهيز، خرج للشحن، تم تسليم المندوب)...",
+      "targetStatus": "الحالة المستهدفة",
       "timeline": "سجل التجهيز والجدول الزمني",
       "title": "تفاصيل الطلب",
       "toast": {
@@ -636,7 +641,9 @@
       },
       "totalPaid": "إجمالي المدفوع",
       "trackingPlaceholder": "أدخل رقم التتبع...",
-      "trackingUrlPlaceholder": "رابط التتبع المباشر (اختياري)..."
+      "trackingUrlPlaceholder": "رابط التتبع المباشر (اختياري)...",
+      "updateProgressBtn": "تحديث التقدم",
+      "updating": "جارٍ التحديث..."
     },
     "orders": {
       "colAction": "إجراء",
@@ -2046,6 +2053,7 @@
     "status": "حالة الطلب",
     "subtotal": "إجمالي المنتجات",
     "timeline": {
+      "title": "الجدول الزمني وسجل الطلب",
       "cancelled": "ملغي",
       "delivered": "تم التسليم",
       "arrivedLocalDepot": "وصل إلى المستودع المحلي",
