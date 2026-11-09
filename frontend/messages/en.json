@@ -2427,6 +2427,8 @@
     "close": "Close",
     "contentPlaceholder": "What did you like or dislike? What did you use this product for?",
     "customerReviews": "Customer Reviews",
+    "signInPrompt": "Sign in to review this product",
+    "signInCta": "Sign In",
     "errors": {
       "alreadyExists": "A review has already been submitted for this purchase.",
       "notEligible": "You can only review products you have purchased and received (delivered).",

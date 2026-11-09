@@ -82,7 +82,8 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWishlist = async (productId: string, variantId?: string, productName?: string): Promise<boolean> => {
     if (!isAuthenticated) {
-      notify.error(t("toast.signInRequired"));
+      // No floating toast — the heart simply does nothing for guests;
+      // the sign-in prompt lives in the review form and auth flow.
       return false;
     }
 

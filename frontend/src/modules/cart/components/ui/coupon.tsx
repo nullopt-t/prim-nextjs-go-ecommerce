@@ -16,11 +16,13 @@ export default function Coupon() {
   const currency = settings?.currency?.trim() ?? "";
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleApply = async (couponCodeToApply?: string) => {
     const targetCode = (couponCodeToApply || code).trim();
+    setFormError(null);
     if (!targetCode) {
-      notify.error(t("coupon.errorEmpty", { defaultMessage: "Please enter a coupon code" }));
+      setFormError(t("coupon.errorEmpty", { defaultMessage: "Please enter a coupon code" }));
       return;
     }
 
@@ -34,7 +36,7 @@ export default function Coupon() {
       );
       setCode("");
     } else {
-      notify.error(apiErrorMessage(res, t("coupon.invalid", { defaultMessage: "Failed to apply coupon" })));
+      setFormError(apiErrorMessage(res, t("coupon.invalid", { defaultMessage: "Failed to apply coupon" })));
     }
   };
 
@@ -98,7 +100,11 @@ export default function Coupon() {
               />
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground">{t("couponCodeHint")}</p>
+          {formError ? (
+            <p role="alert" className="text-xs text-destructive">{formError}</p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">{t("couponCodeHint")}</p>
+          )}
         </>
     </div>
   );

@@ -40,6 +40,7 @@ export default function OrderLookupContent() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [fieldError, setFieldError] = useState<{ email?: string; orderNumber?: string }>({});
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,13 +53,14 @@ export default function OrderLookupContent() {
 
     setLoading(true);
     setSearched(true);
+    setLookupError(null);
     setOrder(null);
     try {
       const res = await orderService.lookupOrder(email.trim().toLowerCase(), orderNumber.trim());
       setOrder((res?.data ?? null) as Order | null);
-      if (!res?.data) notify.error(t("notFound"));
+      if (!res?.data) setLookupError(t("notFound"));
     } catch (err) {
-      notify.error(apiErrorMessage(err, t("lookupFailed")));
+      setLookupError(apiErrorMessage(err, t("lookupFailed")));
       setOrder(null);
     } finally {
       setLoading(false);
@@ -126,6 +128,16 @@ export default function OrderLookupContent() {
           {loading ? t("looking") : t("lookup")}
         </button>
       </form>
+
+      {lookupError && !loading && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <span className="mt-0.5 size-4 shrink-0 rounded-full border border-destructive/40" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">{lookupError}</p>
+            {!order && <p className="mt-1 text-xs opacity-80">{t("notFoundDesc")}</p>}
+          </div>
+        </div>
+      )}
 
       {searched && !loading && !order && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-10 text-center shadow-2xs">

@@ -58,7 +58,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const displayCurrency = useDisplayCurrency();
   const tReviews = useTranslations("reviews");
   const tProducts = useTranslations("products");
-  const { user } = useAuthContext();
+  const { user, isAuthenticated } = useAuthContext();
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id, initialProduct);
@@ -466,8 +466,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
 
   const handleAddReview = async (newReviewData: { rating: number; title: string; content: string }) => {
     if (!product?.id) {
-      notify.error(tReviews("missingProduct"));
-      return false;
+      return { success: false, error: tReviews("missingProduct") };
     }
 
     try {
@@ -504,22 +503,16 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
 
       setReviews((prev) => [newRev, ...prev]);
       setCanReview(false);
-      return true;
+      return { success: true };
     } catch (err) {
       const e = err as { response?: { data?: { code?: string }; status?: number } } | undefined;
       const errCode = e?.response?.data?.code;
       const statusCode = e?.response?.status;
 
-      if (errCode === "REVIEW_NOT_ELIGIBLE") {
-        notify.error(tReviews("errors.notEligible"));
-      } else if (errCode === "REVIEW_ALREADY_EXISTS" || statusCode === 409) {
-        notify.error(tReviews("errors.alreadyExists"));
-      } else if (statusCode === 401) {
-        notify.error(tReviews("errors.unauthorized"));
-      } else {
-        notify.error(tReviews("submitFailed"));
-      }
-      return false;
+      if (errCode === "REVIEW_NOT_ELIGIBLE") return { success: false, error: tReviews("errors.notEligible") };
+      if (errCode === "REVIEW_ALREADY_EXISTS" || statusCode === 409) return { success: false, error: tReviews("errors.alreadyExists") };
+      if (statusCode === 401) return { success: false, error: tReviews("errors.unauthorized") };
+      return { success: false, error: tReviews("submitFailed") };
     }
   };
 
@@ -654,6 +647,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               tierSavingsPerUnit={tier.savingsPerUnit}
               tierMinQuantity={tier.activeTier?.minQuantity}
               isAdding={isAdding}
+              isAuthenticated={isAuthenticated}
               isWishlisted={isWishlisted}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}

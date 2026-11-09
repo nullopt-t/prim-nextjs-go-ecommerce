@@ -26,6 +26,7 @@ interface ProductActionsProps {
   tierSavingsPerUnit?: number;
   tierMinQuantity?: number;
   isAdding: boolean;
+  isAuthenticated: boolean;
   isWishlisted: boolean;
   onAddToCart: () => void;
   onBuyNow: () => void;
@@ -53,6 +54,7 @@ export function ProductActions({
   tierSavingsPerUnit = 0,
   tierMinQuantity,
   isAdding,
+  isAuthenticated,
   isWishlisted,
   onAddToCart,
   onBuyNow,
@@ -227,22 +229,24 @@ export function ProductActions({
         )}
 
         <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onToggleWishlist}
-            className={`min-h-11 flex-1 cursor-pointer rounded-lg border px-4 py-2.5 text-xs font-medium transition-colors ${
-              isWishlisted
-                ? "border-foreground/30 bg-secondary text-foreground"
-                : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-            }`}
-          >
-            {isWishlisted ? t("actions.savedToWishlist") : t("actions.addToWishlist")}
-          </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={onToggleWishlist}
+              className={`min-h-11 flex-1 cursor-pointer rounded-lg border px-4 py-2.5 text-xs font-medium transition-colors ${
+                isWishlisted
+                  ? "border-foreground/30 bg-secondary text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+              }`}
+            >
+              {isWishlisted ? t("actions.savedToWishlist") : t("actions.addToWishlist")}
+            </button>
+          )}
 
           <button
             type="button"
             onClick={onShare}
-            className="min-h-11 cursor-pointer rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+            className="min-h-11 flex-1 cursor-pointer rounded-lg border border-border bg-background px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
           >
             {t("actions.share")}
           </button>

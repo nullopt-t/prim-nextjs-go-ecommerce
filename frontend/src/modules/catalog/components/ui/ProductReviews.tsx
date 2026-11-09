@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { Star } from "lucide-react";
+import { Star, AlertCircle } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
 import { CatalogImage } from "@/shared/ui/catalogImage";
 import { CustomSelect } from "@/shared/ui/customSelect";
+import { useAuthContext } from "@/modules/auth/model/authContext";
 
 interface ProductReviewsProps {
   stars?: number;
   reviewsCount?: number;
   reviews: ProductReview[];
   canReview?: boolean;
-  onAddReview: (review: { rating: number; title: string; content: string }) => Promise<boolean | void> | void;
+  onAddReview: (review: { rating: number; title: string; content: string }) => Promise<{ success: boolean; error?: string } | boolean | void> | void;
   onVoteHelpful: (reviewId: string | number) => void;
 }
 
@@ -26,15 +27,18 @@ export function ProductReviews({
   onVoteHelpful,
 }: ProductReviewsProps) {
   const t = useTranslations("reviews");
+  const { isAuthenticated } = useAuthContext();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ rating: 0, title: "", content: "" });
+  const [formError, setFormError] = useState<string | null>(null);
   const [ratingFilter, setRatingFilter] = useState<number | "all">("all");
   const [sort, setSort] = useState<ReviewSort>("newest");
   const [visibleCount, setVisibleCount] = useState(5);
 
   const handleSubmit = async () => {
     if (!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting) return;
+    setFormError(null);
     setIsSubmitting(true);
     try {
       const res = await onAddReview({
@@ -42,10 +46,16 @@ export function ProductReviews({
         title: form.title.trim(),
         content: form.content.trim(),
       });
-      if (res !== false) {
+      const ok = typeof res === "object" ? res.success : res !== false;
+      const errMsg = typeof res === "object" && !res.success ? res.error : null;
+      if (ok) {
         setForm({ rating: 0, title: "", content: "" });
         setIsFormOpen(false);
+      } else if (errMsg) {
+        setFormError(errMsg);
       }
+    } catch {
+      setFormError(t("submitFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -54,6 +64,7 @@ export function ProductReviews({
   const closeForm = () => {
     setIsFormOpen(false);
     setForm({ rating: 0, title: "", content: "" });
+    setFormError(null);
   };
 
   const loadedCount = reviews.length;
@@ -101,10 +112,13 @@ export function ProductReviews({
           </h2>
         </div>
 
-        {canReview && !isFormOpen && (
+        {isAuthenticated && canReview && !isFormOpen && (
           <button
             type="button"
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => {
+              setFormError(null);
+              setIsFormOpen(true);
+            }}
             className="w-fit cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             {t("writeReview")}
@@ -174,7 +188,7 @@ export function ProductReviews({
               </button>
             )}
 
-            {canReview && (
+            {isAuthenticated && canReview && (
               <div className="mt-6 border-t border-border pt-5">
                 <p className="text-sm font-semibold text-foreground">{t("reviewThisProduct")}</p>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -183,7 +197,10 @@ export function ProductReviews({
                 {!isFormOpen && (
                   <button
                     type="button"
-                    onClick={() => setIsFormOpen(true)}
+                    onClick={() => {
+                      setFormError(null);
+                      setIsFormOpen(true);
+                    }}
                     className="mt-3 w-full cursor-pointer rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary"
                   >
                     {t("writeShort")}
@@ -196,7 +213,7 @@ export function ProductReviews({
 
         {/* Review form and list */}
         <div className="flex flex-col gap-4 lg:col-span-8">
-          {isFormOpen && (
+          {isAuthenticated && canReview && isFormOpen && (
             <div className="rounded-2xl border border-accent-brand/30 bg-card p-5 shadow-sm sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -267,6 +284,13 @@ export function ProductReviews({
                     onChange={(e) => setForm({ ...form, content: e.target.value })}
                   />
                 </div>
+
+                {formError && (
+                  <div role="alert" className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    <span>{formError}</span>
+                  </div>
+                )}
 
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                   <button
@@ -344,10 +368,13 @@ export function ProductReviews({
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
               <p className="text-base font-bold text-foreground">{t("noReviewsYet")}</p>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t("beTheFirst")}</p>
-              {canReview && !isFormOpen && (
+              {isAuthenticated && canReview && !isFormOpen && (
                 <button
                   type="button"
-                  onClick={() => setIsFormOpen(true)}
+                  onClick={() => {
+                    setFormError(null);
+                    setIsFormOpen(true);
+                  }}
                   className="mt-5 cursor-pointer rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
                 >
                   {t("writeReview")}
@@ -414,18 +441,20 @@ export function ProductReviews({
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
-                        <button
-                          type="button"
-                          onClick={() => onVoteHelpful(review.id)}
-                          aria-pressed={Boolean(review.userVoted)}
-                          className={`cursor-pointer text-xs font-medium underline-offset-4 transition-colors hover:underline ${
-                            review.userVoted
-                              ? "text-accent-brand"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {t("helpful")}
-                        </button>
+                        {isAuthenticated && (
+                          <button
+                            type="button"
+                            onClick={() => onVoteHelpful(review.id)}
+                            aria-pressed={Boolean(review.userVoted)}
+                            className={`cursor-pointer text-xs font-medium underline-offset-4 transition-colors hover:underline ${
+                              review.userVoted
+                                ? "text-accent-brand"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {t("helpful")}
+                          </button>
+                        )}
                         {Number(review.helpful) > 0 && (
                           <span className="text-[11px] text-muted-foreground">
                             {t("peopleFoundHelpful", { count: review.helpful })}
