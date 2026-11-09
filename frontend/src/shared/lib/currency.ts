@@ -12,6 +12,26 @@ export const SUPPORTED_CURRENCIES = ["EGP", "USD", "EUR", "SAR", "AED"] as const
 
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
+export interface CurrencyMeta {
+	code: SupportedCurrency;
+	flag: string;
+	symbol: string;
+	country: string;
+}
+
+export const CURRENCY_METADATA: Record<SupportedCurrency, CurrencyMeta> = {
+	EGP: { code: "EGP", flag: "🇪🇬", symbol: "E£", country: "Egypt" },
+	USD: { code: "USD", flag: "🇺🇸", symbol: "$", country: "United States" },
+	EUR: { code: "EUR", flag: "🇪🇺", symbol: "€", country: "European Union" },
+	SAR: { code: "SAR", flag: "🇸🇦", symbol: "ر.س", country: "Saudi Arabia" },
+	AED: { code: "AED", flag: "🇦🇪", symbol: "د.إ", country: "United Arab Emirates" },
+};
+
+export function getCurrencyMeta(code?: string | null): CurrencyMeta {
+	const normalized = normalizeCurrency(code) ?? "EGP";
+	return CURRENCY_METADATA[normalized];
+}
+
 /** EGP value of one unit of each currency (display estimates). */
 const UNITS_PER_EGP: Record<SupportedCurrency, number> = {
 	EGP: 1,

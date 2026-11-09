@@ -1734,7 +1734,9 @@
       "SAR": "Saudi Riyal",
       "USD": "US Dollar",
       "approximate": "Prices shown in your selected currency are approximate.",
-      "label": "Currency"
+      "label": "Currency",
+      "modalSubtitle": "Choose your preferred currency for browsing. Checkout is processed in the store's primary currency.",
+      "modalTitle": "Select Currency"
     },
     "confirm": "Confirm",
     "errors": {
@@ -1794,6 +1796,7 @@
       "cart": "Shopping Cart",
       "clear": "Clear",
       "close": "Close",
+      "currency": "Currency",
       "dark": "Dark",
       "dismiss": "Dismiss",
       "groupAccount": "Account & Security",

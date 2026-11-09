@@ -18,3 +18,5 @@ export * from "./lazyImage";
 export * from "./announcementBanner";
 export * from "./maintenanceGate";
 export * from "./storeContactInfo";
+export * from "./currencyModal";
+export * from "./currencySwitcher";

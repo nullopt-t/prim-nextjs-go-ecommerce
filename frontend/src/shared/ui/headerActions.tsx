@@ -24,6 +24,7 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { NotificationsDropdown } from "@/shared/ui/notificationsDropdown";
 import { CurrencySwitcher } from "@/shared/ui/currencySwitcher";
+import { CurrencyModal } from "@/shared/ui/currencyModal";
 import { rememberLocaleChoice } from "@/shared/lib/localePreference";
 
 interface HeaderActionsProps {
@@ -44,6 +45,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	const isSettingsContext = context === "settings";
 
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	const cartCount = cartItems?.length || 0;
@@ -117,12 +119,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				</Link>
 			)}
 
-			{/* 1b. Currency switcher — desktop only; also available in mobile drawer */}
-			<div className="hidden sm:block">
-				<CurrencySwitcher variant="header" />
-			</div>
-
-			{/* 3. Notifications Center — desktop only; accessible via user menu on mobile */}
+			{/* 2. Notifications Center — desktop only; accessible via user menu on mobile */}
 			{isAuthenticated && (
 				<div className="hidden sm:block">
 					<NotificationsDropdown />
@@ -291,8 +288,17 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 							</div>
 						)}
 
-						{/* Preferences Section: Language & Theme */}
+						{/* Preferences Section: Currency, Language & Theme */}
 						<div className="my-1 border-t border-border/60 pt-1.5 px-1.5 space-y-1">
+							{/* Currency Switcher */}
+							<CurrencySwitcher
+								variant="menu-item"
+								onClick={() => {
+									setIsMenuOpen(false);
+									setIsCurrencyModalOpen(true);
+								}}
+							/>
+
 							{/* Language Switch */}
 							<button
 								type="button"
@@ -350,6 +356,12 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 					</div>
 				)}
 			</div>
+
+			{/* Currency Selection Popup Modal */}
+			<CurrencyModal
+				open={isCurrencyModalOpen}
+				onOpenChange={setIsCurrencyModalOpen}
+			/>
 		</div>
 	);
 }
