@@ -19,6 +19,18 @@ export interface CurrencyMeta {
 	country: string;
 }
 
+export interface BackendCurrency {
+	code: string;
+	name: string;
+	symbol: string;
+	flag: string;
+	decimals: number;
+	rateToEGP: number;
+	rateToBase: number;
+	isBase: boolean;
+	enabled: boolean;
+}
+
 export const CURRENCY_METADATA: Record<SupportedCurrency, CurrencyMeta> = {
 	EGP: { code: "EGP", flag: "🇪🇬", symbol: "E£", country: "Egypt" },
 	USD: { code: "USD", flag: "🇺🇸", symbol: "$", country: "United States" },
@@ -32,7 +44,7 @@ export function getCurrencyMeta(code?: string | null): CurrencyMeta {
 	return CURRENCY_METADATA[normalized];
 }
 
-/** EGP value of one unit of each currency (display estimates). */
+/** EGP value of one unit of each currency (display estimates, dynamically updated from backend). */
 const UNITS_PER_EGP: Record<SupportedCurrency, number> = {
 	EGP: 1,
 	USD: 48.5,
@@ -40,6 +52,24 @@ const UNITS_PER_EGP: Record<SupportedCurrency, number> = {
 	SAR: 12.9,
 	AED: 13.2,
 };
+
+/** Overlays live exchange rates fetched from the backend CurrencyService. */
+export function setBackendCurrencies(currencies: BackendCurrency[]) {
+	if (!currencies || !Array.isArray(currencies)) return;
+	for (const c of currencies) {
+		const code = normalizeCurrency(c.code);
+		const rate = c.rateToBase || c.rateToEGP;
+		if (code && typeof rate === "number" && rate > 0) {
+			UNITS_PER_EGP[code] = rate;
+		}
+	}
+}
+
+/** Returns the current rate to base (EGP) for a currency. */
+export function getCurrencyRate(code?: string | null): number {
+	const normalized = normalizeCurrency(code);
+	return normalized ? UNITS_PER_EGP[normalized] : 1.0;
+}
 
 export function isSupportedCurrency(code?: string | null): code is SupportedCurrency {
 	if (!code) return false;

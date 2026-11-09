@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	convertCurrency,
 	convertCurrencyRounded,
+	getCurrencyRate,
 	getStoredCurrency,
 	isSupportedCurrency,
 	normalizeCurrency,
 	rememberCurrencyChoice,
+	setBackendCurrencies,
 } from "./currency";
 
 const originalWindow = globalThis.window as unknown;
@@ -60,6 +62,43 @@ describe("convertCurrencyRounded", () => {
 		expect(raw).toBeGreaterThan(20);
 		expect(convertCurrencyRounded(970.23765, "EGP", "USD")).toBe(20);
 		expect(convertCurrencyRounded(970.23765, "EGP", "USD") <= 20).toBe(true);
+	});
+});
+
+describe("setBackendCurrencies", () => {
+	it("updates dynamic rates from backend service", () => {
+		setBackendCurrencies([
+			{
+				code: "USD",
+				name: "US Dollar",
+				symbol: "$",
+				flag: "🇺🇸",
+				decimals: 2,
+				rateToEGP: 50.0,
+				rateToBase: 50.0,
+				isBase: false,
+				enabled: true,
+			},
+		]);
+
+		expect(getCurrencyRate("USD")).toBe(50.0);
+		expect(convertCurrency(100, "USD", "EGP")).toBe(5000);
+		expect(convertCurrency(5000, "EGP", "USD")).toBe(100);
+
+		// Restore default rate for subsequent tests
+		setBackendCurrencies([
+			{
+				code: "USD",
+				name: "US Dollar",
+				symbol: "$",
+				flag: "🇺🇸",
+				decimals: 2,
+				rateToEGP: 48.5,
+				rateToBase: 48.5,
+				isBase: false,
+				enabled: true,
+			},
+		]);
 	});
 });
 

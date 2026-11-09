@@ -1,16 +1,22 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { settingsService, type PublicSettings } from "@/modules/settings/api/settingsService";
+import {
+	settingsService,
+	type PublicSettings,
+	type BackendCurrency,
+} from "@/modules/settings/api/settingsService";
 import { PUBLIC_SETTINGS_UPDATED_EVENT } from "@/shared/lib/settingsEvents";
 import {
 	getStoredCurrency,
 	rememberCurrencyChoice,
+	setBackendCurrencies,
 } from "@/shared/lib/currency";
 
 interface PublicSettingsContextValue {
 	/** The storefront settings, or null while loading / on failure. */
 	settings: PublicSettings | null;
+	currencies: BackendCurrency[];
 	loading: boolean;
 	/** Visitor-selected display currency; falls back to the settings currency. */
 	displayCurrency: string;
@@ -19,6 +25,7 @@ interface PublicSettingsContextValue {
 
 const PublicSettingsContext = createContext<PublicSettingsContextValue>({
 	settings: null,
+	currencies: [],
 	loading: true,
 	displayCurrency: "",
 	setDisplayCurrency: () => {},
@@ -34,6 +41,7 @@ export function PublicSettingsProvider({
 	initialDisplayCurrency?: string;
 }) {
 	const [settings, setSettings] = useState<PublicSettings | null>(initialSettings);
+	const [currencies, setCurrencies] = useState<BackendCurrency[]>([]);
 	const [loading, setLoading] = useState(initialSettings === null);
 	// SSR renders the store's base currency or visitor's cookie currency;
 	// any localStorage choice syncs on mount without flash.
@@ -43,8 +51,17 @@ export function PublicSettingsProvider({
 
 	const loadSettings = useCallback(async () => {
 		try {
-			const res = await settingsService.getPublicSettings();
-			setSettings(res?.data ?? null);
+			const [settingsRes, currenciesRes] = await Promise.allSettled([
+				settingsService.getPublicSettings(),
+				settingsService.getCurrencies(),
+			]);
+			if (settingsRes.status === "fulfilled" && settingsRes.value?.data) {
+				setSettings(settingsRes.value.data);
+			}
+			if (currenciesRes.status === "fulfilled" && currenciesRes.value?.data) {
+				setCurrencies(currenciesRes.value.data);
+				setBackendCurrencies(currenciesRes.value.data);
+			}
 		} catch {
 			// Storefront must keep working if settings cannot be loaded; the UI
 			// simply falls back to its built-in defaults.
@@ -88,7 +105,7 @@ export function PublicSettingsProvider({
 
 	return (
 		<PublicSettingsContext.Provider
-			value={{ settings, loading, displayCurrency, setDisplayCurrency }}
+			value={{ settings, currencies, loading, displayCurrency, setDisplayCurrency }}
 		>
 			{children}
 		</PublicSettingsContext.Provider>
@@ -97,6 +114,12 @@ export function PublicSettingsProvider({
 
 export function usePublicSettings() {
 	return useContext(PublicSettingsContext);
+}
+
+/** Supported currencies and live exchange rates from the backend. */
+export function useCurrencies(): BackendCurrency[] {
+	const { currencies } = usePublicSettings();
+	return currencies;
 }
 
 /** Display currency from public settings; "" while settings are unavailable. */

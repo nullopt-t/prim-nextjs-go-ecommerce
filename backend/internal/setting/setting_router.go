@@ -37,6 +37,8 @@ func (r *SettingRouter) MapRoutes(vgroup *gin.RouterGroup) {
 		admin.GET("", r.handler.GetSettings)
 		// PUT /admin/settings mutates global storefront configuration.
 		admin.PUT("", r.handler.UpdateSettings)
+		// PUT /admin/settings/currencies updates custom currency exchange rates.
+		admin.PUT("/currencies", r.handler.UpdateCurrencies)
 	}
 }
 

@@ -24,6 +24,18 @@ export interface PublicSettings {
   maintenanceMessage: string;
 }
 
+export interface BackendCurrency {
+  code: string;
+  name: string;
+  symbol: string;
+  flag: string;
+  decimals: number;
+  rateToEGP: number;
+  rateToBase: number;
+  isBase: boolean;
+  enabled: boolean;
+}
+
 export const settingsService = {
   /**
    * Fetch the non-sensitive storefront settings (identity, currency,
@@ -31,6 +43,15 @@ export const settingsService = {
    */
   getPublicSettings: async (): Promise<{ data: PublicSettings }> => {
     return api.get<{ data: PublicSettings }>("/api/v1/settings/public", {
+      cache: "no-store",
+    });
+  },
+
+  /**
+   * Fetch supported currencies and live exchange rates from the backend.
+   */
+  getCurrencies: async (): Promise<{ data: BackendCurrency[] }> => {
+    return api.get<{ data: BackendCurrency[] }>("/api/v1/settings/currencies", {
       cache: "no-store",
     });
   },
