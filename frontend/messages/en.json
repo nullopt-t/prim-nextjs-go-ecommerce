@@ -1720,6 +1720,13 @@
   },
   "common": {
     "cancel": "Cancel",
+    "trustBar": {
+      "secureCheckout": "100% Secure Checkout",
+      "cards": "Cards",
+      "cod": "Cash on Delivery",
+      "freeDelivery": "Free delivery over {amount}",
+      "deliveryDays": "Delivery in {days}"
+    },
     "currency": {
       "AED": "UAE Dirham",
       "EGP": "Egyptian Pound",
@@ -1882,7 +1889,44 @@
     },
     "scrollLeft": "Scroll left",
     "scrollRight": "Scroll right",
-    "topRatedItems": "Top rated items and bestselling gear"
+    "topRatedItems": "Top rated items and bestselling gear",
+    "valueProps": {
+      "shippingTitle": "Free Shipping",
+      "shippingDescription": "Fast, tracked delivery on orders over a threshold.",
+      "secureTitle": "Secure Payments",
+      "secureDescription": "Encrypted checkout with trusted payment partners.",
+      "returnsTitle": "Easy Returns",
+      "returnsDescription": "Hassle-free returns within 30 days of delivery.",
+      "fastTitle": "Fast Delivery",
+      "fastDescription": "Same-week delivery to most areas, with live tracking."
+    },
+    "newArrivals": {
+      "title": "New Arrivals",
+      "subtitle": "The latest products added to the store",
+      "shopNow": "Shop now"
+    },
+    "onSale": {
+      "title": "On Sale",
+      "subtitle": "Deals and discounted picks, while they last",
+      "badge": "Sale",
+      "shopNow": "Shop now"
+    },
+    "brands": {
+      "title": "Shop by Brand",
+      "subtitle": "Trusted brands, one storefront",
+      "productCount": "{count} products"
+    },
+    "testimonials": {
+      "title": "Customer Stories",
+      "subtitle": "Real reviews from verified buyers",
+      "verifiedBuyer": "Verified Buyer",
+      "item1Name": "Mona K.",
+      "item1Quote": "Ordering was fast and the product arrived exactly as described. Will shop again.",
+      "item2Name": "Omar A.",
+      "item2Quote": "Great prices and easy checkout. The delivery tracking kept me updated the whole way.",
+      "item3Name": "Sara M.",
+      "item3Quote": "Customer support helped me with the size exchange in minutes. Highly recommended."
+    }
   },
   "meta": {
     "auth": {
@@ -2295,6 +2339,10 @@
     }
   },
   "products": {
+    "trustPill": {
+      "secureCheckout": "Secure checkout",
+      "deliveryDays": "Delivery in {days}"
+    },
     "actions": {
       "addToCart": "Add to Cart",
       "addToWishlist": "Add to Wishlist",

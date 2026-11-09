@@ -1720,6 +1720,13 @@
   },
   "common": {
     "cancel": "إلغاء",
+    "trustBar": {
+      "secureCheckout": "دفع آمن 100%",
+      "cards": "بطاقات",
+      "cod": "الدفع نقداً",
+      "freeDelivery": "توصيل مجاني فوق {amount}",
+      "deliveryDays": "التوصيل خلال {days}"
+    },
     "currency": {
       "AED": "درهم إماراتي",
       "EGP": "جنيه مصري",
@@ -1882,7 +1889,44 @@
     },
     "scrollLeft": "التمرير إلى اليسار",
     "scrollRight": "التمرير إلى اليمين",
-    "topRatedItems": "أفضل المنتجات ذات التقييم الأعلى والأكثر مبيعًا"
+    "topRatedItems": "أفضل المنتجات ذات التقييم الأعلى والأكثر مبيعًا",
+    "valueProps": {
+      "shippingTitle": "الشحن المجاني",
+      "shippingDescription": "توصيل سريع مع تتبع للطلبات فوق حد معين.",
+      "secureTitle": "مدفوعات آمنة",
+      "secureDescription": "دفع مشفّر مع شركاء دفع موثوقين.",
+      "returnsTitle": "إرجاع سهل",
+      "returnsDescription": "إرجاع بلا تعقيد خلال 30 يومًا من الاستلام.",
+      "fastTitle": "توصيل سريع",
+      "fastDescription": "توصيل خلال نفس الأسبوع لمعظم المدن مع تتبع مباشر."
+    },
+    "newArrivals": {
+      "title": "وصل حديثًا",
+      "subtitle": "أحدث المنتجات المضافة إلى المتجر",
+      "shopNow": "تسوق الآن"
+    },
+    "onSale": {
+      "title": "عروض وتخفيضات",
+      "subtitle": "صفقات وعروض مخفضة لفترة محدودة",
+      "badge": "خصم",
+      "shopNow": "تسوق الآن"
+    },
+    "brands": {
+      "title": "تسوق حسب العلامة التجارية",
+      "subtitle": "علامات تجارية موثوقة في متجر واحد",
+      "productCount": "{count} منتجات"
+    },
+    "testimonials": {
+      "title": "قصص العملاء",
+      "subtitle": "تقييمات حقيقية من مشترين موثّقين",
+      "verifiedBuyer": "مشتري موثّق",
+      "item1Name": "منى ك.",
+      "item1Quote": "كان الطلب سريعًا ووصل المنتج تمامًا كما في الوصف. سأشتري مرة أخرى.",
+      "item2Name": "عمر أ.",
+      "item2Quote": "أسعار ممتازة ودفع سهل. تتبع التوصيل أبقاني على اطلاع طوال الرحلة.",
+      "item3Name": "سارة م.",
+      "item3Quote": "ساعدني الدعم الفني في استبدال المقاس خلال دقائق. أنصح به بشدة."
+    }
   },
   "meta": {
     "auth": {
@@ -2295,6 +2339,10 @@
     }
   },
   "products": {
+    "trustPill": {
+      "secureCheckout": "دفع آمن",
+      "deliveryDays": "التوصيل خلال {days}"
+    },
     "actions": {
       "addToCart": "أضف إلى السلة",
       "addToWishlist": "أضف إلى المفضلة",

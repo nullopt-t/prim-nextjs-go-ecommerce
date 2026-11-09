@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Bell } from "lucide-react";
+import { Bell, ShieldCheck, Clock } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
@@ -215,6 +215,19 @@ export function ProductActions({
           >
             {t("actions.buyNow")}
           </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">
+            <ShieldCheck className="size-3.5" aria-hidden="true" />
+            {t("trustPill.secureCheckout")}
+          </span>
+          {settings?.estimatedDeliveryDays?.trim() && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">
+              <Clock className="size-3.5" aria-hidden="true" />
+              {t("trustPill.deliveryDays", { days: settings.estimatedDeliveryDays })}
+            </span>
+          )}
         </div>
 
         {!isVariantInStock && onNotifyMe && (
