@@ -13,7 +13,7 @@ import { useTranslations } from "next-intl";
 
 export function VerifyView() {
   const router = useRouter();
-  const { verifyChallenge, resendChallenge } = useAuthContext();
+  const { verifyChallenge, resendChallenge, refreshUser } = useAuthContext();
   const t = useTranslations("auth");
   const { cartItems } = useCart();
   const [isLoading, setIsLoading] = useState(false);
@@ -73,6 +73,21 @@ export function VerifyView() {
         const destination = safeRedirectPath(searchParams.get("redirect"));
         router.replace(destination);
       } else {
+        // If the challenge was already verified, check if session is active
+        if (typeof res.error === "string" && res.error.toLowerCase().includes("already verified")) {
+          const activeUser = await refreshUser();
+          if (activeUser) {
+            notify.success(t("verify.welcomeBack"));
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("identifier");
+              sessionStorage.removeItem("merge_cart");
+            }
+            const searchParams = new URLSearchParams(window.location.search);
+            const destination = safeRedirectPath(searchParams.get("redirect"));
+            router.replace(destination);
+            return;
+          }
+        }
         notify.error(apiErrorMessage(res, t("verify.invalidCode")));
       }
     } catch {

@@ -31,11 +31,13 @@ export interface ApiRequestOptions extends RequestInit {
 }
 
 export const getBaseUrl = () => {
-  // One env variable for the API base URL: NEXT_PUBLIC_API_URL. It is available
-  // on both the server and the browser, so client and server API calls use the
-  // same value. The browser calls the API on its own origin, with credentialed
-  // requests, so the backend must allow this origin via CORS.
-  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+  // In the browser, always use relative URLs (empty base) so all requests
+  // route through Next.js rewrites to the API. This guarantees first-party cookie
+  // handling regardless of whether the user accesses via localhost, LAN IP, or a custom domain.
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  return process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 };
 
 const getActiveLocale = () => {

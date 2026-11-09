@@ -99,11 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...(payload.mergeCart !== undefined ? { merge_cart: payload.mergeCart } : {}),
       });
       // The backend returns 204 No Content on verify, so the session must be
-      // re-read before success can be claimed. If the session cookie was not
-      // accepted (e.g. cross-site cookie rejection), /me fails and returning
-      // success would send the user to a guarded page that bounces them back
-      // to /auth, which looks like a frozen page.
-      const loaded = await fetchUser();
+      // re-read before success can be claimed.
+      let loaded = await fetchUser();
+      if (!loaded) {
+        // Brief pause in case the browser cookie jar takes a moment to process Set-Cookie
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        loaded = await fetchUser();
+      }
       if (!loaded) {
         return { success: false, error: "Session could not be established; please try again." };
       }
