@@ -516,7 +516,7 @@ export function SellerProducts() {
               </ResponsiveTable>
             </div>
             {meta && meta.totalPages > 1 ? (
-              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
                 <span className="text-xs text-muted-foreground">
                   {t("orders.pagination", { page: meta.page, total: meta.totalPages, count: meta.totalItems })}
                 </span>

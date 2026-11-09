@@ -1255,7 +1255,7 @@ export function SellerProductWizard() {
 							{reviewRows.map((row) => (
 								<div key={row.label} className="flex items-center justify-between gap-4 px-4 py-2.5">
 									<dt className="text-muted-foreground">{row.label}</dt>
-									<dd className="truncate text-end font-medium text-foreground">{row.value}</dd>
+									<dd className="min-w-0 truncate text-end font-medium text-foreground">{row.value}</dd>
 								</div>
 							))}
 						</dl>

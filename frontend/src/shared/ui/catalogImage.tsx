@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { normalizeMediaUrl } from "@/shared/lib/media";
+import { normalizeMediaUrl, PLACEHOLDER_PRODUCT_IMAGE } from "@/shared/lib/media";
 
 interface CatalogImageProps {
 	src?: string;
@@ -44,6 +45,24 @@ export function CatalogImage({
 	onError,
 	...rest
 }: CatalogImageProps) {
+	const [currentSrc, setCurrentSrc] = useState(src ?? PLACEHOLDER_PRODUCT_IMAGE);
+	const [failed, setFailed] = useState(false);
+
+	useEffect(() => {
+		setCurrentSrc(src ?? PLACEHOLDER_PRODUCT_IMAGE);
+		setFailed(false);
+	}, [src]);
+
+	// Graceful fallback for unreachable MinIO links: swap to the local
+	// placeholder instead of a broken icon / layout-breaking alt text.
+	const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+		if (!failed && currentSrc !== PLACEHOLDER_PRODUCT_IMAGE) {
+			setFailed(true);
+			setCurrentSrc(PLACEHOLDER_PRODUCT_IMAGE);
+		}
+		if (onError) onError(e);
+	};
+
 	if (!src) return null;
 
 	return (
@@ -51,7 +70,7 @@ export function CatalogImage({
 			loader={({ src: loaderSrc }: { src: string }) =>
 				normalizeMediaUrl(loaderSrc)
 			}
-			src={src}
+			src={currentSrc}
 			alt={alt}
 			fill={fill}
 			width={width}
@@ -61,7 +80,7 @@ export function CatalogImage({
 			loading={loading}
 			style={style}
 			onLoad={onLoad}
-			onError={onError}
+			onError={handleError}
 			{...rest}
 		/>
 	);

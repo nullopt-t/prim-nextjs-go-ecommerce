@@ -60,8 +60,21 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 
 	cleanPublicURL := strings.TrimSpace(publicURL)
 	cleanPublicURL = strings.TrimRight(cleanPublicURL, "/")
-	if cleanPublicURL != "" && !strings.Contains(cleanPublicURL, "://") {
+	if cleanPublicURL != "" && !strings.Contains(cleanPublicURL, "://") && !strings.HasPrefix(cleanPublicURL, "/") {
 		cleanPublicURL = "http://" + cleanPublicURL
+	}
+
+	// Align internal container hosts (e.g. "minio:9000") to public browser endpoints ("localhost:9000")
+	// so assets served to browsers load without ERR_CONNECTION_REFUSED.
+	if cleanPublicURL != "" && strings.Contains(cleanPublicURL, "://") {
+		if u, err := url.Parse(cleanPublicURL); err == nil && u.Hostname() == "minio" {
+			port := u.Port()
+			if port == "" {
+				port = "9000"
+			}
+			u.Host = "localhost:" + port
+			cleanPublicURL = u.String()
+		}
 	}
 
 	minioClient, err := minio.New(trimmedEndpoint, &minio.Options{

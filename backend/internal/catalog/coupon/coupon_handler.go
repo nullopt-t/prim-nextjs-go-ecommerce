@@ -3,6 +3,7 @@ package coupon
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -108,6 +109,9 @@ func (h *CouponHandler) ListCoupons(c *gin.Context) {
 	if st := c.Query("status"); st != "" {
 		s := model.CouponStatus(st)
 		filter.Status = &s
+	}
+	if sr := strings.TrimSpace(c.Query("search")); sr != "" {
+		filter.Search = &sr
 	}
 
 	cursor, err := q.Keyset()

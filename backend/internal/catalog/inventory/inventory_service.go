@@ -784,12 +784,12 @@ func (s *InventoryService) CheckAvailability(
 }
 
 // ListInventoryOverview retrieves an aggregated overview of product variants and stock levels with cursor pagination.
-func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
+func (s *InventoryService) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset, search ...string) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	var items []InventoryStockItem
 	var page *pagination.CursorPage
 	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, page, err = s.repo.ListInventoryOverview(ctx, limit, cursor)
+		items, page, err = s.repo.ListInventoryOverview(ctx, limit, cursor, search...)
 		return err
 	})
 	if err != nil {

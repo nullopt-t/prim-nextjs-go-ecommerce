@@ -12,14 +12,14 @@ export default function FilterCheckbox({
   onChange,
 }: FilterCheckboxProps) {
   return (
-    <label className="flex gap-2.5 items-center group cursor-pointer select-none">
+    <label className="flex gap-2.5 items-center group cursor-pointer select-none min-w-0">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange?.(e.target.checked)}
-        className="size-4 accent-accent-brand rounded"
+        className="size-4 shrink-0 accent-accent-brand rounded"
       />
-      <span className="text-muted-foreground group-hover:text-accent-brand text-txt-sm md:text-txt-md transition-colors">
+      <span className="text-muted-foreground group-hover:text-accent-brand text-txt-sm md:text-txt-md transition-colors break-words min-w-0">
         {labelTxt}
       </span>
     </label>

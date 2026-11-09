@@ -100,8 +100,8 @@ export function SellerRegister() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-xl px-4 py-8">
-      <div className="space-y-6 rounded-2xl border border-border bg-background p-6 shadow-xs">
+    <div className="mx-auto w-full max-w-xl px-3 sm:px-4 py-6 sm:py-8">
+      <div className="space-y-6 rounded-2xl border border-border bg-background p-4 sm:p-6 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <div className="flex size-10 items-center justify-center rounded-2xl bg-accent-brand/10 text-accent-brand">

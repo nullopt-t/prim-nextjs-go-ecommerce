@@ -3,6 +3,7 @@ package sellers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +37,14 @@ type SellerOrderItemResponse struct {
 	CommissionAmount int64 `json:"commissionAmount"`
 	// Product/variant title from the checkout snapshot, when present.
 	Title string `json:"title,omitempty"`
+	// Fulfillment status for this item: pending, shipped, delivered.
+	FulfillmentStatus model.FulfillmentStatus `json:"fulfillmentStatus"`
+	// Carrier tracking number.
+	TrackingNumber *string `json:"trackingNumber,omitempty"`
+	// Logistics carrier name (e.g. "Aramex").
+	Carrier *string `json:"carrier,omitempty"`
+	// Timestamp when marked shipped.
+	ShippedAt *string `json:"shippedAt,omitempty"`
 }
 
 // SellerOrderResponse is the merchant-facing order projection: order state
@@ -89,6 +98,15 @@ func toSellerOrderResponse(o *model.Order) SellerOrderResponse {
 		lineTotal := item.PriceAtPurchase * int64(item.Quantity)
 		res.Subtotal += lineTotal
 		res.Earnings += item.SellerEarning
+		var shippedAt *string
+		if item.ShippedAt != nil {
+			s := item.ShippedAt.UTC().Format(time.RFC3339)
+			shippedAt = &s
+		}
+		fulfillmentStatus := item.FulfillmentStatus
+		if fulfillmentStatus == "" {
+			fulfillmentStatus = model.FulfillmentStatusPending
+		}
 		res.Items = append(res.Items, SellerOrderItemResponse{
 			ID:                item.ID,
 			VariantID:         item.VariantID,
@@ -99,6 +117,10 @@ func toSellerOrderResponse(o *model.Order) SellerOrderResponse {
 			CommissionRateBps: item.CommissionRateBps,
 			CommissionAmount:  item.CommissionAmount,
 			Title:             snapshotTitle(item.ProductSnapshot),
+			FulfillmentStatus: fulfillmentStatus,
+			TrackingNumber:    item.TrackingNumber,
+			Carrier:           item.Carrier,
+			ShippedAt:         shippedAt,
 		})
 	}
 	return res
@@ -161,6 +183,115 @@ func (h *Handler) ListMyOrders(c *gin.Context) {
 		Data: responses,
 		Meta: result.Page,
 	})
+}
+
+// FulfillMyOrderRequest is the JSON body for fulfilling specific line items or advancing one of the seller's orders.
+type FulfillMyOrderRequest struct {
+	// Specific item IDs to fulfill. When empty, all items owned by the seller on this order are fulfilled.
+	ItemIDs []string `json:"item_ids,omitempty"`
+	// CamelCase alias for item_ids.
+	ItemIDsAlt []string `json:"itemIds,omitempty"`
+	// Carrier tracking number.
+	TrackingNumber string `json:"tracking_number,omitempty"`
+	// CamelCase alias for tracking_number.
+	TrackingNumAlt string `json:"trackingNumber,omitempty"`
+	// Logistics carrier name, e.g. "Aramex".
+	Carrier string `json:"carrier,omitempty"`
+	// Target lifecycle status (optional, defaults to shipped).
+	Status *model.OrderStatus `json:"status,omitempty"`
+	// Direct carrier tracking URL.
+	TrackingURL *string `json:"trackingUrl,omitempty" binding:"omitempty,url"`
+	// Optional note recorded in the status history.
+	Notes *string `json:"notes,omitempty"`
+}
+
+// FulfillMyOrder godoc
+// @Summary      Fulfill one of my orders
+// @Description  Fulfills specific line items or advances one of the authenticated seller's orders to processing or shipped and records the tracking details.
+// @Tags         Seller
+// @Accept       json
+// @Produce      json
+// @Param        id      path  string                   true  "Order UUID" format(uuid)
+// @Param        body    body  FulfillMyOrderRequest    true  "Fulfillment details"
+// @Success      200     {object} api.DataResponse{data=SellerOrderResponse}
+// @Failure      400     {object} api.BadReqResponse "Invalid transition or missing tracking number"
+// @Failure      401     {object} api.UnauthorizedErrorResponse
+// @Failure      404     {object} api.NotFoundErrorResponse "Seller not found or order not yours"
+// @Router       /seller/orders/{id}/fulfill [post]
+// @Security     SessionAuth
+func (h *Handler) FulfillMyOrder(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
+		return
+	}
+
+	orderID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field: "id", Constraint: "uuid", Message: "invalid order id",
+		}))
+		return
+	}
+
+	var body FulfillMyOrderRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		validation.ValidationError(c, err)
+		return
+	}
+
+	rawItemIDs := body.ItemIDs
+	if len(rawItemIDs) == 0 && len(body.ItemIDsAlt) > 0 {
+		rawItemIDs = body.ItemIDsAlt
+	}
+
+	trackingNumber := strings.TrimSpace(body.TrackingNumber)
+	if trackingNumber == "" && body.TrackingNumAlt != "" {
+		trackingNumber = strings.TrimSpace(body.TrackingNumAlt)
+	}
+
+	carrier := strings.TrimSpace(body.Carrier)
+
+	var itemIDs []uuid.UUID
+	for _, raw := range rawItemIDs {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			continue
+		}
+		parsed, err := uuid.Parse(trimmed)
+		if err != nil {
+			_ = c.Error(apierr.BadRequestError("Invalid item ID: must be a valid UUID").WithCode(apierr.CodeInvalidInput))
+			return
+		}
+		itemIDs = append(itemIDs, parsed)
+	}
+
+	var order *model.Order
+	if len(itemIDs) > 0 || carrier != "" || (body.Status == nil && trackingNumber != "") {
+		order, err = h.service.FulfillOwnOrderItems(c.Request.Context(), userID, orderID, itemIDs, trackingNumber, carrier)
+	} else {
+		status := model.OrderStatusShipped
+		if body.Status != nil {
+			status = *body.Status
+		}
+		var carrierPtr *string
+		if carrier != "" {
+			carrierPtr = &carrier
+		}
+		order, err = h.service.FulfillOwnOrder(c.Request.Context(), userID, orderID, FulfillOwnOrderInput{
+			Status:         status,
+			TrackingNumber: trackingNumber,
+			Carrier:        carrierPtr,
+			TrackingURL:    body.TrackingURL,
+			Notes:          body.Notes,
+		})
+	}
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.DataResponse{Data: toSellerOrderResponse(order)})
 }
 
 // GetMyOrder godoc

@@ -491,6 +491,16 @@ func (r *ProductRepository) List(
 		argIdx++
 	}
 
+	if q.InStock != nil && *q.InStock {
+		// Same salable-stock expression as the select's stock_quantity so the
+		// count and the rows agree on what "in stock" means.
+		whereClauses = append(whereClauses, `GREATEST(
+			COALESCE((SELECT SUM(il.quantity) FROM product_variants pv_all JOIN inventory_ledgers il ON il.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL), 0) -
+			COALESCE((SELECT SUM(ir.quantity) FROM product_variants pv_all JOIN inventory_reservations ir ON ir.variant_id = pv_all.id WHERE pv_all.product_id = p.id AND pv_all.deleted_at IS NULL AND ir.released_at IS NULL AND ir.expires_at > now()), 0),
+			0
+		) > 0`)
+	}
+
 	if len(q.AttributeFilters) > 0 {
 		// Filter products where at least one active variant satisfies all attribute criteria.
 		// Variant attributes are stored as jsonb (e.g. {"color":"Black","size":"M"}).
@@ -515,7 +525,10 @@ func (r *ProductRepository) List(
 
 	search := strings.TrimSpace(q.Search)
 	if search != "" {
-		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d)", argIdx, argIdx, argIdx, argIdx))
+		// No dedicated barcode column exists yet, so search matches variant SKU
+		// via an EXISTS subquery over active variants. The subquery alias must
+		// differ from the select's `pv` (default-variant join) to avoid shadowing.
+		whereClauses = append(whereClauses, fmt.Sprintf("(p.title ILIKE $%d OR p.slug ILIKE $%d OR b.name ILIKE $%d OR c.name ILIKE $%d OR EXISTS (SELECT 1 FROM product_variants pv_search WHERE pv_search.product_id = p.id AND pv_search.deleted_at IS NULL AND pv_search.sku ILIKE $%d))", argIdx, argIdx, argIdx, argIdx, argIdx))
 		args = append(args, "%"+search+"%")
 		argIdx++
 	}

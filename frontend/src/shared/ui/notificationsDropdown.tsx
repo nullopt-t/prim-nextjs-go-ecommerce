@@ -103,7 +103,7 @@ export function NotificationsDropdown() {
         onClick={handleToggle}
         aria-label={t("notifications")}
         aria-expanded={isOpen}
-        className={`size-9 sm:size-10 rounded-xl transition-all relative flex items-center justify-center cursor-pointer border shadow-2xs ${
+        className={`size-8 sm:size-10 shrink-0 rounded-xl transition-all relative flex items-center justify-center cursor-pointer border shadow-2xs ${
           isOpen
             ? "border-accent-brand/60 bg-secondary/80 text-foreground"
             : "border-border/40 text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 hover:border-accent-brand/40"

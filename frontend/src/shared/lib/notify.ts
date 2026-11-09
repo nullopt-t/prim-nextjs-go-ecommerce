@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { getErrorMessageByCode } from "@/shared/i18n/errors";
 
 /**
  * Centralized toast helpers.
@@ -32,30 +33,70 @@ export const notify = {
  * single human-readable message, falling back to `fallback` when nothing
  * useful is present.
  *
+ * Looks up error translations by canonical error code first (e.g., INSUFFICIENT_INVENTORY,
+ * INVALID_ORDER_STATUS, COUPON_NOT_FOUND, UNAUTHORIZED, INVALID_CREDENTIALS)
+ * before falling back to raw backend strings or fallback message.
+ *
  * Handles:
- * - `Error` thrown by `@/shared/api/client` (`.message` holds the server message)
- * - service result objects that return `{ error }` instead of throwing
- * - plain strings
- * - axios-style `{ response: { data: { message | error } } }`
+ * - `Error` thrown by `@/shared/api/client` (`.code` and `.message`)
+ * - service result objects that return `{ code, error }` instead of throwing
+ * - plain strings (either error codes or messages)
+ * - axios-style `{ response: { data: { code, message, error } } }`
  */
-export function apiErrorMessage(err: unknown, fallback: string): string {
+export function apiErrorMessage(err: unknown, fallback: string, locale?: string): string {
   if (typeof err === "string") {
-    return err.trim() || fallback;
+    const trimmed = err.trim();
+    const translated = getErrorMessageByCode(trimmed, locale);
+    if (translated) return translated;
+    return trimmed || fallback;
   }
 
   if (err && typeof err === "object") {
     const e = err as Record<string, unknown>;
-    const response = (e.response as { data?: { message?: string; error?: string } } | undefined)?.data;
-    const candidates = [
+    const response = (e.response as { data?: { code?: string; message?: string; error?: string } } | undefined)?.data;
+    const dataObj = e.data as { code?: string; message?: string; error?: string } | undefined;
+
+    // 1. Try resolving translated message via canonical error code
+    const codeCandidates = [
+      e.code,
+      response?.code,
+      dataObj?.code,
+      e.errorCode,
+      e.error_code,
+    ];
+
+    for (const code of codeCandidates) {
+      if (typeof code === "string" && code.trim()) {
+        const translated = getErrorMessageByCode(code, locale);
+        if (translated) {
+          return translated;
+        }
+      }
+    }
+
+    // 2. Check if error string itself is an error code
+    const rawStringCandidates = [
       e.error as string | undefined,
       e.message as string | undefined,
       response?.message,
       response?.error,
+      dataObj?.message,
+      dataObj?.error,
     ];
 
-    for (const candidate of candidates) {
+    for (const candidate of rawStringCandidates) {
       if (typeof candidate === "string" && candidate.trim()) {
-        return candidate;
+        const translated = getErrorMessageByCode(candidate.trim(), locale);
+        if (translated) {
+          return translated;
+        }
+      }
+    }
+
+    // 3. Fall back to raw backend message
+    for (const candidate of rawStringCandidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
       }
     }
   }

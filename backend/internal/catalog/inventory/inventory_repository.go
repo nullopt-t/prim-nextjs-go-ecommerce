@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -735,7 +736,7 @@ type InventoryLedgerItem struct {
 	CreatedAt    time.Time `json:"createdAt"`
 }
 
-func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset) ([]InventoryStockItem, *pagination.CursorPage, error) {
+func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, limit int, cursor *pagination.Keyset, search ...string) ([]InventoryStockItem, *pagination.CursorPage, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -770,6 +771,13 @@ func (r *InventoryRepository) ListInventoryOverview(ctx context.Context, limit i
 	`
 	args := []any{}
 	i := 1
+
+	if len(search) > 0 && strings.TrimSpace(search[0]) != "" {
+		s := "%" + strings.TrimSpace(search[0]) + "%"
+		query += fmt.Sprintf(" AND (p.title ILIKE $%d OR pv.sku ILIKE $%d OR pv.title ILIKE $%d)", i, i, i)
+		args = append(args, s)
+		i++
+	}
 
 	keysetClause, keysetArgs := pagination.KeysetClause("pv", cursor, i)
 	query += keysetClause

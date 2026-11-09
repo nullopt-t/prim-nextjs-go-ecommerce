@@ -47,14 +47,25 @@ describe("server catalog fetchers", () => {
 		});
 	});
 
-	it("getProducts serializes attribute facets as comma-separated key:value pairs", async () => {
+	it("getProducts serializes attribute facets as repeated key:value params", async () => {
 		respondWith({ data: [] });
 
 		await getProducts({ pageSize: 24, attributes: { color: "black", size: "XL" } });
 
 		const [url] = fetchMock.mock.calls[0];
 		expect(url).toBe(
-			"http://api:8081/api/v1/products?pageSize=24&attribute=color%3Ablack%2Csize%3AXL",
+			"http://api:8081/api/v1/products?pageSize=24&attribute=color%3Ablack&attribute=size%3AXL",
+		);
+	});
+
+	it("getProducts sends prices in minor units and backend sort syntax", async () => {
+		respondWith({ data: [] });
+
+		await getProducts({ pageSize: 24, minPrice: 100, maxPrice: 250, sort: "price:desc", inStock: true });
+
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe(
+			"http://api:8081/api/v1/products?pageSize=24&inStock=true&min_price=10000&max_price=25000&sort=-price",
 		);
 	});
 

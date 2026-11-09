@@ -36,7 +36,7 @@ func (h *InventoryHandler) ListInventoryOverview(c *gin.Context) {
 		return
 	}
 
-	items, page, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, cursor)
+	items, page, err := h.service.ListInventoryOverview(c.Request.Context(), q.PageSize, cursor, q.Search)
 	if err != nil {
 		_ = c.Error(err)
 		return

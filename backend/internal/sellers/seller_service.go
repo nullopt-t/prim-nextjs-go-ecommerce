@@ -41,6 +41,12 @@ type SellerOrderReader interface {
 	// GetSellerOrder loads one order only when it contains a line owned by
 	// the seller; foreign and platform orders answer "not found".
 	GetSellerOrder(ctx context.Context, sellerID, orderID uuid.UUID) (*model.Order, error)
+	// FulfillSellerOrder advances the order for a seller that owns a line in
+	// it, re-checking ownership and the state machine under the order lock
+	// inside the caller's transaction.
+	FulfillSellerOrder(ctx context.Context, sellerID, orderID uuid.UUID, status model.OrderStatus, trackingNumber string, carrier *string, trackingURL *string, notes *string) (*model.Order, error)
+	// FulfillSellerOrderItems marks specific items owned by a seller as shipped with tracking and carrier info.
+	FulfillSellerOrderItems(ctx context.Context, sellerID, orderID uuid.UUID, itemIDs []uuid.UUID, trackingNumber, carrier string) (*model.Order, error)
 }
 
 // ObjectReader is the subset of object persistence needed to resolve seller

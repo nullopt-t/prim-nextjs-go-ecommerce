@@ -42,6 +42,7 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.GET("/payouts", r.handler.ListMyPayouts)
 		portal.GET("/orders", r.handler.ListMyOrders)
 		portal.GET("/orders/:id", r.handler.GetMyOrder)
+		portal.POST("/orders/:id/fulfill", r.handler.FulfillMyOrder)
 
 		// Merchant-owned catalog. Ownership is enforced per product; platform
 		// (admin) products are not reachable through these routes.

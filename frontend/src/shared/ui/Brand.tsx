@@ -14,9 +14,9 @@ export function Brand() {
     <Link
       href="/"
       aria-label={storeName}
-      className="inline-flex items-center gap-1.5 group select-none cursor-pointer max-w-[11rem] sm:max-w-[18rem]"
+      className="inline-flex items-center gap-1.5 group select-none cursor-pointer max-w-[6rem] sm:max-w-[18rem] min-w-0"
     >
-      <span dir="ltr" className="font-black text-2xl tracking-tighter text-foreground group-hover:opacity-90 transition-opacity whitespace-nowrap truncate">
+      <span dir="ltr" className="font-black text-xl sm:text-2xl tracking-tighter text-foreground group-hover:opacity-90 transition-opacity whitespace-nowrap truncate">
         {isPrim ? (
           <>
             PRI<span className="text-accent-brand">M</span>

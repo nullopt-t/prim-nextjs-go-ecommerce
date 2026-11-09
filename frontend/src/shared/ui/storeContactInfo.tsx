@@ -20,7 +20,7 @@ export function StoreContactInfo() {
       {storeEmail && (
         <li className="flex items-center gap-2">
           <Mail className="size-3.5 text-accent-brand shrink-0" />
-          <a href={`mailto:${storeEmail}`} className="hover:text-foreground transition-colors">
+          <a href={`mailto:${storeEmail}`} className="hover:text-foreground transition-colors break-all">
             {storeEmail}
           </a>
         </li>
@@ -36,7 +36,7 @@ export function StoreContactInfo() {
       {storeAddress && (
         <li className="flex items-start gap-2">
           <MapPin className="size-3.5 text-accent-brand shrink-0 mt-0.5" />
-          <span>{storeAddress}</span>
+          <span className="break-words">{storeAddress}</span>
         </li>
       )}
     </ul>

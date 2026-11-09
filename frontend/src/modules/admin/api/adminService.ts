@@ -2,6 +2,7 @@ import { api } from "@/shared/api/client";
 import type { ApiResponse, ApiPaginatedResponse, ApiMessageResponse } from "@/shared/api/types";
 import type { CursorMeta } from "@/shared/lib/pagination";
 import type { Order } from "@/modules/orders/types";
+import type { Product } from "@/modules/catalog/types";
 import type { Promotion } from "@/modules/promotions/types";
 import type {
   AdminAttribute,
@@ -58,6 +59,19 @@ export interface UpdateRolePayload {
 export interface UpdateStatusPayload {
   status: "active" | "inactive" | "suspended" | "deleted";
   suspendedUntil?: string | null;
+}
+
+export interface AdminOrderStatusHistoryEntry {
+  id: string;
+  status: string;
+  notes?: string;
+  createdAt?: string;
+  created_at?: string;
+}
+
+export interface AdminOrderDetail extends Order {
+  statusHistory?: AdminOrderStatusHistoryEntry[];
+  status_history?: AdminOrderStatusHistoryEntry[];
 }
 
 export type SystemServiceStatus = "healthy" | "degraded" | "unhealthy";
@@ -200,11 +214,12 @@ export const adminService = {
   },
 
   // Orders Management
-  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<Order, CursorMeta>> => {
+  getOrders: async (params?: { cursor?: string; pageSize?: number; customerId?: string; search?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<Order, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
     if (params?.customerId) query.set("customerId", params.customerId);
+    if (params?.search) query.set("search", params.search);
     if (params?.status && params.status !== "all") query.set("status", params.status);
     if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
     if (params?.dateTo) query.set("dateTo", params.dateTo);
@@ -214,8 +229,8 @@ export const adminService = {
     return api.get<ApiPaginatedResponse<Order, CursorMeta>>(endpoint);
   },
 
-  getOrderById: async (id: string): Promise<ApiResponse<Order>> => {
-    return api.get<ApiResponse<Order>>(`/api/v1/admin/orders/${id}`);
+  getOrderById: async (id: string): Promise<ApiResponse<AdminOrderDetail>> => {
+    return api.get<ApiResponse<AdminOrderDetail>>(`/api/v1/admin/orders/${id}`);
   },
 
   updateOrderStatus: async (id: string, status: string, notes?: string): Promise<ApiMessageResponse> => {
@@ -230,10 +245,25 @@ export const adminService = {
     return api.patch<ApiMessageResponse>(`/api/v1/admin/orders/${id}/tracking`, payload);
   },
 
+  // Products Management
+  getProducts: async (params?: { cursor?: string; pageSize?: number; search?: string; category?: string; status?: string; brand?: string }): Promise<ApiPaginatedResponse<Product>> => {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.set("cursor", params.cursor);
+    if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.search) query.set("search", params.search);
+    if (params?.category && params.category !== "all") query.set("category", params.category);
+    if (params?.status && params.status !== "all") query.set("status", params.status);
+    if (params?.brand && params.brand !== "all") query.set("brand", params.brand);
+    const qs = query.toString();
+    const endpoint = `/api/v1/admin/products${qs ? `?${qs}` : ""}`;
+    return api.get<ApiPaginatedResponse<Product>>(endpoint);
+  },
+
   // Sellers Management
-  getSellers: async (params?: { status?: string; cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<AdminSeller, CursorMeta>> => {
+  getSellers: async (params?: { status?: string; search?: string; cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<AdminSeller, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.status && params.status !== "all") query.set("status", params.status);
+    if (params?.search) query.set("search", params.search);
     // The backend paginates sellers by keyset cursor; a page number is ignored.
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
@@ -275,10 +305,11 @@ export const adminService = {
   },
 
   // Promotions
-  getPromotions: async (params?: { cursor?: string; pageSize?: number; status?: string }): Promise<ApiPaginatedResponse<Promotion, CursorMeta>> => {
+  getPromotions: async (params?: { cursor?: string; pageSize?: number; search?: string; status?: string }): Promise<ApiPaginatedResponse<Promotion, CursorMeta>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.search) query.set("search", params.search);
     if (params?.status && params.status !== "all") query.set("status", params.status);
     const qs = query.toString();
     return api.get<ApiPaginatedResponse<Promotion, CursorMeta>>(`/api/v1/admin/promotions${qs ? `?${qs}` : ""}`);
@@ -305,10 +336,11 @@ export const adminService = {
   },
 
   // Payments
-  getPayments: async (params?: { cursor?: string; pageSize?: number; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<AdminPayment>> => {
+  getPayments: async (params?: { cursor?: string; pageSize?: number; search?: string; status?: string; dateFrom?: string; dateTo?: string }): Promise<ApiPaginatedResponse<AdminPayment>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.search) query.set("search", params.search);
     if (params?.status && params.status !== "all") query.set("status", params.status);
     if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
     if (params?.dateTo) query.set("dateTo", params.dateTo);
@@ -361,10 +393,11 @@ export const adminService = {
   },
 
   // Inventory
-  getInventory: async (params?: { cursor?: string; pageSize?: number }): Promise<ApiPaginatedResponse<InventoryStock>> => {
+  getInventory: async (params?: { cursor?: string; pageSize?: number; search?: string }): Promise<ApiPaginatedResponse<InventoryStock>> => {
     const query = new URLSearchParams();
     if (params?.cursor) query.set("cursor", params.cursor);
     if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+    if (params?.search) query.set("search", params.search);
     const qs = query.toString();
     return api.get<ApiPaginatedResponse<InventoryStock>>(`/api/v1/admin/inventory${qs ? `?${qs}` : ""}`);
   },

@@ -74,4 +74,22 @@ describe("i18n message parity", () => {
 			expect(typeof get(ar, key)).toBe("string");
 		}
 	});
+
+	it("covers canonical backend error codes in both EN and AR", () => {
+		const canonicalErrorCodes = [
+			"errors.INSUFFICIENT_INVENTORY",
+			"errors.INVALID_ORDER_STATUS",
+			"errors.COUPON_NOT_FOUND",
+			"errors.UNAUTHORIZED",
+			"errors.INVALID_CREDENTIALS",
+		];
+		for (const key of canonicalErrorCodes) {
+			expect(get(en, key), `EN missing ${key}`).toBeDefined();
+			expect(get(ar, key), `AR missing ${key}`).toBeDefined();
+			expect(typeof get(en, key)).toBe("string");
+			expect(typeof get(ar, key)).toBe("string");
+			expect((get(en, key) as string).trim().length).toBeGreaterThan(0);
+			expect((get(ar, key) as string).trim().length).toBeGreaterThan(0);
+		}
+	});
 });

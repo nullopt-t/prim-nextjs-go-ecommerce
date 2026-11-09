@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,14 @@ type OrderItemResponse struct {
 	PriceAtPurchase int64 `json:"priceAtPurchase"`
 	// ProductSnapshot contains immutable JSON metadata captured at checkout (e.g. title, SKU, media).
 	ProductSnapshot string `json:"productSnapshot"`
+	// FulfillmentStatus is the seller fulfillment state for this line item (pending, shipped, delivered).
+	FulfillmentStatus model.FulfillmentStatus `json:"fulfillmentStatus"`
+	// TrackingNumber is the carrier shipment tracking number for this line item.
+	TrackingNumber *string `json:"trackingNumber,omitempty"`
+	// Carrier is the logistics delivery service (e.g. "Aramex", "Bosta").
+	Carrier *string `json:"carrier,omitempty"`
+	// ShippedAt is the RFC3339 timestamp when the seller marked this line item as shipped.
+	ShippedAt *string `json:"shippedAt,omitempty"`
 }
 
 // AddressResponse represents a serialized postal shipping address.
@@ -96,6 +105,9 @@ type OrderResponse struct {
 	TrackingNumber string `json:"trackingNumber"`
 	// Items lists the individual line items in this order.
 	Items []OrderItemResponse `json:"items,omitempty"`
+	// StatusHistory is the chronological order_status_history audit trail
+	// (oldest first), empty when no entries exist.
+	StatusHistory []OrderStatusHistoryResponse `json:"statusHistory"`
 	// Carrier is the shipping carrier (null when not yet shipped/assigned).
 	Carrier *string `json:"carrier"`
 	// TrackingURL is the carrier tracking page URL (null when absent).
@@ -104,6 +116,20 @@ type OrderResponse struct {
 	CreatedAt string `json:"createdAt"`
 	// UpdatedAt is the RFC3339 last update timestamp.
 	UpdatedAt string `json:"updatedAt"`
+}
+
+// OrderStatusHistoryResponse is one order_status_history audit entry.
+type OrderStatusHistoryResponse struct {
+	// ID is the bigint identity of the history row, as a string for JSON safety.
+	ID string `json:"id"`
+	// OrderID is the parent order UUID.
+	OrderID string `json:"orderId"`
+	// Status is the status this entry recorded.
+	Status model.OrderStatus `json:"status"`
+	// Notes is the optional admin/operational note for this entry.
+	Notes *string `json:"notes,omitempty"`
+	// CreatedAt is the RFC3339 timestamp when the entry was recorded.
+	CreatedAt string `json:"createdAt"`
 }
 
 // mapOrderResponse converts internal domain model.Order into the external OrderResponse DTO.
@@ -153,15 +179,39 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 	if len(o.Items) > 0 {
 		items := make([]OrderItemResponse, 0, len(o.Items))
 		for _, item := range o.Items {
+			var shippedAt *string
+			if item.ShippedAt != nil {
+				s := item.ShippedAt.UTC().Format(time.RFC3339)
+				shippedAt = &s
+			}
+			fulfillmentStatus := item.FulfillmentStatus
+			if fulfillmentStatus == "" {
+				fulfillmentStatus = model.FulfillmentStatusPending
+			}
 			items = append(items, OrderItemResponse{
-				ID:              item.ID.String(),
-				VariantID:       item.VariantID.String(),
-				Quantity:        item.Quantity,
-				PriceAtPurchase: item.PriceAtPurchase,
-				ProductSnapshot: item.ProductSnapshot,
+				ID:                item.ID.String(),
+				VariantID:         item.VariantID.String(),
+				Quantity:          item.Quantity,
+				PriceAtPurchase:   item.PriceAtPurchase,
+				ProductSnapshot:   item.ProductSnapshot,
+				FulfillmentStatus: fulfillmentStatus,
+				TrackingNumber:    item.TrackingNumber,
+				Carrier:           item.Carrier,
+				ShippedAt:         shippedAt,
 			})
 		}
 		res.Items = items
+	}
+
+	res.StatusHistory = make([]OrderStatusHistoryResponse, 0, len(o.StatusHistory))
+	for _, h := range o.StatusHistory {
+		res.StatusHistory = append(res.StatusHistory, OrderStatusHistoryResponse{
+			ID:        fmt.Sprintf("%d", h.ID),
+			OrderID:   h.OrderID.String(),
+			Status:    h.Status,
+			Notes:     h.Notes,
+			CreatedAt: h.CreatedAt.Format(time.RFC3339),
+		})
 	}
 
 	return res
@@ -573,6 +623,11 @@ func (h *OrderHandler) AdminListOrders(c *gin.Context) {
 		statusPtr = &s
 	}
 
+	var searchPtr *string
+	if search := c.Query("search"); search != "" {
+		searchPtr = &search
+	}
+
 	dateFrom, dateTo, err := parseDateRangeQuery(c)
 	if err != nil {
 		_ = c.Error(err)
@@ -583,6 +638,7 @@ func (h *OrderHandler) AdminListOrders(c *gin.Context) {
 		c.Request.Context(),
 		customerIDPtr,
 		statusPtr,
+		searchPtr,
 		dateFrom,
 		dateTo,
 		q,
@@ -682,6 +738,11 @@ func (h *OrderHandler) ListPayments(c *gin.Context) {
 		statusPtr = &s
 	}
 
+	var searchPtr *string
+	if s := strings.TrimSpace(c.Query("search")); s != "" {
+		searchPtr = &s
+	}
+
 	dateFrom, dateTo, err := parseDateRangeQuery(c)
 	if err != nil {
 		_ = c.Error(err)
@@ -690,6 +751,7 @@ func (h *OrderHandler) ListPayments(c *gin.Context) {
 
 	payments, page, err := h.orderService.ListPayments(c.Request.Context(), PaymentListFilter{
 		Status:   statusPtr,
+		Search:   searchPtr,
 		DateFrom: dateFrom,
 		DateTo:   dateTo,
 		Limit:    q.PageSize,

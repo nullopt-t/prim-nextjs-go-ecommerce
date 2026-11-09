@@ -188,6 +188,9 @@ func (r *fakeReturnQtyRows) RawValues() [][]byte    { return nil }
 func (r *fakeReturnQtyRows) Conn() *pgx.Conn        { return nil }
 
 func (e *fakeOrderReturnExecutor) QueryContext(_ context.Context, sql string, _ ...any) (pgx.Rows, error) {
+	if contains(sql, "order_status_history") {
+		return &fakeHistoryRows{}, nil
+	}
 	if contains(sql, "order_return_items") {
 		rows := &fakeReturnQtyRows{}
 		for itemID, qty := range e.returns {

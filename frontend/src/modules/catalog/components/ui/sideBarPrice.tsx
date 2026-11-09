@@ -21,7 +21,7 @@ export default function SideBarPrice() {
       
       {/* Min & Max inputs */}
       <div className="grid grid-cols-2 gap-2 mb-3">
-        <div>
+        <div className="min-w-0">
           <label className="block text-xs text-muted-foreground mb-1">{t("minPrice")}</label>
           <input
             type="number"
@@ -32,10 +32,10 @@ export default function SideBarPrice() {
               const val = e.target.value.trim();
               setFilter("minPrice", val === "" ? null : Math.max(0, Number(val)));
             }}
-            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+            className="w-full min-w-0 px-2 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
           />
         </div>
-        <div>
+        <div className="min-w-0">
           <label className="block text-xs text-muted-foreground mb-1">{t("maxPrice")}</label>
           <input
             type="number"
@@ -46,7 +46,7 @@ export default function SideBarPrice() {
               const val = e.target.value.trim();
               setFilter("maxPrice", val === "" ? null : Math.max(0, Number(val)));
             }}
-            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
+            className="w-full min-w-0 px-2 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand"
           />
         </div>
       </div>

@@ -1,4 +1,5 @@
 import type { ApiFieldError } from "@/shared/api/types";
+import { getErrorMessageByCode } from "@/shared/i18n/errors";
 
 export const SELLER_NOT_AUTHORIZED_EVENT = "prim:seller-not-authorized";
 
@@ -100,8 +101,9 @@ export async function request<T = unknown>(
     ) {
       window.dispatchEvent(new Event(SELLER_NOT_AUTHORIZED_EVENT));
     }
+    const translated = getErrorMessageByCode(errorData.code, locale);
     throw new ApiError(
-      errorData.error || errorData.message || `HTTP Error ${response.status}`,
+      translated || errorData.error || errorData.message || `HTTP Error ${response.status}`,
       response.status,
       errorData.code,
       errorData.details,

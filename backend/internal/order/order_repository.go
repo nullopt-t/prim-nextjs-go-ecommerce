@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/nullopt-t/prim-backend/internal/model"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
+	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
@@ -141,6 +143,39 @@ func (r *Repository) AddStatusHistory(
 	return nil
 }
 
+// GetStatusHistoryByOrderID loads the full audit trail of one order,
+// oldest first, from the order_status_history table. It runs on the caller's
+// executor, so hydrating an order detail adds no extra connection.
+func (r *Repository) GetStatusHistoryByOrderID(ctx context.Context, orderID uuid.UUID) ([]model.OrderStatusHistory, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := qe.QueryContext(ctx, `
+		SELECT id, order_id, status, notes, created_at
+		FROM order_status_history
+		WHERE order_id = $1
+		ORDER BY created_at ASC
+	`, orderID)
+	if err != nil {
+		return nil, fmt.Errorf("get order status history: %w", err)
+	}
+	defer rows.Close()
+
+	history := make([]model.OrderStatusHistory, 0)
+	for rows.Next() {
+		var h model.OrderStatusHistory
+		if err := rows.Scan(&h.ID, &h.OrderID, &h.Status, &h.Notes, &h.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan order status history: %w", err)
+		}
+		history = append(history, h)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate order status history: %w", err)
+	}
+	return history, nil
+}
+
 // GetOrderByID retrieves an order record by its primary key UUID.
 // It also queries and hydrates the associated order line items via GetOrderItems.
 func (r *Repository) GetOrderByID(
@@ -230,6 +265,11 @@ func (r *Repository) getOrderByQuery(
 		return nil, fmt.Errorf("get order items: %w", err)
 	}
 	o.Items = items
+
+	o.StatusHistory, err = r.GetStatusHistoryByOrderID(ctx, o.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get order status history: %w", err)
+	}
 
 	return &o, nil
 }
@@ -528,6 +568,219 @@ func (r *Repository) GetSellerOrder(ctx context.Context, sellerID, orderID uuid.
 	return order, nil
 }
 
+// FulfillSellerOrder advances one order on behalf of the seller that owns a
+// line inside it. Ownership and the state-machine transition are re-checked
+// under the order row lock inside the caller's transaction, so concurrent
+// fulfills serialize on the row. Tracking details are written in the same
+// transaction when supplied. Foreign orders answer pgx.ErrNoRows so their
+// existence is not leaked, mirroring GetSellerOrder.
+func (r *Repository) FulfillSellerOrder(
+	ctx context.Context,
+	sellerID, orderID uuid.UUID,
+	status model.OrderStatus,
+	trackingNumber string,
+	carrier *string,
+	trackingURL *string,
+	notes *string,
+) (*model.Order, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ord, err := r.GetOrderByIDForUpdate(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Lock is held here (same tx), so the ownership check and the transition
+	// below observe a stable order row.
+	var owned bool
+	if err := tx.QueryRowContext(ctx, `
+		SELECT EXISTS (SELECT 1 FROM order_items WHERE order_id = $1 AND seller_id = $2)
+	`, orderID, sellerID).Scan(&owned); err != nil {
+		return nil, fmt.Errorf("check seller order ownership: %w", err)
+	}
+	if !owned {
+		return nil, pgx.ErrNoRows
+	}
+
+	if !CanTransitionOrderStatus(ord.Status, status) {
+		return nil, apierr.BadRequestError(
+			fmt.Sprintf("Cannot transition order status from '%s' to '%s'", ord.Status, status),
+		).WithCode(errcode.CodeInvalidOrderStatus)
+	}
+
+	if err := r.UpdateOrderStatus(ctx, orderID, status); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(trackingNumber) != "" {
+		if err := r.UpdateOrderTracking(ctx, orderID, strings.TrimSpace(trackingNumber), carrier, trackingURL); err != nil {
+			return nil, err
+		}
+	}
+	if err := r.AddStatusHistory(ctx, orderID, status, notes); err != nil {
+		return nil, err
+	}
+
+	return r.GetSellerOrder(ctx, sellerID, orderID)
+}
+
+// UpdateOrderItemsFulfillment updates the fulfillment status, tracking number,
+// carrier, and shipped_at timestamp for specific item IDs within an order.
+func (r *Repository) UpdateOrderItemsFulfillment(
+	ctx context.Context,
+	orderID, sellerID uuid.UUID,
+	itemIDs []uuid.UUID,
+	status model.FulfillmentStatus,
+	trackingNumber string,
+	carrier string,
+) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+
+	var trackPtr, carrierPtr *string
+	if t := strings.TrimSpace(trackingNumber); t != "" {
+		trackPtr = &t
+	}
+	if c := strings.TrimSpace(carrier); c != "" {
+		carrierPtr = &c
+	}
+
+	query := `
+		UPDATE order_items
+		SET fulfillment_status = $1,
+			tracking_number = COALESCE($2, tracking_number),
+			carrier = COALESCE($3, carrier),
+			shipped_at = COALESCE(shipped_at, now())
+		WHERE order_id = $4 AND seller_id = $5 AND id = ANY($6)
+	`
+	if _, err := tx.ExecContext(ctx, query, status, trackPtr, carrierPtr, orderID, sellerID, itemIDs); err != nil {
+		return fmt.Errorf("update order items fulfillment: %w", err)
+	}
+	return nil
+}
+
+// FulfillSellerOrderItems marks specific items owned by a seller as shipped with tracking and carrier info.
+// When all items across the entire order become shipped or delivered, the parent order status transitions to Shipped.
+// If partially fulfilled, a pending parent order transitions to Processing.
+func (r *Repository) FulfillSellerOrderItems(
+	ctx context.Context,
+	sellerID, orderID uuid.UUID,
+	itemIDs []uuid.UUID,
+	trackingNumber, carrier string,
+) (*model.Order, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ord, err := r.GetOrderByIDForUpdate(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	if ord.Status == model.OrderStatusCancelled || ord.Status == model.OrderStatusRefunded {
+		return nil, apierr.BadRequestError("Cannot fulfill items on a cancelled or refunded order").
+			WithCode(errcode.CodeInvalidOrderStatus)
+	}
+
+	allItems, err := r.GetOrderItems(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	itemMap := make(map[uuid.UUID]model.OrderItem, len(allItems))
+	for _, it := range allItems {
+		itemMap[it.ID] = it
+	}
+
+	targetIDs := itemIDs
+	if len(targetIDs) == 0 {
+		for _, it := range allItems {
+			if it.SellerID != nil && *it.SellerID == sellerID {
+				targetIDs = append(targetIDs, it.ID)
+			}
+		}
+		if len(targetIDs) == 0 {
+			return nil, pgx.ErrNoRows
+		}
+	} else {
+		for _, id := range targetIDs {
+			it, exists := itemMap[id]
+			if !exists {
+				return nil, apierr.BadRequestError(fmt.Sprintf("Item %s does not belong to this order", id)).
+					WithCode(apierr.CodeInvalidInput)
+			}
+			if it.SellerID == nil || *it.SellerID != sellerID {
+				return nil, apierr.ForbiddenError(fmt.Sprintf("Item %s is not owned by this seller", id)).
+					WithCode(apierr.CodeForbidden)
+			}
+		}
+	}
+
+	var trackPtr, carrierPtr *string
+	if t := strings.TrimSpace(trackingNumber); t != "" {
+		trackPtr = &t
+	}
+	if c := strings.TrimSpace(carrier); c != "" {
+		carrierPtr = &c
+	}
+
+	query := `
+		UPDATE order_items
+		SET fulfillment_status = 'shipped',
+			tracking_number = COALESCE($1, tracking_number),
+			carrier = COALESCE($2, carrier),
+			shipped_at = COALESCE(shipped_at, now())
+		WHERE order_id = $3 AND seller_id = $4 AND id = ANY($5)
+	`
+	if _, err := tx.ExecContext(ctx, query, trackPtr, carrierPtr, orderID, sellerID, targetIDs); err != nil {
+		return nil, fmt.Errorf("update items fulfillment: %w", err)
+	}
+
+	refreshedItems, err := r.GetOrderItems(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	allShipped := true
+	for _, it := range refreshedItems {
+		if it.FulfillmentStatus != model.FulfillmentStatusShipped && it.FulfillmentStatus != model.FulfillmentStatusDelivered {
+			allShipped = false
+			break
+		}
+	}
+
+	if allShipped {
+		if ord.Status != model.OrderStatusShipped && ord.Status != model.OrderStatusDelivered {
+			if err := r.UpdateOrderStatus(ctx, orderID, model.OrderStatusShipped); err != nil {
+				return nil, err
+			}
+			if ord.TrackingNumber == "" && trackingNumber != "" {
+				_ = r.UpdateOrderTracking(ctx, orderID, trackingNumber, &carrier, nil)
+			}
+			note := fmt.Sprintf("All seller items fulfilled (tracking: %s, carrier: %s); order shipped", trackingNumber, carrier)
+			_ = r.AddStatusHistory(ctx, orderID, model.OrderStatusShipped, &note)
+		}
+	} else {
+		if ord.Status == model.OrderStatusPending {
+			if err := r.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing); err != nil {
+				return nil, err
+			}
+			note := fmt.Sprintf("Seller fulfilled %d item(s) (tracking: %s, carrier: %s); order processing", len(targetIDs), trackingNumber, carrier)
+			_ = r.AddStatusHistory(ctx, orderID, model.OrderStatusProcessing, &note)
+		} else {
+			note := fmt.Sprintf("Seller fulfilled %d item(s) (tracking: %s, carrier: %s)", len(targetIDs), trackingNumber, carrier)
+			_ = r.AddStatusHistory(ctx, orderID, ord.Status, &note)
+		}
+	}
+
+	return r.GetSellerOrder(ctx, sellerID, orderID)
+}
+
 // GetOrderItems fetches all line item rows associated with a given order ID.
 func (r *Repository) GetOrderItems(
 	ctx context.Context,
@@ -539,7 +792,8 @@ func (r *Repository) GetOrderItems(
 	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
-			seller_id, seller_earning, commission_rate_bps, commission_amount
+			seller_id, seller_earning, commission_rate_bps, commission_amount,
+			COALESCE(fulfillment_status::text, 'pending'), tracking_number, carrier, shipped_at
 		FROM order_items
 		WHERE order_id = $1
 	`
@@ -552,6 +806,7 @@ func (r *Repository) GetOrderItems(
 	items := make([]model.OrderItem, 0)
 	for rows.Next() {
 		var item model.OrderItem
+		var fulfillmentStatus string
 		if err := rows.Scan(
 			&item.ID,
 			&item.OrderID,
@@ -563,8 +818,16 @@ func (r *Repository) GetOrderItems(
 			&item.SellerEarning,
 			&item.CommissionRateBps,
 			&item.CommissionAmount,
+			&fulfillmentStatus,
+			&item.TrackingNumber,
+			&item.Carrier,
+			&item.ShippedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
+		}
+		item.FulfillmentStatus = model.FulfillmentStatus(fulfillmentStatus)
+		if item.FulfillmentStatus == "" {
+			item.FulfillmentStatus = model.FulfillmentStatusPending
 		}
 		items = append(items, item)
 	}
@@ -588,7 +851,8 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 	}
 	query := `
 		SELECT id, order_id, variant_id, quantity, price_at_purchase, product_snapshot,
-			seller_id, seller_earning, commission_rate_bps, commission_amount
+			seller_id, seller_earning, commission_rate_bps, commission_amount,
+			COALESCE(fulfillment_status::text, 'pending'), tracking_number, carrier, shipped_at
 		FROM order_items
 		WHERE order_id = ANY($1)
 	`
@@ -600,6 +864,7 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 
 	for rows.Next() {
 		var item model.OrderItem
+		var fulfillmentStatus string
 		if err := rows.Scan(
 			&item.ID,
 			&item.OrderID,
@@ -611,8 +876,16 @@ func (r *Repository) GetOrderItemsByOrderIDs(
 			&item.SellerEarning,
 			&item.CommissionRateBps,
 			&item.CommissionAmount,
+			&fulfillmentStatus,
+			&item.TrackingNumber,
+			&item.Carrier,
+			&item.ShippedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan order item: %w", err)
+		}
+		item.FulfillmentStatus = model.FulfillmentStatus(fulfillmentStatus)
+		if item.FulfillmentStatus == "" {
+			item.FulfillmentStatus = model.FulfillmentStatusPending
 		}
 		result[item.OrderID] = append(result[item.OrderID], item)
 	}
@@ -783,6 +1056,8 @@ type OrderListFilter struct {
 	CustomerID *uuid.UUID
 	// Status optionally restricts listing to a specific order status string.
 	Status *string
+	// Search optionally matches order id text, customer email, or shipping address.
+	Search *string
 	// DateFrom optionally restricts listing to orders created at/after this time.
 	DateFrom *time.Time
 	// DateTo optionally restricts listing to orders created at/before this time.
@@ -828,6 +1103,13 @@ func (r *Repository) ListOrders(
 		query += fmt.Sprintf(" AND o.status = $%d::order_status", i)
 		args = append(args, *filter.Status)
 		i++
+	}
+
+	if filter.Search != nil && strings.TrimSpace(*filter.Search) != "" {
+		pattern := "%" + strings.TrimSpace(*filter.Search) + "%"
+		query += fmt.Sprintf(" AND (o.id::text ILIKE $%d OR o.customer_email ILIKE $%d OR o.shipping_address::text ILIKE $%d)", i, i+1, i+2)
+		args = append(args, pattern, pattern, pattern)
+		i += 3
 	}
 
 	if filter.DateFrom != nil {
@@ -1073,6 +1355,8 @@ func (r *Repository) GetDashboardStats(ctx context.Context) (*DashboardStats, er
 type PaymentListFilter struct {
 	// Status optionally restricts listing to a specific payment status.
 	Status *string
+	// Search optionally matches payment id, order id, provider txn id, or customer email.
+	Search *string
 	// DateFrom optionally restricts listing to payments created at/after this time.
 	DateFrom *time.Time
 	// DateTo optionally restricts listing to payments created at/before this time.
@@ -1097,6 +1381,13 @@ func (r *Repository) ListPayments(ctx context.Context, filter PaymentListFilter)
 	`
 	args := []any{}
 	i := 1
+
+	if filter.Search != nil && *filter.Search != "" {
+		pattern := "%" + *filter.Search + "%"
+		query += fmt.Sprintf(" AND (p.id::text ILIKE $%d OR p.order_id::text ILIKE $%d OR p.provider_transaction_id ILIKE $%d OR o.customer_email ILIKE $%d)", i, i, i, i)
+		args = append(args, pattern)
+		i++
+	}
 
 	if filter.Status != nil && *filter.Status != "" {
 		query += fmt.Sprintf(" AND p.status = $%d::payment_status", i)
@@ -1282,6 +1573,76 @@ func (r *Repository) FailPendingPaymentsForOrder(ctx context.Context, orderID uu
 	`
 	if _, err := tx.ExecContext(ctx, query, orderID); err != nil {
 		return fmt.Errorf("fail pending payments for order: %w", err)
+	}
+	return nil
+}
+
+// GetPaymentByProviderTransactionID loads the payment row claiming a provider
+// transaction id, for webhook idempotency: the UNIQUE(provider_transaction_id)
+// index makes a redelivered event look up the first delivery's record.
+func (r *Repository) GetPaymentByProviderTransactionID(ctx context.Context, transactionID string) (*model.Payment, error) {
+	qe, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var p model.Payment
+	err = qe.QueryRowContext(ctx, `
+		SELECT id, order_id, amount, currency, status, provider, provider_transaction_id, error_message, created_at, updated_at
+		FROM payments
+		WHERE provider_transaction_id = $1
+	`, transactionID).Scan(
+		&p.ID, &p.OrderID, &p.Amount, &p.Currency, &p.Status, &p.Provider, &p.ProviderTransactionID, &p.ErrorMessage, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get payment by provider transaction id: %w", err)
+	}
+	return &p, nil
+}
+
+// GetPendingPaymentForOrderForUpdate locks the order's open payment row
+// (pending/authorized) for update within the caller's transaction, so a
+// webhook claim and a concurrent lifecycle update serialize on the row.
+func (r *Repository) GetPendingPaymentForOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Payment, error) {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var p model.Payment
+	err = tx.QueryRowContext(ctx, `
+		SELECT id, order_id, amount, currency, status, provider, provider_transaction_id, error_message, created_at, updated_at
+		FROM payments
+		WHERE order_id = $1 AND status IN ('pending'::payment_status, 'authorized'::payment_status)
+		ORDER BY created_at
+		LIMIT 1
+		FOR UPDATE
+	`, orderID).Scan(
+		&p.ID, &p.OrderID, &p.Amount, &p.Currency, &p.Status, &p.Provider, &p.ProviderTransactionID, &p.ErrorMessage, &p.CreatedAt, &p.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get pending payment for order: %w", err)
+	}
+	return &p, nil
+}
+
+// UpdatePaymentWebhook claims a provider transaction id onto an open payment
+// row and sets its result status in one statement. The provider_transaction_id
+// UNIQUE index is the backstop: a concurrent claim of the same id fails the
+// transaction instead of double-applying the event.
+func (r *Repository) UpdatePaymentWebhook(ctx context.Context, paymentID uuid.UUID, status model.PaymentStatus, transactionID string) error {
+	tx, err := database.RequireTx(ctx)
+	if err != nil {
+		return err
+	}
+	tag, err := tx.ExecContext(ctx, `
+		UPDATE payments
+		SET status = $1::payment_status, provider_transaction_id = $2, updated_at = now()
+		WHERE id = $3
+	`, status, transactionID, paymentID)
+	if err != nil {
+		return fmt.Errorf("update payment webhook: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 	return nil
 }

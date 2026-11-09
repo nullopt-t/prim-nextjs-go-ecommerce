@@ -1,6 +1,6 @@
 import { ResponsiveTable } from "@/shared/ui/responsiveTable";
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Search, X, Loader2 } from "lucide-react";
+// Zero-icon standard: no lucide icons
 import { PageHeader } from "@/shared/ui/pageHeader";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import CategoryTreeMap from "@/modules/admin/components/CategoryTreeMap";
@@ -127,9 +127,9 @@ export function AdminCategories() {
   // Debounce the search box and restart pagination whenever the query changes.
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
+      setDebouncedSearch(search.trim());
       reset();
-    }, 350);
+    }, 300);
     return () => clearTimeout(timer);
   }, [search, reset]);
 
@@ -310,9 +310,8 @@ export function AdminCategories() {
             </div>
             <button
               onClick={() => handleOpenModal()}
-              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              className="rounded-xl border border-border/70 bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/30 active:scale-[0.99] select-none transition-all"
             >
-              <Plus className="size-4" />
               {t("categories.add")}
             </button>
           </>
@@ -321,18 +320,21 @@ export function AdminCategories() {
 
       {viewMode === "table" ? (
         <>
-      <div className="relative w-full sm:max-w-xs">
-        <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder={t("categories.searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-md border border-border bg-background py-2 pe-3 ps-9 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/30"
-        />
-      </div>
+      <input
+        type="text"
+        placeholder={t("categories.searchPlaceholder")}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setDebouncedSearch(search.trim());
+            reset();
+          }
+        }}
+        className="w-full sm:max-w-xs rounded-xl border border-border/70 bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground hover:bg-muted/30 active:scale-[0.99] select-none transition-all focus:outline-none"
+      />
 
-      <div className="overflow-hidden rounded-lg border border-border bg-background">
+      <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
         <div className="overflow-x-auto">
           <ResponsiveTable className="w-full text-start text-sm md:min-w-max">
             <thead className="text-xs text-muted-foreground">
@@ -420,17 +422,17 @@ export function AdminCategories() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="w-full max-w-md space-y-4 rounded-xl border border-border/70 bg-card p-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <h2 className="text-sm font-semibold text-foreground">
                 {editingCategory ? t("categories.editTitle") : t("categories.addTitle")}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground active:scale-[0.99] select-none transition-all"
                 aria-label={t("actions.cancel")}
               >
-                <X className="size-4" />
+                {t("actions.close")}
               </button>
             </div>
             <form onSubmit={handleSave} className="space-y-4">
@@ -456,9 +458,9 @@ export function AdminCategories() {
                 	]}
 />
               </div>
-              <div className="flex justify-end gap-2 border-t border-border pt-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">{t("actions.cancel")}</button>
-                <button type="submit" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">{t("actions.save")}</button>
+              <div className="flex justify-end gap-2 border-t border-border/70 pt-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border border-border/70 bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/30 active:scale-[0.99] select-none transition-all">{t("actions.cancel")}</button>
+                <button type="submit" className="rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background active:scale-[0.99] select-none transition-all">{t("actions.save")}</button>
               </div>
             </form>
           </div>
@@ -468,17 +470,17 @@ export function AdminCategories() {
       {/* Linked Category Attributes Modal */}
       {viewingCategoryAttrs && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[85vh] w-full max-w-lg flex-col space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl">
-            <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex max-h-[85vh] w-full max-w-lg flex-col space-y-4 rounded-xl border border-border/70 bg-card p-5 shadow-xl">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">{t("categories.attrs.title")}</h2>
                 <p className="text-xs text-muted-foreground">{t("categories.attrs.subtitle", { name: viewingCategoryAttrs.name })}</p>
               </div>
               <button
                 onClick={() => setViewingCategoryAttrs(null)}
-                className="text-muted-foreground hover:text-foreground text-sm font-semibold p-1"
+                className="rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/30 hover:text-foreground active:scale-[0.99] select-none transition-all"
               >
-                ✕
+                {t("actions.close")}
               </button>
             </div>
 
@@ -557,10 +559,10 @@ export function AdminCategories() {
                               <button
                                 disabled={isBusy}
                                 onClick={() => handleRemoveAttributeValue(attr, value)}
-                                className="text-muted-foreground hover:text-destructive disabled:opacity-50"
+                                className="rounded-lg px-1.5 text-xs text-muted-foreground hover:bg-muted/30 hover:text-destructive active:scale-[0.99] select-none transition-all disabled:opacity-50"
                                 title={t("categories.attrs.removeValue")}
                               >
-                                <X className="size-3" />
+                                {t("actions.close")}
                               </button>
                             </span>
                           ))}

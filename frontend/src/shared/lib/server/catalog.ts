@@ -1,5 +1,6 @@
 import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/model/normalizeProduct";
 import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
+import { buildProductQuery } from "@/shared/lib/productQuery";
 import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 // Server-side catalog revalidation window. Caching is on by default; set
@@ -98,28 +99,7 @@ export interface CatalogQuery {
 }
 
 function productParams(query: CatalogQuery): URLSearchParams {
-	const params = new URLSearchParams();
-	params.set("pageSize", String(query.pageSize ?? 100));
-	if (query.page) params.set("page", String(query.page));
-	if (query.category && query.category.toLowerCase() !== "all") {
-		params.set("category", query.category);
-	}
-	if (query.search) params.set("search", query.search);
-	if (query.brand) params.set("brand", query.brand);
-	if (query.inStock) params.set("inStock", "true");
-	if (query.minPrice !== undefined) params.set("min_price", String(query.minPrice));
-	if (query.maxPrice !== undefined) params.set("max_price", String(query.maxPrice));
-	if (query.sort) params.set("sort", query.sort);
-	// Backend binds a single `attribute` query param: comma-separated
-	// "key:value" pairs (e.g. attribute=color:black,size:XL). Repeated
-	// params would only bind the last value.
-	if (query.attributes) {
-		const pairs = Object.entries(query.attributes)
-			.filter(([k, v]) => k.trim() !== "" && v.trim() !== "")
-			.map(([k, v]) => `${k.trim()}:${v.trim()}`);
-		if (pairs.length > 0) params.set("attribute", pairs.join(","));
-	}
-	return params;
+	return buildProductQuery({ ...query, pageSize: query.pageSize ?? 100 });
 }
 
 export async function getProducts(query: CatalogQuery = {}): Promise<ProductDetailsEntity[]> {

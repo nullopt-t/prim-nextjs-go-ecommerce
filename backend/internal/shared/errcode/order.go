@@ -17,4 +17,7 @@ const (
 
 	// CodeOrderItemNotFound is returned when a specific order line item is not located in persistence.
 	CodeOrderItemNotFound = "ORDER_ITEM_NOT_FOUND"
+
+	// CodeInvalidWebhookSignature is returned when a payment webhook fails HMAC verification.
+	CodeInvalidWebhookSignature = "INVALID_WEBHOOK_SIGNATURE"
 )

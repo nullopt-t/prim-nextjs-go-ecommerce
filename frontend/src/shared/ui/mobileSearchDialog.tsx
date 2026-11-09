@@ -113,7 +113,7 @@ export function MobileSearchDialog() {
         onClick={() => setIsOpen(true)}
         aria-label={t("search")}
         aria-haspopup="dialog"
-        className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs md:hidden"
+        className="size-11 sm:size-10 shrink-0 rounded-full text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center justify-center cursor-pointer border border-transparent bg-transparent md:hidden"
       >
         <Search className="size-4.5 sm:size-5" />
       </button>
@@ -172,7 +172,7 @@ export function MobileSearchDialog() {
                       key={cat.id || cat.slug || cat.name}
                       type="button"
                       onClick={() => handleSelectCategory(cat.id || cat.slug || "")}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary/70 hover:bg-accent-brand hover:text-white text-foreground border border-border/50 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-secondary/70 hover:bg-accent-brand hover:text-white text-foreground border border-border/50 transition-all cursor-pointer"
                     >
                       <span>{cat.name || ""}</span>
                       <ArrowIcon className="size-3 opacity-60" />

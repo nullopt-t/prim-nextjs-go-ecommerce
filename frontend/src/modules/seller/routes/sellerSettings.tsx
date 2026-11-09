@@ -271,7 +271,7 @@ export function SellerSettings() {
 							</p>
 						) : null}
 						{bankEntries.map((entry, index) => (
-							<div key={index} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+							<div key={index} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
 								<div className="space-y-1">
 									<label className="text-xs font-medium text-muted-foreground">
 										{t("settings.bankKey")}

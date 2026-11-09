@@ -96,7 +96,7 @@ export default function Hero({ products = [] }: { products?: ProductDetailsEntit
 					<div className="flex items-center gap-3">
 						<Link
 							href={activeHref}
-							className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-xs transition-transform hover:-translate-y-0.5"
+							className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold min-h-11 text-background shadow-xs transition-transform hover:-translate-y-0.5"
 						>
 							<span>{t("viewProduct")}</span>
 							<ArrowRight className="size-4 rtl:rotate-180" />

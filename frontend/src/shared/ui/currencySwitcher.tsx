@@ -57,7 +57,7 @@ export function CurrencySwitcher({ variant = "header" }: CurrencySwitcherProps) 
 				aria-label={t("label")}
 				className={
 					variant === "header"
-						? "h-9 sm:h-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center gap-1.5 border border-border/40 hover:border-accent-brand/40 shadow-2xs px-2 sm:px-2.5 text-xs font-semibold cursor-pointer"
+						? "size-9 sm:h-10 sm:w-auto rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all flex items-center gap-1.5 border border-border/40 hover:border-accent-brand/40 shadow-2xs p-0 sm:px-2.5 justify-center sm:justify-start text-xs font-semibold cursor-pointer shrink-0"
 						: "inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-accent-brand/50 cursor-pointer"
 				}
 			>

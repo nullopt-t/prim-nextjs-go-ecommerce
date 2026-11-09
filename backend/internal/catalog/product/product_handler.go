@@ -762,6 +762,9 @@ type ListProductsQuery struct {
 	Tag *string `form:"tag" example:"featured,sale"`
 	// Optional publication status filter for admin listings: draft, published, or archived
 	Status *string `form:"status" swaggerignore:"true" example:"draft"`
+	// When true, only products with salable stock (on-hand minus live
+	// reservations across variants) are returned.
+	InStock *bool `form:"inStock" swaggerignore:"true" example:"true"`
 	// Optional minimum price in minor units / cents (e.g. 1000 for 10.00 EGP)
 	MinPrice *int64 `form:"min_price" example:"1000"`
 	// Optional maximum price in minor units / cents (e.g. 50000 for 500.00 EGP)

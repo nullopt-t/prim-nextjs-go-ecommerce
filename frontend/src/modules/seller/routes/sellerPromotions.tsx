@@ -278,7 +278,7 @@ export function SellerPromotions() {
 										{row.variant.price ? ` · ${(row.variant.price / 100).toFixed(2)}` : ""}
 									</p>
 								</div>
-								<div className="flex items-center gap-2">
+								<div className="flex flex-wrap items-center gap-2">
 									<label className="text-xs text-muted-foreground">{t("promotions.compareAtPrice")}</label>
 									<input
 										type="number"

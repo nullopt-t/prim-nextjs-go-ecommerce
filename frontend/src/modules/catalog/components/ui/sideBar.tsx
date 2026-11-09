@@ -64,7 +64,7 @@ export default function SideBar() {
           onClick={() => setIsOpenMobile(false)}
         >
           <div
-            className="w-full max-h-[85vh] bg-background border-t border-border rounded-t-3xl p-6 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300"
+            className="w-full max-h-[85vh] bg-background border-t border-border rounded-t-3xl p-4 sm:p-6 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

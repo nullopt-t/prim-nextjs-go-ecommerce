@@ -347,6 +347,98 @@ func (s *OrderService) CreateOrder(ctx context.Context, in *CreateOrderInput) (*
 	return s.PlaceOrder(ctx, in)
 }
 
+// --- Payment webhook primitives (participate in the caller's transaction) ---
+
+// GetOrderForUpdate locks an order row for a webhook claim. The lock is what
+// makes concurrent deliveries of one transaction id idempotent: the second
+// delivery blocks until the first commits, then observes the claimed id.
+func (s *OrderService) GetOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	var ord *model.Order
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		ord, err = s.orderRepo.GetOrderByIDForUpdate(ctx, orderID)
+		return err
+	})
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
+		}
+		return nil, s.handleError(err, "Failed to fetch order for webhook")
+	}
+	return ord, nil
+}
+
+// FindPaymentByTransactionID reports whether a provider transaction id was
+// already claimed. A miss is database.ErrNotFound so the caller can proceed
+// to claim it; any other error is surfaced.
+func (s *OrderService) FindPaymentByTransactionID(ctx context.Context, transactionID string) (*model.Payment, error) {
+	var found *model.Payment
+	err := s.qexecutor.WithExecutor(ctx, func(ctx context.Context) error {
+		var err error
+		found, err = s.orderRepo.GetPaymentByProviderTransactionID(ctx, transactionID)
+		return err
+	})
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, database.ErrNotFound
+		}
+		return nil, s.handleError(err, "Failed to look up payment by transaction")
+	}
+	return found, nil
+}
+
+// FindPendingPaymentForOrderForUpdate locks the order's open payment row for
+// the claim. A miss is database.ErrNotFound: the caller records the webhook
+// result as a new payment row instead.
+func (s *OrderService) FindPendingPaymentForOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Payment, error) {
+	var found *model.Payment
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		var err error
+		found, err = s.orderRepo.GetPendingPaymentForOrderForUpdate(ctx, orderID)
+		return err
+	})
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, database.ErrNotFound
+		}
+		return nil, s.handleError(err, "Failed to fetch pending payment")
+	}
+	return found, nil
+}
+
+// UpdatePaymentWebhook claims a provider transaction id onto a payment row
+// and sets its result status. It fails on a unique-constraint conflict when a
+// concurrent delivery claimed the same id first: the loser retries and lands
+// in the duplicate path.
+func (s *OrderService) UpdatePaymentWebhook(ctx context.Context, paymentID uuid.UUID, status model.PaymentStatus, transactionID string) error {
+	if !status.IsValid() {
+		return apierr.BadRequestError("Invalid payment status").WithCode(apierr.CodeInvalidInput)
+	}
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		return s.orderRepo.UpdatePaymentWebhook(ctx, paymentID, status, transactionID)
+	})
+	if err != nil {
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return apierr.NotFoundError("Payment not found").WithCode(apierr.CodeNotFound)
+		}
+		return s.handleError(err, "Failed to update payment from webhook")
+	}
+	return nil
+}
+
+// AddOrderStatusHistory appends an audit entry without changing the order
+// status. Failed webhooks use it so the payment ledger records the failure
+// while the order stays pending for a provider retry.
+func (s *OrderService) AddOrderStatusHistory(ctx context.Context, orderID uuid.UUID, status model.OrderStatus, notes *string) error {
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		return s.orderRepo.AddStatusHistory(ctx, orderID, status, notes)
+	})
+	if err != nil {
+		return s.handleError(err, "Failed to record payment webhook audit")
+	}
+	return nil
+}
+
 // restockItems asks the inventory domain to append a compensating 'return'
 // ledger entry for each line item, restoring previously deducted units to
 // salable stock. On-hand stock is derived from the ledger sum, so the entry is
@@ -458,6 +550,9 @@ func (s *OrderService) handleError(err error, fallbackMsg string) error {
 // built-in defaults if settings cannot be read. Notifications are best-effort
 // and must not fail an otherwise successful order action.
 func (s *OrderService) resolveConfig(ctx context.Context) setting.Config {
+	if s.settings == nil {
+		return setting.DefaultConfig()
+	}
 	cfg, err := s.settings.GetConfig(ctx)
 	if err != nil {
 		return setting.DefaultConfig()
@@ -468,7 +563,7 @@ func (s *OrderService) resolveConfig(ctx context.Context) setting.Config {
 // resolveCustomerName safely looks up the customer display name inside the active
 // transaction context, falling back to empty string when not found or guest checkout.
 func (s *OrderService) resolveCustomerName(ctx context.Context, ord *model.Order) string {
-	if ord == nil || ord.CustomerID == nil || *ord.CustomerID == uuid.Nil {
+	if s.userReader == nil || ord == nil || ord.CustomerID == nil || *ord.CustomerID == uuid.Nil {
 		return ""
 	}
 	u, err := s.userReader.GetByID(ctx, *ord.CustomerID)
@@ -479,7 +574,7 @@ func (s *OrderService) resolveCustomerName(ctx context.Context, ord *model.Order
 }
 
 func (s *OrderService) notifyOrderShipped(ctx context.Context, o *model.Order, customerName string) {
-	if o == nil || !s.resolveConfig(ctx).NotifyOrderShipped {
+	if s.orderNotifier == nil || o == nil || !s.resolveConfig(ctx).NotifyOrderShipped {
 		return
 	}
 
@@ -619,6 +714,7 @@ func (s *OrderService) ListOrders(
 	ctx context.Context,
 	customerID *uuid.UUID,
 	status *string,
+	search *string,
 	dateFrom, dateTo *time.Time,
 	q pagination.ListQuery,
 ) ([]model.Order, *pagination.CursorPage, error) {
@@ -639,6 +735,7 @@ func (s *OrderService) ListOrders(
 		filter := OrderListFilter{
 			CustomerID: customerID,
 			Status:     status,
+			Search:     search,
 			DateFrom:   dateFrom,
 			DateTo:     dateTo,
 			Limit:      pageSize,
@@ -1188,4 +1285,156 @@ func (s *OrderService) UpdateOrderTracking(ctx context.Context, id uuid.UUID, in
 	}
 
 	return nil
+}
+
+// FulfillSellerOrderInput encapsulates line item fulfillment inputs from a seller.
+type FulfillSellerOrderInput struct {
+	ItemIDs        []uuid.UUID
+	TrackingNumber string
+	Carrier        string
+}
+
+// FulfillSellerOrderItems fulfills specific order line items owned by a seller.
+// When all items across the entire order reach shipped status, the parent order is transitioned to Shipped.
+// If partially fulfilled, a pending parent order transitions to Processing.
+func (s *OrderService) FulfillSellerOrderItems(
+	ctx context.Context,
+	sellerID, orderID uuid.UUID,
+	in FulfillSellerOrderInput,
+) (*model.Order, error) {
+	if sellerID == uuid.Nil {
+		return nil, apierr.BadRequestError("Seller ID is required").WithCode(apierr.CodeInvalidInput)
+	}
+	if orderID == uuid.Nil {
+		return nil, apierr.BadRequestError("Order ID is required").WithCode(apierr.CodeInvalidInput)
+	}
+	trackingNumber := strings.TrimSpace(in.TrackingNumber)
+	if trackingNumber == "" {
+		return nil, apierr.BadRequestError("Tracking number is required").WithCode(apierr.CodeInvalidInput)
+	}
+	carrier := strings.TrimSpace(in.Carrier)
+	if carrier == "" {
+		return nil, apierr.BadRequestError("Carrier is required").WithCode(apierr.CodeInvalidInput)
+	}
+
+	var res *model.Order
+	var transitionedToShipped bool
+	var shippedOrder *model.Order
+
+	err := s.qexecutor.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderRepo.GetOrderByIDForUpdate(ctx, orderID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
+			}
+			return s.handleError(err, "Failed to load order")
+		}
+
+		if ord.Status == model.OrderStatusCancelled || ord.Status == model.OrderStatusRefunded {
+			return apierr.BadRequestError("Cannot fulfill items on a cancelled or refunded order").
+				WithCode(errcode.CodeInvalidOrderStatus)
+		}
+
+		allItems, err := s.orderRepo.GetOrderItems(ctx, orderID)
+		if err != nil {
+			return s.handleError(err, "Failed to load order items")
+		}
+
+		itemMap := make(map[uuid.UUID]model.OrderItem, len(allItems))
+		for _, it := range allItems {
+			itemMap[it.ID] = it
+		}
+
+		targetIDs := in.ItemIDs
+		if len(targetIDs) == 0 {
+			for _, it := range allItems {
+				if it.SellerID != nil && *it.SellerID == sellerID {
+					targetIDs = append(targetIDs, it.ID)
+				}
+			}
+			if len(targetIDs) == 0 {
+				return apierr.NotFoundError("Order not found or no items for this seller").
+					WithCode(errcode.CodeOrderNotFound)
+			}
+		} else {
+			for _, id := range targetIDs {
+				it, exists := itemMap[id]
+				if !exists {
+					return apierr.BadRequestError(fmt.Sprintf("Item %s does not belong to this order", id)).
+						WithCode(apierr.CodeInvalidInput)
+				}
+				if it.SellerID == nil || *it.SellerID != sellerID {
+					return apierr.ForbiddenError(fmt.Sprintf("Item %s is not owned by this seller", id)).
+						WithCode(apierr.CodeForbidden)
+				}
+			}
+		}
+
+		if err := s.orderRepo.UpdateOrderItemsFulfillment(ctx, orderID, sellerID, targetIDs, model.FulfillmentStatusShipped, trackingNumber, carrier); err != nil {
+			return s.handleError(err, "Failed to update item fulfillment")
+		}
+
+		refreshedItems, err := s.orderRepo.GetOrderItems(ctx, orderID)
+		if err != nil {
+			return s.handleError(err, "Failed to reload order items")
+		}
+
+		allShipped := true
+		for _, it := range refreshedItems {
+			if it.FulfillmentStatus != model.FulfillmentStatusShipped && it.FulfillmentStatus != model.FulfillmentStatusDelivered {
+				allShipped = false
+				break
+			}
+		}
+
+		if allShipped {
+			if ord.Status != model.OrderStatusShipped && ord.Status != model.OrderStatusDelivered {
+				if err := s.orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusShipped); err != nil {
+					return s.handleError(err, "Failed to update order status to shipped")
+				}
+				if ord.TrackingNumber == "" && trackingNumber != "" {
+					_ = s.orderRepo.UpdateOrderTracking(ctx, orderID, trackingNumber, &carrier, nil)
+				}
+				note := fmt.Sprintf("All seller items fulfilled (tracking: %s, carrier: %s); order shipped", trackingNumber, carrier)
+				_ = s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusShipped, &note)
+				transitionedToShipped = true
+				shippedOrder = ord
+			}
+		} else {
+			if ord.Status == model.OrderStatusPending {
+				if err := s.orderRepo.UpdateOrderStatus(ctx, orderID, model.OrderStatusProcessing); err != nil {
+					return s.handleError(err, "Failed to update order status to processing")
+				}
+				note := fmt.Sprintf("Seller fulfilled %d item(s) (tracking: %s, carrier: %s); order processing", len(targetIDs), trackingNumber, carrier)
+				_ = s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusProcessing, &note)
+			} else {
+				note := fmt.Sprintf("Seller fulfilled %d item(s) (tracking: %s, carrier: %s)", len(targetIDs), trackingNumber, carrier)
+				_ = s.orderRepo.AddStatusHistory(ctx, orderID, ord.Status, &note)
+			}
+		}
+
+		res, err = s.orderRepo.GetSellerOrder(ctx, sellerID, orderID)
+		if err != nil {
+			return s.handleError(err, "Failed to load seller order")
+		}
+		return nil
+	})
+
+	if err != nil {
+		var apiErr *apierr.APIError
+		if errors.As(err, &apiErr) {
+			return nil, apiErr
+		}
+		if errors.Is(database.MapError(err), database.ErrNotFound) {
+			return nil, apierr.NotFoundError("Order not found").WithCode(errcode.CodeOrderNotFound)
+		}
+		return nil, s.handleError(err, "Failed to fulfill seller order items")
+	}
+
+	if transitionedToShipped && shippedOrder != nil {
+		customerName := s.resolveCustomerName(ctx, shippedOrder)
+		s.notifyOrderShipped(ctx, shippedOrder, customerName)
+	}
+
+	return res, nil
 }

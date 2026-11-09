@@ -16,6 +16,8 @@ import (
 
 type ListCouponFilter struct {
 	Status *model.CouponStatus
+	// Search, when set, matches coupon codes by case-insensitive substring.
+	Search *string
 	// SellerID, when set, restricts the listing to one merchant's coupons.
 	SellerID *uuid.UUID
 	// Limit is the page size; repositories over-fetch one row to detect more.
@@ -175,6 +177,12 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 	if filter.Status != nil {
 		fmt.Fprintf(&sb, " AND status = $%d::coupon_status", idx)
 		args = append(args, string(*filter.Status))
+		idx++
+	}
+
+	if filter.Search != nil && *filter.Search != "" {
+		fmt.Fprintf(&sb, " AND code ILIKE $%d", idx)
+		args = append(args, "%"+*filter.Search+"%")
 		idx++
 	}
 

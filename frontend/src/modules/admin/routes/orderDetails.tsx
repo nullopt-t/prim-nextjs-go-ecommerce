@@ -8,7 +8,8 @@ import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 import { formatMoney } from "@/shared/lib/money";
 import { adminService } from "@/modules/admin/api/adminService";
-import type { Order, OrderItem } from "@/modules/orders/types";
+import type { AdminOrderDetail } from "@/modules/admin/api/adminService";
+import type { OrderItem } from "@/modules/orders/types";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -71,9 +72,10 @@ export function AdminOrderDetails() {
       setLoading(true);
       setLoadError(false);
       const res = await adminService.getOrderById(String(id));
-      const remoteOrder: Order = res?.data || res;
+      const remoteOrder: AdminOrderDetail = res?.data || res;
       if (remoteOrder) {
-        const formatted = {
+      const rawHistory = remoteOrder.statusHistory || remoteOrder.status_history || [];
+      const formatted = {
           id: remoteOrder.id,
           customer: remoteOrder.customerEmail ? remoteOrder.customerEmail.split("@")[0] : "—",
           email: remoteOrder.customerEmail || "—",
@@ -118,9 +120,22 @@ export function AdminOrderDetails() {
               quantity: it.quantity || 1
             };
           }),
-          history: [
-            { date: formatDateTime(remoteOrder.createdAt, locale), note: t("orderDetails.orderPlaced") }
-          ]
+          history:
+            rawHistory.length > 0
+              ? rawHistory.map((item) => ({
+                  date: formatDateTime(
+                    item.createdAt || item.created_at || remoteOrder.createdAt,
+                    locale
+                  ),
+                  note: item.notes
+                    ? item.notes
+                    : t(`status.${String(item.status).toLowerCase()}`, {
+                        defaultValue: item.status,
+                      }),
+                }))
+              : [
+                  { date: formatDateTime(remoteOrder.createdAt, locale), note: t("orderDetails.orderPlaced") },
+                ]
         };
         setOrder(formatted);
         setTrackingNumber(formatted.trackingNumber);

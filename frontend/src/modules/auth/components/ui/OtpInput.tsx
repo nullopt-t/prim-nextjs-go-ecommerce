@@ -84,7 +84,7 @@ export default function OtpInput({
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 dir-ltr" dir="ltr">
+    <div className="flex items-center justify-between gap-1.5 sm:gap-2 dir-ltr" dir="ltr">
       {digits.map((digit, idx) => (
         <input
           key={idx}
@@ -103,7 +103,7 @@ export default function OtpInput({
           onPaste={handlePaste}
           onFocus={(e) => e.target.select()}
           aria-label={t("otpDigit", { digit: idx + 1 })}
-          className={`w-11 h-12 text-center text-lg font-semibold rounded-md border bg-background text-foreground transition-colors outline-none
+          className={`w-9 sm:w-11 h-11 sm:h-12 text-center text-base sm:text-lg font-semibold rounded-md border bg-background text-foreground transition-colors outline-none
             ${
               digit
                 ? "border-accent-brand ring-1 ring-accent-brand"

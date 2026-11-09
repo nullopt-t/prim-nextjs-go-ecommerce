@@ -1,6 +1,12 @@
 export { AdminLayout } from "./routes/adminLayout";
 export { AdminDashboard } from "./routes/dashboard";
 export { AdminProducts } from "./routes/products";
+export { AdminProductsSearch } from "./routes/productsSearch";
+export { AdminCustomersSearch } from "./routes/customersSearch";
+export { AdminSellersSearch } from "./routes/sellersSearch";
+export { AdminPaymentsSearch } from "./routes/paymentsSearch";
+export { AdminInventorySearch } from "./routes/inventorySearch";
+export { AdminPromotionsSearch } from "./routes/promotionsSearch";
 export { AdminProductEditor } from "./routes/productEditor";
 export { AdminProductDrafts } from "./routes/productDrafts";
 export { AdminCategories } from "./routes/categories";

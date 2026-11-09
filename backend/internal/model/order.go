@@ -47,6 +47,15 @@ const (
 	OrderMilestoneDelivered OrderMilestone = "delivered"
 )
 
+// FulfillmentStatus defines the seller-specific shipping status of an individual order item.
+type FulfillmentStatus string
+
+const (
+	FulfillmentStatusPending   FulfillmentStatus = "pending"
+	FulfillmentStatusShipped   FulfillmentStatus = "shipped"
+	FulfillmentStatusDelivered FulfillmentStatus = "delivered"
+)
+
 // OrderItem represents an immutable purchased line item inside a finalized Order.
 type OrderItem struct {
 	// ID is the unique database UUID for this order line item record.
@@ -69,6 +78,14 @@ type OrderItem struct {
 	CommissionRateBps int
 	// CommissionAmount is the platform commission in minor units, frozen at checkout.
 	CommissionAmount int64
+	// FulfillmentStatus is the seller fulfillment state for this line item.
+	FulfillmentStatus FulfillmentStatus
+	// TrackingNumber is the carrier shipment tracking number for this line item.
+	TrackingNumber *string
+	// Carrier is the logistics delivery service (e.g. "Aramex", "Bosta").
+	Carrier *string
+	// ShippedAt is the timestamp when the seller marked this line item as shipped.
+	ShippedAt *time.Time
 }
 
 // Address represents a physical postal mailing address used for billing or shipping.
@@ -83,6 +100,22 @@ type Address struct {
 	PostalCode string
 	// Country name or ISO country code.
 	Country string
+}
+
+// OrderStatusHistory is one row of the order_status_history audit trail:
+// a status transition (or admin note) with its timestamp, in chronological
+// order. Note the primary key is a bigint identity in schema, not a UUID.
+type OrderStatusHistory struct {
+	// ID is the bigint identity of the history row.
+	ID int64 `json:"id"`
+	// OrderID is the parent Order UUID.
+	OrderID uuid.UUID `json:"order_id"`
+	// Status is the status the order transitioned to (or was noted under).
+	Status OrderStatus `json:"status"`
+	// Notes is the optional admin/operational note for this entry.
+	Notes *string `json:"notes,omitempty"`
+	// CreatedAt is when the entry was recorded.
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Order represents a finalized customer purchase order.
@@ -125,6 +158,9 @@ type Order struct {
 	TrackingURL *string
 	// Items contains all purchased line items in this order.
 	Items []OrderItem
+	// StatusHistory is the order_status_history audit trail in chronological
+	// order, oldest first. Empty (never nil) on detail reads.
+	StatusHistory []OrderStatusHistory `json:"status_history"`
 	// CreatedAt is the timestamp when the order was placed.
 	CreatedAt time.Time
 	// UpdatedAt is the timestamp when order status was last modified.

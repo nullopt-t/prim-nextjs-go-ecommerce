@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image, { StaticImageData } from "next/image";
 import { Link } from "@/shared/i18n/navigation";
 import { Stars } from "@/shared/ui/stars";
@@ -9,7 +9,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useCartContext } from "@/modules/cart/model/cartContext";
 import { useWishlist } from "@/modules/wishlist/model/useWishlist";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
-import { normalizeMediaUrl } from "@/shared/lib/media";
+import { normalizeMediaUrl, PLACEHOLDER_PRODUCT_IMAGE } from "@/shared/lib/media";
 import { CatalogImage } from "@/shared/ui/catalogImage";
 import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
 
@@ -59,6 +59,11 @@ export function ProductsCard({
 
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [staticImgFailed, setStaticImgFailed] = useState(false);
+
+  useEffect(() => {
+    setStaticImgFailed(false);
+  }, [cardDetails.img]);
   const targetProductId = String(cardDetails.productId || cardDetails.id);
   const productName =
     typeof cardDetails.product === "object"
@@ -138,12 +143,20 @@ export function ProductsCard({
                 fill
                 className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
               />
+            ) : staticImgFailed ? (
+              <Image
+                src={PLACEHOLDER_PRODUCT_IMAGE}
+                alt={productName}
+                fill
+                className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+              />
             ) : (
               <Image
                 src={cardDetails.img}
                 alt={productName}
                 fill
                 className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                onError={() => setStaticImgFailed(true)}
               />
             )}
           </Link>

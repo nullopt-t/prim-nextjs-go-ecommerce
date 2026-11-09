@@ -6,7 +6,6 @@ import { userService } from "@/modules/account/api/userService";
 import type {
   Address,
   CreateAddressPayload,
-  PaymentMethod,
   UpdateAddressPayload,
 } from "@/modules/account/types";
 import type { Review } from "@/modules/catalog/types";
@@ -80,67 +79,6 @@ export function useAddresses() {
     updateAddress,
     setDefaultAddress,
     deleteAddress,
-  };
-}
-
-export function usePaymentMethods() {
-  const [cards, setCards] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchCards = useCallback(async () => {
-    try {
-      const data = await userService.getPaymentMethods();
-      setCards(data || []);
-    } catch (err) {
-      setError((err as { message?: string })?.message || "Failed to load payment methods");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCards();
-  }, [fetchCards]);
-
-  const addCard = async (payload: Record<string, unknown>) => {
-    try {
-      const newCard = await userService.createPaymentMethod(payload);
-      await fetchCards();
-      return { success: true, data: newCard };
-    } catch (err) {
-      return { success: false, error: (err as { message?: string })?.message };
-    }
-  };
-
-  const deleteCard = async (id: string) => {
-    try {
-      await userService.deletePaymentMethod(id);
-      await fetchCards();
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: (err as { message?: string })?.message };
-    }
-  };
-
-  const setDefaultCard = async (id: string) => {
-    try {
-      await userService.setDefaultPaymentMethod(id);
-      await fetchCards();
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: (err as { message?: string })?.message };
-    }
-  };
-
-  return {
-    cards,
-    loading,
-    error,
-    refreshCards: fetchCards,
-    addCard,
-    deleteCard,
-    setDefaultCard,
   };
 }
 

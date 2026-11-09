@@ -43,14 +43,4 @@ export const userService = {
   setDefaultAddress: (id: string) =>
     api.patch<ApiResponse<Address>>(`/api/v1/user/addresses/${id}/default`),
   deleteAddress: (id: string) => api.delete<void>(`/api/v1/user/addresses/${id}`),
-
-  // Payment methods — @todo Not yet implemented on the backend
-  getPaymentMethods: () =>
-    Promise.reject(new Error("Payment method management is not yet available.")),
-  createPaymentMethod: (_payload: Record<string, unknown>) =>
-    Promise.reject(new Error("Payment method management is not yet available.")),
-  deletePaymentMethod: (_id: string) =>
-    Promise.reject(new Error("Payment method management is not yet available.")),
-  setDefaultPaymentMethod: (_id: string) =>
-    Promise.reject(new Error("Payment method management is not yet available.")),
 };

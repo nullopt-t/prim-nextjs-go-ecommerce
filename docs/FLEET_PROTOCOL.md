@@ -12,10 +12,10 @@ Never finish work silently. When your task, audit, or code modification is compl
    - If UI text was changed/added: confirm both `frontend/messages/en.json` AND `frontend/messages/ar.json` have identical keys.
 
 2. **Explicitly Notify the Lead Agent**:
-   Do NOT simply stop writing. Use the Herdr CLI to report your exact completion to the Lead orchestrator (`w4:p1`):
+   Do NOT simply stop writing. Use the Herdr CLI to report your exact completion to the Lead orchestrator (`w9:p2`):
    ```bash
-   herdr pane send-text w4:p1 "[<your-agent-name>] TASK DONE: <concise summary of findings, fixes, and verification state>"
-   herdr pane send-keys w4:p1 "Enter"
+   herdr pane send-text w9:p2 "[<your-agent-name>] TASK DONE: <concise summary of findings, fixes, and verification state>"
+   herdr pane send-keys w9:p2 "Enter"
    ```
    Or write your final response beginning with `[<your-agent-name>] TASK DONE: ...` so the orchestrator hook immediately catches it.
 

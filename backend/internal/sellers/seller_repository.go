@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -170,6 +171,12 @@ func (r *SellerRepository) ListAll(ctx context.Context, status *model.SellerStat
 	if status != nil && *status != "" {
 		where += " AND status = $1::seller_status"
 		args = append(args, *status)
+	}
+
+	if q != nil && strings.TrimSpace(q.Search) != "" {
+		argIdx := len(args) + 1
+		where += fmt.Sprintf(" AND (store_name ILIKE $%d OR contact_email ILIKE $%d OR slug ILIKE $%d)", argIdx, argIdx, argIdx)
+		args = append(args, "%"+strings.TrimSpace(q.Search)+"%")
 	}
 
 	var total int64

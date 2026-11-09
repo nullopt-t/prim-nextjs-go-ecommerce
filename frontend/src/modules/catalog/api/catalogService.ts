@@ -1,5 +1,6 @@
 import { api } from "@/shared/api/client";
 import type { ApiResponse, ApiPaginatedResponse } from "@/shared/api/types";
+import { buildProductQuery } from "@/shared/lib/productQuery";
 import type {
   AdminCategory,
   Brand,
@@ -53,27 +54,7 @@ export const catalogService = {
       return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${params ? `?${params}` : ""}`);
     }
 
-    const query = new URLSearchParams();
-    if (params?.pageSize) query.append("pageSize", String(params.pageSize));
-    if (params?.page) query.append("page", String(params.page));
-    if (params?.cursor) query.append("cursor", params.cursor);
-    if (params?.category) query.append("category", params.category);
-    if (params?.brand) query.append("brand", params.brand);
-    if (params?.search) query.append("search", params.search);
-    if (params?.inStock !== undefined) query.append("inStock", String(params.inStock));
-    if (params?.minPrice !== undefined) query.append("min_price", String(params.minPrice));
-    if (params?.maxPrice !== undefined) query.append("max_price", String(params.maxPrice));
-    if (params?.sort) query.append("sort", params.sort);
-    if (params?.attributes) {
-      // One repeated query param per facet (?attribute=color:red&attribute=size:xl)
-      // so values containing commas/colons are never split by the backend parser.
-      for (const [k, v] of Object.entries(params.attributes)) {
-        if (k.trim() === "" || v.trim() === "") continue;
-        query.append("attribute", `${k.trim()}:${v.trim()}`);
-      }
-    }
-
-    const qs = query.toString();
+    const qs = buildProductQuery(params ?? {}).toString();
     return api.get<ApiPaginatedResponse<Product>>(`/api/v1/products${qs ? `?${qs}` : ""}`);
   },
 

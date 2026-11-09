@@ -84,16 +84,16 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 	};
 
 	return (
-		<div className="flex items-center gap-2 sm:gap-2.5">
+		<div className="flex items-center gap-1 sm:gap-2.5 shrink-0 min-w-0">
 			{/* 1. Shopping Cart Button (Hidden in Settings context to isolate console feel) */}
 			{!isSettingsContext && (
 				<button
 					type="button"
 					onClick={openCart}
 					aria-label={t("cart")}
-					className="size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center cursor-pointer border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+					className="size-11 sm:size-10 shrink-0 rounded-full text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative flex items-center justify-center cursor-pointer border border-transparent bg-transparent"
 				>
-					<ShoppingCart className="size-4.5 sm:size-5" />
+					<ShoppingCart className="size-4 sm:size-5" />
 					{cartCount > 0 && (
 						<span className="absolute -top-1 ltr:-right-1 rtl:-left-1 min-w-[18px] h-4.5 px-1 bg-accent-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-xs ring-2 ring-background animate-in zoom-in duration-150">
 							{cartCount}
@@ -106,7 +106,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				<Link
 					href="/wishlist"
 					aria-label={t("wishlist")}
-					className="hidden sm:inline-flex size-9 sm:size-10 rounded-xl text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative items-center justify-center border border-border/40 hover:border-accent-brand/40 shadow-2xs"
+					className="hidden sm:inline-flex size-10 rounded-full text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 transition-all relative items-center justify-center border border-transparent bg-transparent"
 				>
 					<Heart className="size-4.5 sm:size-5" />
 					{wishlistCount > 0 && (
@@ -117,11 +117,17 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 				</Link>
 			)}
 
-			{/* 1b. Currency switcher */}
-			<CurrencySwitcher variant="header" />
+			{/* 1b. Currency switcher — desktop only; also available in mobile drawer */}
+			<div className="hidden sm:block">
+				<CurrencySwitcher variant="header" />
+			</div>
 
-			{/* 3. Notifications Center */}
-			{isAuthenticated && <NotificationsDropdown />}
+			{/* 3. Notifications Center — desktop only; accessible via user menu on mobile */}
+			{isAuthenticated && (
+				<div className="hidden sm:block">
+					<NotificationsDropdown />
+				</div>
+			)}
 
 			{/* 3. User Menu & Settings Dropdown */}
 			<div className="relative" ref={dropdownRef}>
@@ -131,13 +137,13 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 					aria-expanded={isMenuOpen}
 					aria-haspopup="true"
 					aria-label={t("account")}
-					className={`h-9 sm:h-10 px-2 sm:px-2.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer border text-sm font-medium ${
+					className={`h-11 sm:h-10 px-1.5 sm:px-2.5 rounded-full transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer border border-transparent text-sm font-medium shrink-0 ${
 						isMenuOpen
-							? "border-accent-brand/60 bg-secondary/80 text-foreground shadow-xs"
-							: "border-border/40 text-muted-foreground hover:text-accent-brand hover:bg-secondary/70 hover:border-accent-brand/40 shadow-2xs"
+							? "bg-secondary/80 text-foreground"
+							: "text-muted-foreground hover:text-accent-brand hover:bg-secondary/70"
 					}`}
 				>
-					<div className="size-6 sm:size-6.5 rounded-full bg-accent-brand/10 text-accent-brand flex items-center justify-center font-semibold text-xs">
+					<div className="size-5 sm:size-6.5 shrink-0 rounded-full bg-accent-brand/10 text-accent-brand flex items-center justify-center font-semibold text-xs">
 						{isAuthenticated && user?.name ? (
 							user.name.charAt(0).toUpperCase()
 						) : (
@@ -188,7 +194,7 @@ export function HeaderActions({ context = "default" }: HeaderActionsProps) {
 									<Link
 										href="/auth"
 										onClick={() => setIsMenuOpen(false)}
-										className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-accent-brand text-white hover:bg-accent-brand/90 transition-colors shadow-2xs"
+										className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-lg bg-accent-brand text-white hover:bg-accent-brand/90 transition-colors shadow-2xs"
 									>
 										<LogIn className="size-3.5" />
 										{t("signIn")}

@@ -94,7 +94,7 @@ type MinioConfig struct {
 	SecretKey string `yaml:"secret_key" env:"MINIO_SECRET_KEY" env-default:""`
 
 	// PublicURL is the publicly routable asset download URL prefix.
-	PublicURL string `yaml:"public_url" env:"MINIO_PUBLIC_URL" env-default:""`
+	PublicURL string `yaml:"public_url" env:"MINIO_PUBLIC_URL" env-default:"http://localhost:9000"`
 
 	// Bucket is the default S3 bucket name.
 	Bucket string `yaml:"bucket" env:"MINIO_BUCKET" env-default:""`
