@@ -71,10 +71,13 @@ migrate-reset:
 
 ## ─── Production ──────────────────────────────────────────
 
+build-backend-binaries:
+	cd backend && CGO_ENABLED=0 GOOS=linux go build -o ./bin/server ./cmd/api/main.go && CGO_ENABLED=0 GOOS=linux go build -o ./bin/worker ./cmd/worker/main.go
+
 # Builds the production images, runs pending migrations, then starts the
 # production stack in the background. Requires backend/.env (including
 # NEXT_PUBLIC_API_URL, DATABASE_URL, and REDIS_URL).
-prod-up:
+prod-up: build-backend-binaries
 	$(PROD_COMPOSE) up -d --build
 
 prod-down:
