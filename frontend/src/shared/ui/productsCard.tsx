@@ -59,6 +59,7 @@ export function ProductsCard({
 
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
   const [staticImgFailed, setStaticImgFailed] = useState(false);
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export function ProductsCard({
 
     if (isAdding) return;
     setIsAdding(true);
+    setCardError(null);
 
     try {
       const variantList = (cardDetails.variants ?? []) as Array<{ id?: string; isDefault?: boolean }>;
@@ -103,13 +105,17 @@ export function ProductsCard({
       const res = await addToCart(payload);
       if (res.success) {
         setJustAdded(true);
-        notify.success(tCard("productsCard.addedToCart", { productName }));
+        setCardError(null);
         setTimeout(() => setJustAdded(false), 2000);
       } else {
-        notify.error(apiErrorMessage(res, tCard("productsCard.addToCartFailed")));
+        const msg = apiErrorMessage(res, tCard("productsCard.addToCartFailed"));
+        setCardError(msg);
+        notify.error(msg);
       }
     } catch (err) {
-      notify.error(apiErrorMessage(err, tCard("productsCard.addToCartFailed")));
+      const msg = apiErrorMessage(err, tCard("productsCard.addToCartFailed"));
+      setCardError(msg);
+      notify.error(msg);
     } finally {
       setIsAdding(false);
     }
@@ -238,6 +244,12 @@ export function ProductsCard({
             </>
           )}
         </button>
+
+        {cardError && (
+          <p className="text-[11px] text-destructive font-medium mt-1.5 text-center leading-tight">
+            {cardError}
+          </p>
+        )}
 
         {isWishlist && (
           <button

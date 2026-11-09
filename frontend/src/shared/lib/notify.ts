@@ -1,47 +1,54 @@
 "use client";
 
-import { toast } from "sonner";
 import { getErrorMessageByCode } from "@/shared/i18n/errors";
 
+export interface ToastOptions {
+  duration?: number;
+  id?: string | number;
+  description?: React.ReactNode;
+  action?: {
+    label: string;
+    onClick?: () => void;
+  };
+  [key: string]: unknown;
+}
+
 /**
- * Centralized toast helpers.
+ * Centralized notification and error dispatching.
  *
- * Every user-facing notification in the app should go through `notify` so that
- * durations, dismissal and future behaviour (dedupe ids, analytics, …) stay
- * consistent across features. Prefer `apiErrorMessage` to turn anything the API
- * layer throws or returns into a displayable string.
+ * Requirements:
+ * 1. No toasts: Floating toasts are completely removed from the site.
+ * 2. Success actions are trusted and silent: No success toasts or banners.
+ * 3. Errors are embedded in the page: Errors dispatch to in-page alert banners
+ *    and local component error states, ensuring actions never fail silently.
  */
-const DURATIONS = {
-  success: 3000,
-  error: 5000,
-  info: 4000,
-} as const;
-
-type ToastOptions = Parameters<typeof toast.success>[1];
-
 export const notify = {
-  success: (message: string, options?: ToastOptions) =>
-    toast.success(message, { duration: DURATIONS.success, ...options }),
-  error: (message: string, options?: ToastOptions) =>
-    toast.error(message, { duration: DURATIONS.error, ...options }),
-  info: (message: string, options?: ToastOptions) =>
-    toast.info(message, { duration: DURATIONS.info, ...options }),
+  success: (_message: string, _options?: ToastOptions) => {
+    // Succession is silent across the entire site. No toasts or popups.
+  },
+  info: (_message: string, _options?: ToastOptions) => {
+    // Info notifications are silent.
+  },
+  error: (message: string, _options?: ToastOptions) => {
+    if (typeof window !== "undefined" && message) {
+      window.dispatchEvent(
+        new CustomEvent("prim:embedded-error", { detail: { message } })
+      );
+    }
+  },
+  clearError: () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("prim:embedded-error", { detail: { message: null } })
+      );
+    }
+  },
 };
 
 /**
  * Normalizes the various error shapes produced across the codebase into a
  * single human-readable message, falling back to `fallback` when nothing
  * useful is present.
- *
- * Looks up error translations by canonical error code first (e.g., INSUFFICIENT_INVENTORY,
- * INVALID_ORDER_STATUS, COUPON_NOT_FOUND, UNAUTHORIZED, INVALID_CREDENTIALS)
- * before falling back to raw backend strings or fallback message.
- *
- * Handles:
- * - `Error` thrown by `@/shared/api/client` (`.code` and `.message`)
- * - service result objects that return `{ code, error }` instead of throwing
- * - plain strings (either error codes or messages)
- * - axios-style `{ response: { data: { code, message, error } } }`
  */
 export function apiErrorMessage(err: unknown, fallback: string, locale?: string): string {
   if (typeof err === "string") {

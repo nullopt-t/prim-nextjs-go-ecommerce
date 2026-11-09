@@ -15,6 +15,7 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
   const t = useTranslations("cart");
   const { updateCartItem, removeFromCart, closeCart } = useCart();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [itemError, setItemError] = useState<string | null>(null);
 
   const productName = typeof orderDetails.productName === "object"
     ? (orderDetails.productName?.en || orderDetails.productName?.ar || "Product")
@@ -31,13 +32,16 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
   const isOutOfStock = orderDetails.inStock === false || (orderDetails.availableStock !== undefined && orderDetails.availableStock <= 0);
 
   const handleQuantityChange = async (newQty: number) => {
+    setItemError(null);
     if (newQty <= 0) {
       handleRemove();
       return;
     }
 
     if (orderDetails.availableStock !== undefined && newQty > orderDetails.availableStock) {
-      notify.error(t("toast.unitsAvailable", { count: orderDetails.availableStock }));
+      const msg = t("toast.unitsAvailable", { count: orderDetails.availableStock });
+      setItemError(msg);
+      notify.error(msg);
       return;
     }
 
@@ -45,18 +49,23 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
     const res = await updateCartItem(orderDetails.id, newQty);
     setIsUpdating(false);
     if (!res.success) {
-      notify.error(apiErrorMessage(res, t("toast.updateQuantityFailed")));
+      const msg = apiErrorMessage(res, t("toast.updateQuantityFailed"));
+      setItemError(msg);
+      notify.error(msg);
     }
   };
 
   const handleRemove = async () => {
     setIsDeleting(true);
+    setItemError(null);
     const res = await removeFromCart(orderDetails.id);
     setIsDeleting(false);
     if (res.success) {
-      notify.success(t("toast.itemRemoved", { name: productName }));
+      setItemError(null);
     } else {
-      notify.error(apiErrorMessage(res, t("toast.removeFailed")));
+      const msg = apiErrorMessage(res, t("toast.removeFailed"));
+      setItemError(msg);
+      notify.error(msg);
     }
   };
 
@@ -118,6 +127,12 @@ export default function OrderBox({ orderDetails }: { orderDetails: CartItemData 
               <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium inline-block mt-0.5">
                 Only {orderDetails.availableStock} left in stock
               </span>
+            )}
+
+            {itemError && (
+              <p className="text-[11px] text-destructive font-medium mt-1 leading-tight">
+                {itemError}
+              </p>
             )}
           </div>
 

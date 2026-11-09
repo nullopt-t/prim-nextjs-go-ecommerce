@@ -80,6 +80,8 @@ export default function AddressesContent() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -104,6 +106,7 @@ export default function AddressesContent() {
 
   const openAddModal = () => {
     setEditingId(null);
+    setModalError(null);
     setIsGiftMode(false);
     form.reset({
       ...INITIAL_ADDRESS,
@@ -116,6 +119,7 @@ export default function AddressesContent() {
 
   const openEditModal = (addr: any) => {
     setEditingId(addr.id);
+    setModalError(null);
     form.reset({
       label: addr.label || "Home",
       fullName: addr.fullName || "",
@@ -133,24 +137,33 @@ export default function AddressesContent() {
 
   const submitAddress = async (values: AddressFormValues) => {
     setSaving(true);
+    setModalError(null);
     try {
       if (editingId) {
         const res = await updateAddress(editingId, values);
         if (res.success) {
-          notify.success(t("updatedSuccess"));
+          setModalError(null);
           setIsModalOpen(false);
         } else {
-          notify.error(apiErrorMessage(res, t("failedToUpdate")));
+          const msg = apiErrorMessage(res, t("failedToUpdate"));
+          setModalError(msg);
+          notify.error(msg);
         }
       } else {
         const res = await addAddress(values);
         if (res.success) {
-          notify.success(t("addedSuccess"));
+          setModalError(null);
           setIsModalOpen(false);
         } else {
-          notify.error(apiErrorMessage(res, t("failedToAdd")));
+          const msg = apiErrorMessage(res, t("failedToAdd"));
+          setModalError(msg);
+          notify.error(msg);
         }
       }
+    } catch (err) {
+      const msg = apiErrorMessage(err, editingId ? t("failedToUpdate") : t("failedToAdd"));
+      setModalError(msg);
+      notify.error(msg);
     } finally {
       setSaving(false);
     }
@@ -158,13 +171,20 @@ export default function AddressesContent() {
 
   const handleSetDefault = async (id: string) => {
     setSettingDefaultId(id);
+    setActionError(null);
     try {
       const res = await setDefaultAddress(id);
       if (res.success) {
-        notify.success(t("defaultSuccess"));
+        setActionError(null);
       } else {
-        notify.error(apiErrorMessage(res, t("failedToSetDefault")));
+        const msg = apiErrorMessage(res, t("failedToSetDefault"));
+        setActionError(msg);
+        notify.error(msg);
       }
+    } catch (err) {
+      const msg = apiErrorMessage(err, t("failedToSetDefault"));
+      setActionError(msg);
+      notify.error(msg);
     } finally {
       setSettingDefaultId(null);
     }
@@ -178,14 +198,21 @@ export default function AddressesContent() {
     if (!addressToDelete) return;
     const id = addressToDelete.id;
     setDeletingId(id);
+    setActionError(null);
     try {
       const res = await deleteAddress(id);
       if (res.success) {
-        notify.success(t("removedSuccess"));
+        setActionError(null);
         setAddressToDelete(null);
       } else {
-        notify.error(apiErrorMessage(res, t("failedToDelete")));
+        const msg = apiErrorMessage(res, t("failedToDelete"));
+        setActionError(msg);
+        notify.error(msg);
       }
+    } catch (err) {
+      const msg = apiErrorMessage(err, t("failedToDelete"));
+      setActionError(msg);
+      notify.error(msg);
     } finally {
       setDeletingId(null);
     }
@@ -211,9 +238,18 @@ export default function AddressesContent() {
       </div>
 
       {/* Error Banner */}
-      {error && (
-        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-          <p>{error}</p>
+      {(error || actionError) && (
+        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center justify-between gap-2">
+          <p>{actionError || error}</p>
+          {actionError && (
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="text-xs underline hover:no-underline font-medium"
+            >
+              {tCommon("dismiss", { defaultMessage: "Dismiss" })}
+            </button>
+          )}
         </div>
       )}
 
@@ -393,6 +429,16 @@ export default function AddressesContent() {
               className="p-6 overflow-y-auto space-y-4.5"
               noValidate
             >
+              {modalError && (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive flex items-center gap-2"
+                >
+                  <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+                  <span>{modalError}</span>
+                </div>
+              )}
+
               {/* Friendly Label Selector */}
               <div>
                 <span className="block text-xs font-semibold text-foreground mb-1.5">

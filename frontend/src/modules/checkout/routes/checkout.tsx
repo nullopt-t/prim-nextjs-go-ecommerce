@@ -25,7 +25,8 @@ import {
 	Plus,
 	X,
 	Tag,
-	Loader2
+	Loader2,
+	AlertCircle
 } from "lucide-react";
 import { CountrySelect } from "@/shared/ui/CountrySelect";
 import { ErrorState } from "@/shared/ui/errorState";
@@ -100,6 +101,9 @@ export function Checkout() {
 	const { cartItems, refreshCart, resetCart, appliedCoupon, applyCoupon, removeCoupon, loading: cartLoading, errorMsg: cartError } = useCart();
 	const { checkout, loading: placingOrder } = useCheckout();
 	const [couponInput, setCouponInput] = useState("");
+	const [couponError, setCouponError] = useState<string | null>(null);
+	const [orderError, setOrderError] = useState<string | null>(null);
+	const [addressModalError, setAddressModalError] = useState<string | null>(null);
 	const [applyingCoupon, setApplyingCoupon] = useState(false);
 	const { addresses, addAddress, refreshAddresses, loading: addressesLoading, error: addressesError } = useAddresses();
 	const router = useRouter();
@@ -177,6 +181,7 @@ export function Checkout() {
 	const resolvedAddressString = resolveShippingAddress(addresses, effectiveAddressId);
 
 	const handleOpenAddAddress = () => {
+		setAddressModalError(null);
 		addressForm.reset({
 			...INITIAL_ADDRESS,
 			fullName: user?.name || "",
@@ -188,20 +193,25 @@ export function Checkout() {
 
 	const handleSaveNewAddress = async (values: AddressFormValues) => {
 		setSavingAddress(true);
+		setAddressModalError(null);
 		try {
 			const res = await addAddress(values);
 			if (res.success) {
-				notify.success(tAddresses("addedSuccess"));
+				setAddressModalError(null);
 				if (res.data?.id) {
 					setSelectedAddressId(res.data.id);
 				}
 				setIsAddingAddress(false);
 				if (refreshAddresses) await refreshAddresses();
 			} else {
-				notify.error(apiErrorMessage(res, tAddresses("failedToAdd")));
+				const msg = apiErrorMessage(res, tAddresses("failedToAdd"));
+				setAddressModalError(msg);
+				notify.error(msg);
 			}
 		} catch (err) {
-			notify.error(apiErrorMessage(err, tAddresses("failedToAdd")));
+			const msg = apiErrorMessage(err, tAddresses("failedToAdd"));
+			setAddressModalError(msg);
+			notify.error(msg);
 		} finally {
 			setSavingAddress(false);
 		}
@@ -209,21 +219,28 @@ export function Checkout() {
 
 	const handleApplyCoupon = async (codeToApply?: string) => {
 		const targetCode = (codeToApply || couponInput).trim();
+		setCouponError(null);
 		if (!targetCode) {
-			notify.error(t("validation.enterCoupon"));
+			const msg = t("validation.enterCoupon");
+			setCouponError(msg);
+			notify.error(msg);
 			return;
 		}
 		setApplyingCoupon(true);
 		try {
 			const res = await applyCoupon(targetCode);
 			if (res.success) {
-				notify.success(res.coupon?.message || t("validation.couponApplied", { code: targetCode.toUpperCase() }));
+				setCouponError(null);
 				setCouponInput("");
 			} else {
-				notify.error(apiErrorMessage(res, t("validation.couponFailed")));
+				const msg = apiErrorMessage(res, t("validation.couponFailed"));
+				setCouponError(msg);
+				notify.error(msg);
 			}
 		} catch (err) {
-			notify.error(apiErrorMessage(err, t("validation.invalidCoupon")));
+			const msg = apiErrorMessage(err, t("validation.invalidCoupon"));
+			setCouponError(msg);
+			notify.error(msg);
 		} finally {
 			setApplyingCoupon(false);
 		}
@@ -302,14 +319,19 @@ export function Checkout() {
 
 	const handlePlaceOrder = async (e?: FormEvent) => {
 		if (e) e.preventDefault();
+		setOrderError(null);
 
 		if (!validateStep1()) {
+			const msg = t("validation.selectAddress");
+			setOrderError(msg);
 			setCurrentStep(1);
 			return;
 		}
 
 		if (!canPlaceOrder) {
-			notify.error(t("validation.paymentUnavailable"));
+			const msg = t("validation.paymentUnavailable");
+			setOrderError(msg);
+			notify.error(msg);
 			return;
 		}
 
@@ -325,6 +347,7 @@ export function Checkout() {
 		const result = await checkout(orderPayload);
 
 		if (result.success) {
+			setOrderError(null);
 			if (resetCart) resetCart();
 			if (refreshCart) await refreshCart();
 			const rawResult = (result.data || {}) as CheckoutData;
@@ -338,10 +361,10 @@ export function Checkout() {
 				date: t("success.today"),
 			};
 			setCompletedOrder(completedOrderInfo);
-			notify.success(t("validation.orderConfirmed"));
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {
 			const errorMsg = typeof result.error === "string" ? result.error : t("validation.orderFailed");
+			setOrderError(errorMsg);
 			notify.error(errorMsg);
 		}
 	};
@@ -583,6 +606,16 @@ export function Checkout() {
 														</button>
 													)}
 												</div>
+
+												{addressModalError && (
+													<div
+														role="alert"
+														className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive flex items-center gap-2"
+													>
+														<AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+														<span>{addressModalError}</span>
+													</div>
+												)}
 
 												{/* Label Selector */}
 												<div>
@@ -1139,6 +1172,16 @@ export function Checkout() {
 											</div>
 										)}
 
+										{orderError && (
+											<div
+												role="alert"
+												className="rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs font-semibold text-destructive flex items-center gap-2 mt-4"
+											>
+												<AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+												<span>{orderError}</span>
+											</div>
+										)}
+
 										{/* Step 3 Actions */}
 										<div className="flex flex-wrap items-center justify-between gap-3 pt-6 border-t border-border mt-8">
 											<button
@@ -1261,6 +1304,11 @@ export function Checkout() {
 											{applyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : tCart("coupon.apply")}
 										</button>
 									</div>
+									{couponError && (
+										<p className="text-[11px] text-destructive font-medium mt-1.5 leading-tight">
+											{couponError}
+										</p>
+									)}
 							</div>
 
 							<div className="flex flex-col gap-2.5 pt-4 border-t border-border/60 text-sm">
@@ -1306,6 +1354,16 @@ export function Checkout() {
 									<span>{t("summary.total")}</span>
 									<span className="text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap">{formatMoney(finalTotal, currency)}</span>
 								</div>
+
+								{orderError && (
+									<div
+										role="alert"
+										className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive flex items-center gap-2 mt-2"
+									>
+										<AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+										<span>{orderError}</span>
+									</div>
+								)}
 							</div>
 
 							{!hasStartedCheckout && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AlertCircle } from "lucide-react";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
@@ -13,6 +14,7 @@ export default function PersonalInfoForm() {
 
   const [name, setName] = useState(user?.name || "");
   const [phone, setPhone] = useState(user?.phone || "");
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -24,12 +26,17 @@ export default function PersonalInfoForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
     if (!name.trim()) {
-      notify.error(t("invalidName"));
+      const msg = t("invalidName");
+      setFormError(msg);
+      notify.error(msg);
       return;
     }
     if (phone.trim() && !isValidEgyptianPhone(phone)) {
-      notify.error(t("invalidPhone"));
+      const msg = t("invalidPhone");
+      setFormError(msg);
+      notify.error(msg);
       return;
     }
     setIsSaving(true);
@@ -39,9 +46,11 @@ export default function PersonalInfoForm() {
         phone: phone.trim() ? normalizeEgyptianPhone(phone) : undefined,
       });
       await refreshUser();
-      notify.success(t("saved"));
+      setFormError(null);
     } catch (err) {
-      notify.error(apiErrorMessage(err, "Failed to update profile"));
+      const msg = apiErrorMessage(err, "Failed to update profile");
+      setFormError(msg);
+      notify.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -99,6 +108,16 @@ export default function PersonalInfoForm() {
         </div>
 
         {/* Submit button */}
+        {formError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs font-semibold text-destructive flex items-center gap-2"
+          >
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <span>{formError}</span>
+          </div>
+        )}
+
         <div className="pt-2">
           <button
             type="submit"

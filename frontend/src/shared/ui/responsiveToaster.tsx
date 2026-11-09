@@ -1,58 +1,61 @@
 "use client";
 
-import { Toaster } from "sonner";
 import { useEffect, useState } from "react";
-import { useTheme } from "@/shared/theme";
+import { AlertCircle, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 /**
- * Renders Sonner toasts styled to match PRIM theme (light & dark mode,
- * colors, borders, typography, and button styles).
+ * Embedded in-page action banner.
  *
- * - Phones (< 768px):  top-right  (keeps bottom nav reachable)
- * - Tablet+ (≥ 768px): bottom-right (desktop convention)
+ * Replaces floating toasts with an in-page, embedded error banner.
+ * Success actions are silent; errors are visibly embedded in the page flow.
  */
 export function ResponsiveToaster({
-  richColors = true,
   className = "",
 }: {
   richColors?: boolean;
   className?: string;
 }) {
-  const { theme } = useTheme();
-  const [position, setPosition] = useState<"top-right" | "bottom-right">(
-    "bottom-right"
-  );
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  // Clear embedded error on route navigation
+  useEffect(() => {
+    setErrorMessage(null);
+  }, [pathname]);
 
   useEffect(() => {
-    const update = () => {
-      setPosition(window.innerWidth < 768 ? "top-right" : "bottom-right");
+    const handleEmbeddedError = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message: string | null }>;
+      setErrorMessage(customEvent.detail?.message || null);
     };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+
+    window.addEventListener("prim:embedded-error", handleEmbeddedError);
+    return () => window.removeEventListener("prim:embedded-error", handleEmbeddedError);
   }, []);
 
+  if (!errorMessage) return null;
+
   return (
-    <Toaster
-      position={position}
-      theme={theme as "light" | "dark"}
-      richColors={richColors}
-      className={className}
-      closeButton={true}
-      toastOptions={{
-        classNames: {
-          toast:
-            "group font-sans border shadow-lg rounded-xl text-xs sm:text-sm transition-all duration-200",
-          title: "font-semibold text-foreground text-xs sm:text-sm",
-          description: "text-muted-foreground text-[11px] sm:text-xs",
-          actionButton:
-            "cursor-pointer font-medium text-xs rounded-lg px-3 py-1.5 transition-colors !bg-accent-brand !text-white hover:opacity-90 active:scale-95 shadow-2xs",
-          cancelButton:
-            "cursor-pointer font-medium text-xs rounded-lg px-3 py-1.5 transition-colors !bg-secondary !text-secondary-foreground hover:bg-secondary/80",
-          closeButton:
-            "cursor-pointer border border-border/80 bg-background text-muted-foreground hover:text-foreground transition-colors",
-        },
-      }}
-    />
+    <div className={`sticky top-16 z-40 mx-auto w-full max-w-7xl px-4 pt-3 sm:px-6 lg:px-8 ${className}`}>
+      <div
+        role="alert"
+        aria-live="assertive"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive shadow-sm backdrop-blur-md transition-all"
+      >
+        <div className="flex items-center gap-2.5">
+          <AlertCircle className="size-5 shrink-0" aria-hidden="true" />
+          <span>{errorMessage}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setErrorMessage(null)}
+          aria-label="Dismiss error"
+          className="rounded-lg p-1 text-destructive/80 transition-colors hover:bg-destructive/15 hover:text-destructive cursor-pointer"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }

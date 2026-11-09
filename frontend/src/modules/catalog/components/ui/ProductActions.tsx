@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import { Bell, ShieldCheck, Clock } from "lucide-react";
+import { Bell, ShieldCheck, Clock, AlertCircle } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
@@ -25,6 +25,7 @@ interface ProductActionsProps {
   /** Per-unit volume-discount saving (0 when no tier applies). */
   tierSavingsPerUnit?: number;
   tierMinQuantity?: number;
+  actionError?: string | null;
   isAdding: boolean;
   isAuthenticated: boolean;
   isWishlisted: boolean;
@@ -53,6 +54,7 @@ export function ProductActions({
   onQuantityChange,
   tierSavingsPerUnit = 0,
   tierMinQuantity,
+  actionError,
   isAdding,
   isAuthenticated,
   isWishlisted,
@@ -216,6 +218,16 @@ export function ProductActions({
             {t("actions.buyNow")}
           </button>
         </div>
+
+        {actionError && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs font-semibold text-destructive flex items-center gap-2"
+          >
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <span>{actionError}</span>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">

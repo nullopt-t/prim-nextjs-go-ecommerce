@@ -69,6 +69,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const [selectedValues, setSelectedValues] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
@@ -304,6 +305,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
 
   // Selecting any axis value may change the child variant's image.
   const handleSelectAxis = (key: string, value: string) => {
+    setActionError(null);
     setSelectedValues((prev) => ({ ...prev, [key]: value }));
     setActiveImage(0);
   };
@@ -396,6 +398,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
+    setActionError(null);
     const resolvedVariantId =
       activeVariant?.id ||
       (product.variants && product.variants.find((v: ProductVariant) => v.isDefault)?.id) ||
@@ -415,15 +418,18 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
     const res = await addToCart(payload);
     setIsAdding(false);
     if (res.success) {
-      notify.success(tProducts("details.addedToCart", { quantity, productName }));
+      setActionError(null);
     } else {
-      notify.error(apiErrorMessage(res, tProducts("details.addFailed")));
+      const msg = apiErrorMessage(res, tProducts("details.addFailed"));
+      setActionError(msg);
+      notify.error(msg);
     }
   };
 
   const handleBuyNow = async () => {
     if (!isVariantInStock) return;
     setIsAdding(true);
+    setActionError(null);
     const resolvedVariantId =
       activeVariant?.id ||
       (product.variants && product.variants.find((v: ProductVariant) => v.isDefault)?.id) ||
@@ -443,9 +449,12 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
     const res = await addToCart(payload);
     setIsAdding(false);
     if (res.success) {
+      setActionError(null);
       navigate.push("/checkout");
     } else {
-      notify.error(apiErrorMessage(res, tProducts("details.checkoutFailed")));
+      const msg = apiErrorMessage(res, tProducts("details.checkoutFailed"));
+      setActionError(msg);
+      notify.error(msg);
     }
   };
 
@@ -643,9 +652,13 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               availableStock={availableStock}
               isVariantInStock={isVariantInStock}
               quantity={quantity}
-              onQuantityChange={setQuantity}
+              onQuantityChange={(val) => {
+                setActionError(null);
+                setQuantity(val);
+              }}
               tierSavingsPerUnit={tier.savingsPerUnit}
               tierMinQuantity={tier.activeTier?.minQuantity}
+              actionError={actionError}
               isAdding={isAdding}
               isAuthenticated={isAuthenticated}
               isWishlisted={isWishlisted}
