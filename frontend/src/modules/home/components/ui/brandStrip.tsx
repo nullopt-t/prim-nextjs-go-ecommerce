@@ -20,10 +20,10 @@ function BrandLogo({ name, logo }: { name: string; logo?: string }) {
 
 	if (!logo || failed) {
 		return (
-			<span className="flex h-14 w-full items-center justify-center rounded-xl border border-border/40 bg-accent-brand/10">
+			<span className="flex h-20 w-full items-center justify-center rounded-2xl border border-border/40 bg-accent-brand/10">
 				<span
 					aria-hidden
-					className="inline-flex size-9 items-center justify-center rounded-full bg-accent-brand/15 text-base font-bold text-accent-brand"
+					className="inline-flex size-12 items-center justify-center rounded-full bg-accent-brand/15 text-xl font-black text-accent-brand"
 				>
 					{name.charAt(0).toUpperCase()}
 				</span>
@@ -32,14 +32,14 @@ function BrandLogo({ name, logo }: { name: string; logo?: string }) {
 	}
 
 	return (
-		<span className="flex h-14 w-full items-center justify-center overflow-hidden rounded-xl border border-border/40 bg-white p-2.5 dark:bg-white/95">
+		<span className="flex h-20 w-full items-center justify-center overflow-hidden rounded-2xl border border-border/40 bg-white p-3.5 shadow-2xs transition-transform duration-200 group-hover:scale-105 dark:bg-white/95">
 			{/* Brand logos come from arbitrary storage hosts, so next/image is not usable here. */}
 			<img
 				src={normalizeMediaUrl(logo)}
 				alt=""
 				loading="lazy"
 				onError={() => setFailed(true)}
-				className="h-full w-full object-contain"
+				className="h-12 w-auto max-w-[130px] object-contain"
 			/>
 		</span>
 	);
@@ -127,7 +127,7 @@ export default function BrandStrip({
 	const visibleBrands = (activeCategory
 		? brandCards.filter((brand) => brand.categoryIds.includes(activeCategory))
 		: brandCards
-	).slice(0, 8);
+	).slice(0, 12);
 
 	if (brandCards.length === 0) return null;
 
@@ -177,19 +177,16 @@ export default function BrandStrip({
 				</div>
 			)}
 
-			<div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
+			<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-5">
 				{visibleBrands.map((brand) => (
 					<Link
 						key={brand.name}
 						href={`/products?brand=${encodeURIComponent(brand.name)}`}
-						className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-card p-3 text-center shadow-2xs hover:border-accent-brand/50 transition-colors"
+						className="group flex flex-col items-center justify-between rounded-2xl border border-border/80 bg-card p-4 sm:p-5 text-center shadow-xs transition-all duration-200 hover:-translate-y-1 hover:border-accent-brand/60 hover:shadow-md"
 					>
 						<BrandLogo name={brand.name} logo={brand.logo} />
-						<span dir="auto" className="text-sm font-semibold text-foreground line-clamp-1">
+						<span dir="auto" className="mt-3 text-sm sm:text-base font-bold text-foreground line-clamp-1 group-hover:text-accent-brand transition-colors">
 							{brand.name}
-						</span>
-						<span className="text-[11px] text-muted-foreground tabular-nums">
-							{t("productCount", { count: brand.count })}
 						</span>
 					</Link>
 				))}
