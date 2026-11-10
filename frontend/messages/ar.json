@@ -1917,7 +1917,9 @@
     "brands": {
       "title": "تسوق حسب العلامة التجارية",
       "subtitle": "علامات تجارية موثوقة في متجر واحد",
-      "productCount": "{count} منتجات"
+      "productCount": "{count} منتجات",
+      "all": "الكل",
+      "viewAll": "عرض جميع العلامات"
     },
     "testimonials": {
       "title": "قصص العملاء",
@@ -2669,7 +2671,12 @@
       "description": "تسوق حسب العلامات التجارية التي تثق بها.",
       "emptyTitle": "لا توجد علامات تجارية بعد",
       "emptyDescription": "ستظهر العلامات التجارية هنا بعد إضافتها إلى الكتالوج.",
-      "productsCount": "{count} منتج"
+      "productsCount": "{count} منتج",
+      "all": "الكل",
+      "searchPlaceholder": "البحث في العلامات التجارية...",
+      "filterLabel": "تصفية العلامات التجارية حسب الفئة",
+      "noResults": "لا توجد علامات تجارية مطابقة",
+      "noResultsHint": "جرّب كلمة بحث أو فئة مختلفة."
     }
   },
   "userNav": {

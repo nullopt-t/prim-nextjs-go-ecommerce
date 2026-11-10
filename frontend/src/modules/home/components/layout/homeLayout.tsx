@@ -36,7 +36,7 @@ export default function HomeLayout({
       <OnSaleShelf products={products} />
 
       {/* Brands + social proof */}
-      <BrandStrip products={products} />
+      <BrandStrip products={products} categories={categories} />
       <Testimonials />
     </div>
   );

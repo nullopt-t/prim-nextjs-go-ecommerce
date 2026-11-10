@@ -1917,7 +1917,9 @@
     "brands": {
       "title": "Shop by Brand",
       "subtitle": "Trusted brands, one storefront",
-      "productCount": "{count} products"
+      "productCount": "{count} products",
+      "all": "All Brands",
+      "viewAll": "View all brands"
     },
     "testimonials": {
       "title": "Customer Stories",
@@ -2669,7 +2671,12 @@
       "description": "Shop by the brands you trust.",
       "emptyTitle": "No brands yet",
       "emptyDescription": "Brands will appear here once they are added to the catalog.",
-      "productsCount": "{count} products"
+      "productsCount": "{count} products",
+      "all": "All",
+      "searchPlaceholder": "Search brands...",
+      "filterLabel": "Filter brands by category",
+      "noResults": "No brands match your filters",
+      "noResultsHint": "Try a different search term or category."
     }
   },
   "userNav": {
