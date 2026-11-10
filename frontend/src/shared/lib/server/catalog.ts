@@ -1,5 +1,5 @@
 import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/model/normalizeProduct";
-import type { Brand, Category, ProductDetailsEntity } from "@/modules/catalog/types";
+import type { Brand, Category, ProductDetailsEntity, Review } from "@/modules/catalog/types";
 import { buildProductQuery } from "@/shared/lib/productQuery";
 import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
@@ -82,6 +82,18 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailsEnti
 		productTag(slug),
 	]);
 	return raw ? (normalizeProduct(raw as RawProductPayload) as ProductDetailsEntity | null) : null;
+}
+
+/**
+ * Server-side review list for the product detail route so reviews are part of
+ * the initial HTML instead of appearing only after hydration.
+ */
+export async function getReviewsByProduct(productId: string): Promise<Review[]> {
+	const raw = await fetchJson<Review[]>(
+		`/api/v1/reviews?productId=${encodeURIComponent(productId)}`,
+		[`product-reviews:${productId}`],
+	);
+	return asList<Review>(raw);
 }
 
 export interface CatalogQuery {

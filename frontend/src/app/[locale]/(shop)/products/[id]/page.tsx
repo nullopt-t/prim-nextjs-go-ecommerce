@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { ProductDetails } from "@/modules/catalog/components/ProductDetails";
-import { getProductBySlug } from "@/shared/lib/server/catalog";
+import { getProductBySlug, getReviewsByProduct } from "@/shared/lib/server/catalog";
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
 import { routing } from "@/shared/i18n/routing";
+import type { ProductReview, Review } from "@/modules/catalog/types";
 
 type ProductPageProps = {
 	params: Promise<{ locale: string; id: string }>;
@@ -70,6 +71,30 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
 	if (!product) notFound();
 
+	const [rawReviews, tProducts] = await Promise.all([
+		getReviewsByProduct(String(product.id)),
+		getTranslations({ locale, namespace: "products" }),
+	]);
+
+	const initialReviews: ProductReview[] = rawReviews.map((r: Review) => ({
+		id: r.id,
+		author: r.user?.name || tProducts("details.customer"),
+		avatar: r.user?.avatar || null,
+		rating: Number(r.rating) || 0,
+		date: r.createdAt
+			? new Date(r.createdAt).toLocaleDateString(locale, {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				})
+			: tProducts("details.recently"),
+		title: r.title || tProducts("details.customerReview"),
+		content: r.body || "",
+		helpful: r.helpfulCount ?? 0,
+		verified: Boolean(r.orderItemId),
+		userVoted: false,
+	}));
+
 	const price = Number(product.price);
 	const brandName =
 		typeof product.brand === "string"
@@ -126,7 +151,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		<>
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-			<ProductDetails initialProduct={product} />
+			<ProductDetails initialProduct={product} initialReviews={initialReviews} />
 		</>
 	);
 }

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
 	getProducts,
 	getProductBySlug,
+	getReviewsByProduct,
 	getCategories,
 	getBrands,
 	getCatalogSnapshot,
@@ -99,6 +100,20 @@ describe("server catalog fetchers", () => {
 	it("getProductBySlug returns null when nothing is returned", async () => {
 		respondWith(null);
 		expect(await getProductBySlug("missing")).toBeNull();
+	});
+
+	it("getReviewsByProduct fetches reviews for a product", async () => {
+		respondWith({ data: [{ id: "r1", productId: "p1", rating: 5 }] });
+
+		const reviews = await getReviewsByProduct("p1");
+
+		expect(reviews).toEqual([expect.objectContaining({ id: "r1" })]);
+		const [url, init] = fetchMock.mock.calls[0];
+		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1");
+		expect(init).toMatchObject({
+			next: { revalidate: 300, tags: ["product-reviews:p1"] },
+			headers: { Accept: "application/json" },
+		});
 	});
 
 	it("getCategories fetches the category list", async () => {

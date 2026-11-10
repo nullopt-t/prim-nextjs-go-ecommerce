@@ -126,21 +126,22 @@ export function ProductActions({
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => document.getElementById("reviews")?.scrollIntoView({ behavior: "smooth" })}
+          className="flex items-center gap-1.5 cursor-pointer"
+          aria-label={t("actions.reviewsCount", { count: reviewsCount })}
+        >
           <Stars starsNum={roundedStars} />
           {roundedStars > 0 && (
             <span className="ms-1 text-sm font-semibold text-foreground">
               {roundedStars.toFixed(1)}
             </span>
           )}
-        </div>
-        <span className="size-1 rounded-full bg-border" />
-        <a
-          href="#reviews"
-          className="text-sm text-muted-foreground underline decoration-dashed underline-offset-4 transition-colors hover:text-accent-brand"
-        >
-          {t("actions.reviewsCount", { count: reviewsCount })}
-        </a>
+          <span className="ms-1 text-sm text-muted-foreground underline decoration-dashed underline-offset-4 transition-colors hover:text-accent-brand">
+            {t("actions.reviewsCount", { count: reviewsCount })}
+          </span>
+        </button>
       </div>
 
       <div className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-1 border-y border-border/70 py-4">

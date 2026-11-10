@@ -5,6 +5,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { ChevronRight, Package } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { AnimatedSection, CustomButton } from "@/shared/ui";
+import { LazyImage } from "@/shared/ui/lazyImage";
+import Recently from "@/modules/home/components/ui/recently";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
 import SectionTitle from "@/modules/home/components/ui/sectionTitle";
@@ -48,7 +50,13 @@ import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/public
 import { convertCurrency } from "@/shared/lib/currency";
 import { formatMoney } from "@/shared/lib/money";
 
-export function ProductDetails({ initialProduct = null }: { initialProduct?: ProductDetailsEntity | null }) {
+export function ProductDetails({
+  initialProduct = null,
+  initialReviews,
+}: {
+  initialProduct?: ProductDetailsEntity | null;
+  initialReviews?: ProductReview[];
+}) {
   const { id } = useParams();
   const searchParams = useSearchParams();
   const navigate = useRouter();
@@ -70,7 +78,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviews, setReviews] = useState<ProductReview[]>(initialReviews ?? []);
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
 
@@ -176,6 +184,10 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
     let isMounted = true;
     const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
     if (!targetProductId) return;
+    if (initialReviews !== undefined) {
+      // Reviews were pre-fetched server-side (possibly empty) - skip client fetch
+      return;
+    }
 
     catalogService
       .getProductReviews(String(targetProductId))
@@ -394,6 +406,10 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   const selectedColorLabel = String(
     activeVariant?.attributes?.color ?? selectedValues.color ?? Object.values(selectedValues)[0] ?? "Default"
   );
+  const selectedVariantLabel = (product.variationAxes ?? [])
+    .map((axis: { key: string }) => selectedValues[axis.key])
+    .filter(Boolean)
+    .join(" · ");
 
   const handleAddToCart = async () => {
     if (!isVariantInStock) return;
@@ -601,26 +617,50 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   return (
     <>
       {showBuyBar && !footerVisible && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md">
           <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+            <LazyImage
+              src={images[activeImage] ?? images[0]}
+              alt={productName}
+              containerClassName="hidden size-12 shrink-0 rounded-lg border border-border md:block"
+              imageClassName="size-full object-contain p-1"
+              loading="lazy"
+            />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-bold text-foreground">
-                {formatMoney(displayPriceConverted, displayCurrency)}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <p className="truncate text-base font-bold text-foreground">
+                  {formatMoney(displayPriceConverted, displayCurrency)}
+                </p>
+                {selectedVariantLabel && (
+                  <span className="hidden max-w-40 truncate rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground md:inline-block">
+                    {selectedVariantLabel}
+                  </span>
+                )}
+              </div>
               <p className="truncate text-[11px] text-muted-foreground">{productName}</p>
             </div>
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={isAdding || !isVariantInStock}
-              className="min-h-12 min-w-40 shrink-0 cursor-pointer rounded-xl bg-accent-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isAdding
-                ? tProducts("actions.adding")
-                : isVariantInStock
-                  ? tProducts("actions.addToCart")
-                  : tProducts("actions.outOfStock")}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={isAdding || !isVariantInStock}
+                className="hidden min-h-11 cursor-pointer rounded-xl border border-accent-brand px-5 text-sm font-semibold text-accent-brand transition-colors hover:bg-accent-brand/10 disabled:cursor-not-allowed disabled:opacity-50 md:inline-flex md:items-center"
+              >
+                {tProducts("actions.buyNow")}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={isAdding || !isVariantInStock}
+                className="min-h-12 min-w-40 cursor-pointer rounded-xl bg-accent-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-brand/90 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11 md:min-w-0 md:px-6"
+              >
+                {isAdding
+                  ? tProducts("actions.adding")
+                  : isVariantInStock
+                    ? tProducts("actions.addToCart")
+                    : tProducts("actions.outOfStock")}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -724,7 +764,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
       />
 
       {/* Reviews Section */}
-      <div className="mt-10 sm:mt-14">
+      <div id="reviews" className="mt-10 sm:mt-14 scroll-mt-24">
         <ProductReviews
           stars={averageRating}
           reviewsCount={reviewCount}
@@ -748,6 +788,8 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
           />
         </div>
       )}
+
+      <Recently />
     </AnimatedSection>
     </>
   );
