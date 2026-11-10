@@ -115,7 +115,7 @@ export function BrandsDirectory({ brands }: { brands: BrandDirectoryItem[] }) {
                       src={brand.logoUrl}
                       alt={brand.name}
                       containerClassName="flex h-full w-full items-center justify-center"
-                      imageClassName="max-h-full max-w-full object-contain"
+                      imageClassName="max-h-12 max-w-[130px] object-contain"
                     />
                   ) : (
                     <span className="text-2xl font-bold tracking-tight text-neutral-800">
@@ -127,11 +127,7 @@ export function BrandsDirectory({ brands }: { brands: BrandDirectoryItem[] }) {
                 <span dir="auto" className="mt-3 block truncate text-sm font-semibold text-foreground transition-colors group-hover:text-accent-brand">
                   {brand.name}
                 </span>
-                {brand.productCount !== undefined ? (
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {t("brands.productsCount", { count: brand.productCount })}
-                  </span>
-                ) : null}
+
 
                 {brand.categories.length > 0 && (
                   <span className="mt-auto flex flex-wrap gap-1 pt-3">
