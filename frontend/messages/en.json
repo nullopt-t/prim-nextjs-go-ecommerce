@@ -2344,6 +2344,8 @@
   "products": {
     "trustPill": {
       "secureCheckout": "Secure checkout",
+      "cards": "Credit / debit cards",
+      "cashOnDelivery": "Cash on delivery",
       "deliveryDays": "Delivery in {days}",
       "arrives": "Arrives {start} - {end}",
       "arrivesOn": "Arrives {date}"
@@ -2477,6 +2479,17 @@
       "storage": "Storage",
       "warranty": "Warranty",
       "warrantyValue": "1 Year Manufacturer"
+    },
+    "sizeGuide": {
+      "open": "Size Guide",
+      "title": "Size Guide",
+      "close": "Close size guide",
+      "size": "Size",
+      "chest": "Chest (cm)",
+      "waist": "Waist (cm)",
+      "hips": "Hips (cm)",
+      "length": "Length (cm)",
+      "note": "Measurements are in centimeters and are approximate. If you are between sizes, choose the larger size."
     }
   },
   "reviews": {

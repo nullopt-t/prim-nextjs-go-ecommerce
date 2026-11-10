@@ -1,5 +1,17 @@
+import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bell, ShieldCheck, Clock, AlertCircle } from "lucide-react";
+import {
+  Bell,
+  ShieldCheck,
+  Clock,
+  AlertCircle,
+  Check,
+  CreditCard,
+  Banknote,
+  Ruler,
+  ArrowUpRight,
+  X,
+} from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
@@ -7,6 +19,72 @@ import { usePublicSettings } from "@/modules/settings/model/publicSettingsContex
 import { formatMoney } from "@/shared/lib/money";
 import { resolveDeliveryWindow } from "../../utils/productHelpers";
 import { ProductVariationAxis, ProductVariant } from "../../types";
+
+// Named color swatches (EN + AR) with hex fallbacks; unknown values get a neutral swatch.
+const COLOR_SWATCHES: Record<string, string> = {
+  black: "#111111",
+  white: "#ffffff",
+  blue: "#2563eb",
+  navy: "#1e3a8a",
+  "navy blue": "#1e3a8a",
+  red: "#dc2626",
+  green: "#16a34a",
+  gray: "#9ca3af",
+  grey: "#9ca3af",
+  beige: "#e8d8c3",
+  yellow: "#facc15",
+  orange: "#f97316",
+  purple: "#7c3aed",
+  pink: "#ec4899",
+  brown: "#92400e",
+  gold: "#d4af37",
+  silver: "#c0c0c0",
+  maroon: "#7f1d1d",
+  teal: "#0d9488",
+  olive: "#6b7a1f",
+  cream: "#f5efe0",
+  "light blue": "#93c5fd",
+  "dark blue": "#1e40af",
+  أسود: "#111111",
+  أبيض: "#ffffff",
+  أزرق: "#2563eb",
+  أحمر: "#dc2626",
+  أخضر: "#16a34a",
+  رمادي: "#9ca3af",
+  بيج: "#e8d8c3",
+  أصفر: "#facc15",
+  برتقالي: "#f97316",
+  بنفسجي: "#7c3aed",
+  بني: "#92400e",
+  وردي: "#ec4899",
+};
+
+function resolveSwatch(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(normalized)) {
+    return normalized;
+  }
+  return COLOR_SWATCHES[normalized] ?? "#d4d4d8";
+}
+
+function isLightSwatch(hex: string): boolean {
+  let clean = hex.replace("#", "");
+  if (clean.length === 3) clean = clean.split("").map((c) => c + c).join("");
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 160;
+}
+
+// Standard unisex clothing measurements in centimeters.
+const SIZE_CHART = [
+  { size: "XS", chest: 84, waist: 66, hips: 90, length: 66 },
+  { size: "S", chest: 90, waist: 72, hips: 96, length: 68 },
+  { size: "M", chest: 96, waist: 78, hips: 102, length: 70 },
+  { size: "L", chest: 102, waist: 84, hips: 108, length: 72 },
+  { size: "XL", chest: 110, waist: 92, hips: 116, length: 74 },
+  { size: "XXL", chest: 118, waist: 100, hips: 124, length: 76 },
+];
 
 interface ProductActionsProps {
   productCategory: string;
@@ -74,6 +152,23 @@ export function ProductActions({
   const locale = useLocale();
   const { settings } = usePublicSettings();
   const roundedStars = Number(stars) || 0;
+
+  const sizeDialogRef = useRef<HTMLDialogElement>(null);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+
+  useEffect(() => {
+    const dialog = sizeDialogRef.current;
+    if (!dialog) return;
+    if (sizeGuideOpen) {
+      if (!dialog.open) dialog.showModal();
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+    if (dialog.open) dialog.close();
+  }, [sizeGuideOpen]);
 
   const isVariantPurchasable = (variant: ProductVariant) => {
     const stockCount = variant.stock?.availableQuantity ?? variant.availableStock;
@@ -186,6 +281,8 @@ export function ProductActions({
       {variationAxes.map((axis) => {
         const selectedValue = selectedValues[axis.key] || "";
         const label = axis.key === "color" ? t("actions.color") : axis.label;
+        const isColorAxis = axis.key === "color";
+        const isSizeAxis = axis.key.toLowerCase() === "size";
         return (
           <fieldset key={axis.key} className="mb-5 flex flex-col gap-2.5">
             <legend className="text-sm font-semibold text-foreground">
@@ -193,11 +290,59 @@ export function ProductActions({
               <span className="ms-1 font-normal text-muted-foreground">
                 {selectedValue}
               </span>
+              {isSizeAxis && (
+                <button
+                  type="button"
+                  onClick={() => setSizeGuideOpen(true)}
+                  className="ms-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-accent-brand transition-colors hover:underline"
+                >
+                  <Ruler className="size-3.5" aria-hidden="true" />
+                  {t("sizeGuide.open")}
+                  <ArrowUpRight className="size-3 rtl:-scale-x-100" aria-hidden="true" />
+                </button>
+              )}
             </legend>
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
               {axis.values.map((value) => {
                 const isSelected = selectedValue === value;
                 const isAvailable = isOptionAvailable(axis.key, value);
+                const availabilityTitle = isAvailable
+                  ? value
+                  : `${value} — ${t("actions.outOfStock")}`;
+
+                if (isColorAxis) {
+                  const swatch = resolveSwatch(value);
+                  const light = isLightSwatch(swatch);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      aria-disabled={!isAvailable}
+                      disabled={!isAvailable}
+                      aria-label={value}
+                      title={availabilityTitle}
+                      onClick={() => onSelectAxis(axis.key, value)}
+                      style={{ backgroundColor: swatch }}
+                      className={`flex size-9 items-center justify-center rounded-full border border-border/70 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-brand focus-visible:ring-offset-2 ${
+                        !isAvailable
+                          ? "cursor-not-allowed opacity-40"
+                          : isSelected
+                            ? "cursor-pointer ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                            : "cursor-pointer hover:scale-105 hover:ring-1 hover:ring-foreground/40 hover:ring-offset-2"
+                      }`}
+                    >
+                      {isSelected && (
+                        <Check
+                          className={`size-4 ${light ? "text-foreground" : "text-white"}`}
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                  );
+                }
+
                 return (
                   <button
                     key={value}
@@ -291,6 +436,18 @@ export function ProductActions({
             <ShieldCheck className="size-3.5" aria-hidden="true" />
             {t("trustPill.secureCheckout")}
           </span>
+          {settings?.allowCards && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">
+              <CreditCard className="size-3.5" aria-hidden="true" />
+              {t("trustPill.cards")}
+            </span>
+          )}
+          {settings?.allowCod && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">
+              <Banknote className="size-3.5" aria-hidden="true" />
+              {t("trustPill.cashOnDelivery")}
+            </span>
+          )}
           {settings?.estimatedDeliveryDays?.trim() && (
             <span
               suppressHydrationWarning
@@ -363,6 +520,63 @@ export function ProductActions({
           <p className="mt-1 text-sm text-foreground">{t("actions.easyReturnsHint")}</p>
         </div>
       </div>
+
+      <dialog
+        ref={sizeDialogRef}
+        aria-label={t("sizeGuide.title")}
+        aria-modal="true"
+        onCancel={(event) => {
+          event.preventDefault();
+          setSizeGuideOpen(false);
+        }}
+        onClose={() => setSizeGuideOpen(false)}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setSizeGuideOpen(false);
+        }}
+        className="m-auto w-[calc(100%-1rem)] max-w-xl overflow-hidden rounded-2xl border border-border bg-card p-0 text-foreground shadow-2xl backdrop:bg-foreground/70 backdrop:backdrop-blur-sm"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 className="text-base font-bold text-foreground">{t("sizeGuide.title")}</h2>
+          <button
+            type="button"
+            onClick={() => setSizeGuideOpen(false)}
+            aria-label={t("sizeGuide.close")}
+            className="flex size-11 cursor-pointer items-center justify-center rounded-full text-foreground transition-colors hover:bg-secondary"
+          >
+            <X className="size-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-auto p-4">
+          <table className="w-full min-w-[320px] border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-border text-start text-xs uppercase tracking-wide text-muted-foreground">
+                <th scope="col" className="px-2 py-2 text-start">{t("sizeGuide.size")}</th>
+                <th scope="col" className="px-2 py-2 text-start">{t("sizeGuide.chest")}</th>
+                <th scope="col" className="px-2 py-2 text-start">{t("sizeGuide.waist")}</th>
+                <th scope="col" className="px-2 py-2 text-start">{t("sizeGuide.hips")}</th>
+                <th scope="col" className="px-2 py-2 text-start">{t("sizeGuide.length")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/70">
+              {SIZE_CHART.map((row) => (
+                <tr key={row.size}>
+                  <th scope="row" className="px-2 py-2 text-start font-semibold text-foreground">
+                    {row.size}
+                  </th>
+                  <td className="px-2 py-2 text-foreground/90">{row.chest}</td>
+                  <td className="px-2 py-2 text-foreground/90">{row.waist}</td>
+                  <td className="px-2 py-2 text-foreground/90">{row.hips}</td>
+                  <td className="px-2 py-2 text-foreground/90">{row.length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {t("sizeGuide.note")}
+          </p>
+        </div>
+      </dialog>
     </div>
   );
 }

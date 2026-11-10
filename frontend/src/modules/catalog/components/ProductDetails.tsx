@@ -39,6 +39,7 @@ import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductHighlights } from "./ui/ProductHighlights";
 import { ProductBundleContents } from "./ui/ProductBundleContents";
 import { ProductReviews } from "./ui/ProductReviews";
+import { PdpSkeleton } from "./ui/PdpSkeleton";
 import { AddToCompareButton } from "@/modules/compare/components/ui/AddToCompareButton";
 import { NotifyMeDialog } from "./ui/NotifyMeDialog";
 import { TierPricingTable } from "./ui/TierPricingTable";
@@ -266,12 +267,7 @@ export function ProductDetails({
   }, [product, allProducts]);
 
   if ((allLoading && !initialProduct) || productLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
-        <div className="size-8 rounded-full border-2 border-accent-brand border-t-transparent animate-spin mb-3" />
-        <span className="text-sm">{tProducts("details.loading")}</span>
-      </div>
-    );
+    return <PdpSkeleton loadingLabel={tProducts("details.loading")} />;
   }
 
   if (!product) {

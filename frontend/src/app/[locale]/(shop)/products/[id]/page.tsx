@@ -103,6 +103,25 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 				? product.brand.name
 				: undefined;
 
+	// Per-review markup enables review rich snippets; the first five match the
+	// order shown on the page. datePublished is the raw ISO timestamp.
+	const reviewJsonLd = rawReviews.slice(0, 5).map((r: Review) => ({
+		"@type": "Review",
+		name: r.title || undefined,
+		reviewBody: r.body || undefined,
+		datePublished: r.createdAt || undefined,
+		author: {
+			"@type": "Person",
+			name: r.user?.name || tProducts("details.customer"),
+		},
+		reviewRating: {
+			"@type": "Rating",
+			ratingValue: Number(r.rating) || 0,
+			bestRating: 5,
+			worstRating: 1,
+		},
+	}));
+
 	const jsonLd = {
 		"@context": "https://schema.org",
 		"@type": "Product",
@@ -120,6 +139,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 						reviewCount: Number(product.reviews),
 					}
 				: undefined,
+		review: reviewJsonLd.length > 0 ? reviewJsonLd : undefined,
 		offers:
 			price > 0
 				? {
