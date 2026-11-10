@@ -6,7 +6,6 @@ import { ChevronRight, Package } from "lucide-react";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { AnimatedSection, CustomButton } from "@/shared/ui";
 import { LazyImage } from "@/shared/ui/lazyImage";
-import Recently from "@/modules/home/components/ui/recently";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
 import SectionTitle from "@/modules/home/components/ui/sectionTitle";
@@ -788,8 +787,6 @@ export function ProductDetails({
           />
         </div>
       )}
-
-      <Recently />
     </AnimatedSection>
     </>
   );
