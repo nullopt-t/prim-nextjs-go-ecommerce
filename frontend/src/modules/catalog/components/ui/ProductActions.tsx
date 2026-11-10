@@ -1,11 +1,13 @@
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Bell, ShieldCheck, Clock, AlertCircle } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
+import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
 import { formatMoney } from "@/shared/lib/money";
-import { ProductVariationAxis } from "../../types";
+import { resolveDeliveryWindow } from "../../utils/productHelpers";
+import { ProductVariationAxis, ProductVariant } from "../../types";
 
 interface ProductActionsProps {
   productCategory: string;
@@ -16,6 +18,7 @@ interface ProductActionsProps {
   oldPrice?: number;
   currency: string;
   variationAxes?: ProductVariationAxis[];
+  variants?: ProductVariant[];
   selectedValues: Record<string, string>;
   onSelectAxis: (key: string, value: string) => void;
   availableStock: number;
@@ -46,6 +49,7 @@ export function ProductActions({
   oldPrice,
   currency,
   variationAxes = [],
+  variants = [],
   selectedValues,
   onSelectAxis,
   availableStock,
@@ -65,7 +69,9 @@ export function ProductActions({
   onNotifyMe,
 }: ProductActionsProps) {
   const t = useTranslations("products");
+  const locale = useLocale();
   const { settings } = usePublicSettings();
+  const formatLineTotal = usePriceFormatter();
   const formatPrice = (val?: number) => {
     if (val === undefined || isNaN(val)) return "0";
     return val.toLocaleString(undefined, {
@@ -76,6 +82,37 @@ export function ProductActions({
 
   const currencyPrefix = currency && currency.length > 1 ? `${currency} ` : currency;
   const roundedStars = Number(stars) || 0;
+
+  const isVariantPurchasable = (variant: ProductVariant) => {
+    const stockCount = variant.stock?.availableQuantity ?? variant.availableStock;
+    if (variant.stock?.isInStock === false || variant.inStock === false) return false;
+    if (typeof stockCount === "number") return stockCount > 0;
+    return variant.stock?.isInStock ?? variant.inStock ?? true;
+  };
+
+  // An option is purchasable when at least one matching variant (with the
+  // other selected axes) is in stock.
+  const isOptionAvailable = (axisKey: string, value: string) => {
+    if (variants.length === 0) return true;
+    const nextSelection = { ...selectedValues, [axisKey]: value };
+    return variants.some((variant) => {
+      const attributes = variant.attributes ?? {};
+      const axisValue = attributes[axisKey];
+      if (axisValue === undefined || axisValue === null || String(axisValue) !== value) return false;
+      const matchesOtherAxes = variationAxes.every((axis) => {
+        if (axis.key === axisKey) return true;
+        const selected = nextSelection[axis.key];
+        if (!selected) return true;
+        const otherValue = attributes[axis.key];
+        return otherValue !== undefined && otherValue !== null && String(otherValue) === selected;
+      });
+      return matchesOtherAxes && isVariantPurchasable(variant);
+    });
+  };
+
+  const deliveryWindow = resolveDeliveryWindow(settings?.estimatedDeliveryDays, locale);
+  const stockState =
+    !isVariantInStock || availableStock <= 0 ? "out" : availableStock <= 5 ? "low" : "in";
 
   return (
     <div className="flex flex-col">
@@ -118,21 +155,30 @@ export function ProductActions({
           </span>
         )}
         <span
+          aria-live="polite"
           className={`mb-1 ms-auto inline-flex items-center gap-2 text-xs font-semibold ${
-            isVariantInStock
-              ? "text-emerald-700 dark:text-emerald-400"
-              : "text-destructive"
+            stockState === "out"
+              ? "text-destructive"
+              : stockState === "low"
+                ? "rounded-full bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-400"
+                : "text-emerald-700 dark:text-emerald-400"
           }`}
         >
           <span
             aria-hidden="true"
             className={`size-1.5 rounded-full ${
-              isVariantInStock ? "bg-emerald-600" : "bg-destructive"
+              stockState === "out"
+                ? "bg-destructive"
+                : stockState === "low"
+                  ? "bg-amber-500"
+                  : "bg-emerald-600"
             }`}
           />
-          {isVariantInStock
-            ? t("actions.inStock", { count: availableStock })
-            : t("actions.outOfStock")}
+          {stockState === "out"
+            ? t("actions.outOfStock")
+            : stockState === "low"
+              ? t("actions.lowStock", { count: availableStock })
+              : t("actions.inStock")}
         </span>
       </div>
 
@@ -160,17 +206,23 @@ export function ProductActions({
             <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={label}>
               {axis.values.map((value) => {
                 const isSelected = selectedValue === value;
+                const isAvailable = isOptionAvailable(axis.key, value);
                 return (
                   <button
                     key={value}
                     type="button"
                     role="radio"
                     aria-checked={isSelected}
+                    aria-disabled={!isAvailable}
+                    disabled={!isAvailable}
+                    title={!isAvailable ? t("actions.outOfStock") : undefined}
                     onClick={() => onSelectAxis(axis.key, value)}
-                    className={`min-h-11 min-w-11 cursor-pointer rounded-lg border px-3.5 py-2 text-sm transition-colors ${
-                      isSelected
-                        ? "border-foreground bg-foreground font-semibold text-background"
-                        : "border-border bg-background text-foreground hover:border-foreground/50"
+                    className={`min-h-11 min-w-11 rounded-lg border px-3.5 py-2 text-sm transition-colors ${
+                      !isAvailable
+                        ? "cursor-not-allowed border-border bg-muted/30 text-muted-foreground line-through opacity-50"
+                        : isSelected
+                          ? "cursor-pointer border-foreground bg-foreground font-semibold text-background"
+                          : "cursor-pointer border-border bg-background text-foreground hover:border-foreground/50"
                     }`}
                   >
                     {value}
@@ -192,6 +244,14 @@ export function ProductActions({
             onChange={onQuantityChange}
           />
         </div>
+
+        {quantity > 1 && (
+          <p className="text-xs font-medium text-muted-foreground" aria-live="polite">
+            {t("actions.lineTotal", {
+              total: formatLineTotal(price * quantity, currency),
+            })}
+          </p>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <CustomButton
@@ -235,9 +295,19 @@ export function ProductActions({
             {t("trustPill.secureCheckout")}
           </span>
           {settings?.estimatedDeliveryDays?.trim() && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1">
+            <span
+              suppressHydrationWarning
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1"
+            >
               <Clock className="size-3.5" aria-hidden="true" />
-              {t("trustPill.deliveryDays", { days: settings.estimatedDeliveryDays })}
+              {deliveryWindow
+                ? deliveryWindow.start === deliveryWindow.end
+                  ? t("trustPill.arrivesOn", { date: deliveryWindow.start })
+                  : t("trustPill.arrives", {
+                      start: deliveryWindow.start,
+                      end: deliveryWindow.end,
+                    })
+                : t("trustPill.deliveryDays", { days: settings.estimatedDeliveryDays })}
             </span>
           )}
         </div>

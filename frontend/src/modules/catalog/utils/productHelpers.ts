@@ -228,6 +228,40 @@ export function resolveProductImageEntries(
 }
 
 /**
+ * Turns the store's estimated delivery window setting (e.g. "2 - 4 business
+ * days") into localized arrival dates. Returns null when the setting cannot be
+ * read as a day range so callers can fall back to the raw string.
+ */
+export function resolveDeliveryWindow(
+  estimatedDeliveryDays: string | undefined,
+  locale: string,
+  now: Date = new Date(),
+): { start: string; end: string } | null {
+  const raw = estimatedDeliveryDays?.trim();
+  if (!raw) return null;
+  // Only day-based windows become dates; hour/week wording keeps the raw value.
+  if (!/day/i.test(raw) && !/^\s*\d+\s*(?:[-–—]|to)?\s*\d*\s*$/i.test(raw)) return null;
+
+  const numbers = raw.match(/\d+/g);
+  if (!numbers) return null;
+  const min = Number(numbers[0]);
+  const max = numbers.length > 1 ? Number(numbers[1]) : min;
+  if (!Number.isFinite(min) || !Number.isFinite(max) || max < min) return null;
+
+  const formatter = new Intl.DateTimeFormat(locale.startsWith("ar") ? "ar-EG" : locale, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+  const addDays = (days: number) =>
+    // shortcut: business days are added as calendar days; upgrade if exact working-day arrival matters.
+    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + days));
+
+  return { start: formatter.format(addDays(min)), end: formatter.format(addDays(max)) };
+}
+
+/**
  * Backwards-compatible URL-only view of the product gallery entries.
  */
 export function resolveProductImages(

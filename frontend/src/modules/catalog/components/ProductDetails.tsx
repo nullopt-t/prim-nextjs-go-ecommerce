@@ -464,12 +464,34 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
   };
 
   const handleShare = async () => {
-    const copied = await copyTextToClipboard(window.location.href);
+    const url = window.location.href;
+    const shareText = `${productName} - ${url}`;
+
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: productName, text: shareText, url });
+        return;
+      } catch (err) {
+        // Closing the native share sheet is not a failure; don't fall back.
+        if ((err as { name?: string })?.name === "AbortError") return;
+      }
+    }
+
+    // No native share (typically desktop): open WhatsApp, then copy the link
+    // when the browser blocks the popup.
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    const opened = window.open(whatsappUrl, "_blank");
+    if (opened) {
+      opened.opener = null;
+      return;
+    }
+
+    const copied = await copyTextToClipboard(url);
     if (copied) {
       notify.success(tProducts("details.linkCopied"));
     } else {
       // Fall back to showing the URL so the user can copy it manually.
-      notify.info(tProducts("details.shareUrl", { url: window.location.href }));
+      notify.info(tProducts("details.shareUrl", { url }));
     }
   };
 
@@ -647,6 +669,7 @@ export function ProductDetails({ initialProduct = null }: { initialProduct?: Pro
               oldPrice={hasTierDiscount ? convertedBasePrice : convertedOldPrice}
               currency={displayCurrency}
               variationAxes={product.variationAxes}
+              variants={product.variants}
               selectedValues={selectedValues}
               onSelectAxis={handleSelectAxis}
               availableStock={availableStock}

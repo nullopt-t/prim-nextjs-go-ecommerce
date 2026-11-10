@@ -2344,7 +2344,9 @@
   "products": {
     "trustPill": {
       "secureCheckout": "Secure checkout",
-      "deliveryDays": "Delivery in {days}"
+      "deliveryDays": "Delivery in {days}",
+      "arrives": "Arrives {start} - {end}",
+      "arrivesOn": "Arrives {date}"
     },
     "actions": {
       "addToCart": "Add to Cart",
@@ -2357,10 +2359,12 @@
       "easyReturnsHint": "Within 30 days",
       "freeDelivery": "Free delivery",
       "freeDeliveryHint": "Free on orders over {threshold}",
-      "inStock": "In Stock ({count} available)",
+      "inStock": "In Stock",
+      "lowStock": "Only {count} left in stock - order soon!",
       "outOfStock": "Out of Stock",
       "addToCompare": "Add to Compare",
       "addedToCompare": "Added to Compare",
+      "lineTotal": "Total: {total}",
       "reviewsCount": "{count} Reviews",
       "savedToWishlist": "Saved to Wishlist",
       "selectColor": "Select color",
@@ -2410,11 +2414,16 @@
       "title": "Notify me when available"
     },
     "gallery": {
+      "closeLightbox": "Close image viewer",
+      "lightboxLabel": "Image viewer for {productName}",
       "nextImage": "Next image",
       "off": "{discount} OFF",
       "previousImage": "Previous image",
       "selectImage": "Select product image {index}",
-      "thumbnailAlt": "{productName} thumbnail {index}"
+      "thumbnailAlt": "{productName} thumbnail {index}",
+      "viewFullscreen": "View {productName} full screen",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out"
     },
     "bundle": {
       "buyBundle": "Buy bundle · {price}",

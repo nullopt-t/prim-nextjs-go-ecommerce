@@ -2344,7 +2344,9 @@
   "products": {
     "trustPill": {
       "secureCheckout": "دفع آمن",
-      "deliveryDays": "التوصيل خلال {days}"
+      "deliveryDays": "التوصيل خلال {days}",
+      "arrives": "يصل {start} - {end}",
+      "arrivesOn": "يصل {date}"
     },
     "actions": {
       "addToCart": "أضف إلى السلة",
@@ -2357,10 +2359,12 @@
       "easyReturnsHint": "خلال 30 يوماً",
       "freeDelivery": "توصيل مجاني",
       "freeDeliveryHint": "مجاناً للطلبات التي تتجاوز {threshold}",
-      "inStock": "متوفر ({count} متاح)",
+      "inStock": "متوفر",
+      "lowStock": "باقي {count} فقط في المخزون - اطلب الآن!",
       "outOfStock": "غير متوفر",
       "addToCompare": "أضف للمقارنة",
       "addedToCompare": "أُضيف للمقارنة",
+      "lineTotal": "الإجمالي: {total}",
       "reviewsCount": "{count} مراجعة",
       "savedToWishlist": "محفوظ في المفضلة",
       "selectColor": "اختر اللون",
@@ -2410,11 +2414,16 @@
       "title": "أعلمني عند التوفر"
     },
     "gallery": {
+      "closeLightbox": "إغلاق عارض الصور",
+      "lightboxLabel": "عارض صور {productName}",
       "nextImage": "الصورة التالية",
       "off": "خصم {discount}",
       "previousImage": "الصورة السابقة",
       "selectImage": "اختر صورة المنتج {index}",
-      "thumbnailAlt": "الصورة المصغرة {index} لـ {productName}"
+      "thumbnailAlt": "الصورة المصغرة {index} لـ {productName}",
+      "viewFullscreen": "عرض {productName} بالحجم الكامل",
+      "zoomIn": "تكبير الصورة",
+      "zoomOut": "تصغير الصورة"
     },
     "bundle": {
       "buyBundle": "اشترِ الحزمة · {price}",
