@@ -4,7 +4,6 @@ import { Stars } from "@/shared/ui/stars";
 import { CustomButton } from "@/shared/ui";
 import QuantitySelector from "@/shared/ui/quantitySelector";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
-import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
 import { formatMoney } from "@/shared/lib/money";
 import { resolveDeliveryWindow } from "../../utils/productHelpers";
 import { ProductVariationAxis, ProductVariant } from "../../types";
@@ -30,6 +29,8 @@ interface ProductActionsProps {
   tierMinQuantity?: number;
   actionError?: string | null;
   isAdding: boolean;
+  /** Add-to-cart just succeeded; button shows a temporary success state. */
+  justAdded?: boolean;
   isAuthenticated: boolean;
   isWishlisted: boolean;
   onAddToCart: () => void;
@@ -60,6 +61,7 @@ export function ProductActions({
   tierMinQuantity,
   actionError,
   isAdding,
+  justAdded,
   isAuthenticated,
   isWishlisted,
   onAddToCart,
@@ -71,16 +73,6 @@ export function ProductActions({
   const t = useTranslations("products");
   const locale = useLocale();
   const { settings } = usePublicSettings();
-  const formatLineTotal = usePriceFormatter();
-  const formatPrice = (val?: number) => {
-    if (val === undefined || isNaN(val)) return "0";
-    return val.toLocaleString(undefined, {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-  };
-
-  const currencyPrefix = currency && currency.length > 1 ? `${currency} ` : currency;
   const roundedStars = Number(stars) || 0;
 
   const isVariantPurchasable = (variant: ProductVariant) => {
@@ -146,13 +138,11 @@ export function ProductActions({
 
       <div className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-1 border-y border-border/70 py-4">
         <span className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {currencyPrefix}
-          {formatPrice(price)}
+          {formatMoney(price, currency)}
         </span>
         {oldPrice !== undefined && oldPrice > 0 && oldPrice !== price && (
           <span className="mb-1 text-lg text-muted-foreground line-through">
-            {currencyPrefix}
-            {formatPrice(oldPrice)}
+            {formatMoney(oldPrice, currency)}
           </span>
         )}
         <span
@@ -186,7 +176,7 @@ export function ProductActions({
       {tierSavingsPerUnit > 0 && (
         <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
           {t("tierPricing.activeSavings", {
-            amount: formatPrice(tierSavingsPerUnit),
+            amount: formatMoney(tierSavingsPerUnit, currency),
             minQuantity: tierMinQuantity ?? quantity,
           })}
         </p>
@@ -249,7 +239,7 @@ export function ProductActions({
         {quantity > 1 && (
           <p className="text-xs font-medium text-muted-foreground" aria-live="polite">
             {t("actions.lineTotal", {
-              total: formatLineTotal(price * quantity, currency),
+              total: formatMoney(price * quantity, currency),
             })}
           </p>
         )}
@@ -259,13 +249,19 @@ export function ProductActions({
             text={
               isAdding
                 ? t("actions.adding")
-                : isVariantInStock
-                  ? t("actions.addToCart")
-                  : t("actions.outOfStock")
+                : justAdded
+                  ? t("actions.added")
+                  : isVariantInStock
+                    ? t("actions.addToCart")
+                    : t("actions.outOfStock")
             }
             onClick={onAddToCart}
             className={`py-3.5 text-sm ${
-              !isVariantInStock ? "cursor-not-allowed opacity-50" : ""
+              !isVariantInStock
+                ? "cursor-not-allowed opacity-50"
+                : justAdded
+                  ? "bg-green-600 text-white hover:bg-green-600"
+                  : ""
             }`}
             disabled={isAdding || !isVariantInStock}
           />

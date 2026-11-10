@@ -225,18 +225,23 @@ export function ProductGallery({
 
         {/* Mobile bullet indicators */}
         {hasThumbnails && (
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 md:hidden">
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-1 md:hidden">
             {safeImages.map((img, i) => (
               <button
                 key={`bullet-${img}-${i}`}
                 type="button"
                 onClick={() => goToIndex(i)}
-                aria-label={t("gallery.selectImage", { index: i + 1 })}
+                aria-label={t("gallery.goToSlide", { index: i + 1 })}
                 aria-current={i === currentIndex ? "true" : undefined}
-                className={`size-2.5 cursor-pointer rounded-full transition-colors ${
-                  i === currentIndex ? "bg-accent-brand" : "bg-border hover:bg-muted-foreground/60"
-                }`}
-              />
+                className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`block size-2.5 rounded-full transition-colors ${
+                    i === currentIndex ? "bg-accent-brand" : "bg-border"
+                  }`}
+                />
+              </button>
             ))}
           </div>
         )}

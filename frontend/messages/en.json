@@ -2351,6 +2351,7 @@
     "actions": {
       "addToCart": "Add to Cart",
       "addToWishlist": "Add to Wishlist",
+      "added": "✓ Added to Cart",
       "adding": "Adding...",
       "buyNow": "Buy Now",
       "color": "Color:",
@@ -2415,6 +2416,7 @@
     },
     "gallery": {
       "closeLightbox": "Close image viewer",
+      "goToSlide": "Go to slide {index}",
       "lightboxLabel": "Image viewer for {productName}",
       "nextImage": "Next image",
       "off": "{discount} OFF",

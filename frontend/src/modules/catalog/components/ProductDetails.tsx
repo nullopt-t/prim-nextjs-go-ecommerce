@@ -69,7 +69,7 @@ export function ProductDetails({
 
   const { products: allProducts, loading: allLoading } = useAllProducts();
   const { product, loading: productLoading } = useProductBySlug(id, initialProduct);
-  const { addToCart } = useCartContext();
+  const { addToCart, openCart } = useCartContext();
   const { isWishlisted: checkIsWishlisted, toggleWishlist } = useWishlist();
 
   const [activeImage, setActiveImage] = useState(0);
@@ -80,10 +80,14 @@ export function ProductDetails({
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews ?? []);
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
 
   // Mobile sticky buy bar: appears once the in-card purchase actions scroll
   // out of view, and hides while the footer is on screen so it never covers it.
   const actionsRef = useRef<HTMLDivElement>(null);
+  // Resets the add-to-cart success state; kept in a ref so repeat adds don't
+  // leave a stale timer that clears the newest feedback early.
+  const addedTimerRef = useRef<number | null>(null);
   const [showBuyBar, setShowBuyBar] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
 
@@ -288,6 +292,9 @@ export function ProductDetails({
   const productName = getProductDisplayName(product, locale);
   const activeVariant = resolveVariantByAttributes(product, selectedValues);
   const { availableStock, isVariantInStock } = resolveVariantStock(product, activeVariant);
+  // Clamped so switching to a lower-stock variant (or a live stock dip) never
+  // submits more than is sellable; raw quantity keeps the user's intent.
+  const effectiveQuantity = Math.min(quantity, Math.max(1, availableStock));
   // A kit's own listing usually has a single cover image, so the components'
   // photos are appended to the gallery. They carry no variant, which keeps a
   // gallery click from changing the (single) kit selection.
@@ -383,7 +390,7 @@ export function ProductDetails({
     (activeVariant as unknown as { tierPricing?: unknown } | null)?.tierPricing ??
       (product as unknown as { tierPricing?: unknown }).tierPricing,
   );
-  const tier = resolveTier(currentPrice, tierPricing, quantity);
+  const tier = resolveTier(currentPrice, tierPricing, effectiveQuantity);
   const hasTierDiscount = tier.activeTier !== null && tier.savingsPerUnit > 0;
   const displayPrice = hasTierDiscount ? tier.unitPrice : currentPrice;
 
@@ -427,13 +434,17 @@ export function ProductDetails({
       productName: product.product,
       productPrice: formatMoney(convertCurrency(currentPrice, baseCurrency, displayCurrency), displayCurrency),
       img: images[0],
-      quantity,
+      quantity: effectiveQuantity,
       color: selectedColorLabel,
     };
     const res = await addToCart(payload);
     setIsAdding(false);
     if (res.success) {
       setActionError(null);
+      setJustAdded(true);
+      openCart();
+      if (addedTimerRef.current) window.clearTimeout(addedTimerRef.current);
+      addedTimerRef.current = window.setTimeout(() => setJustAdded(false), 2500);
     } else {
       const msg = apiErrorMessage(res, tProducts("details.addFailed"));
       setActionError(msg);
@@ -458,7 +469,7 @@ export function ProductDetails({
       productName: product.product,
       productPrice: formatMoney(convertCurrency(currentPrice, baseCurrency, displayCurrency), displayCurrency),
       img: images[0],
-      quantity,
+      quantity: effectiveQuantity,
       color: selectedColorLabel,
     };
     const res = await addToCart(payload);
@@ -651,13 +662,17 @@ export function ProductDetails({
                 type="button"
                 onClick={handleAddToCart}
                 disabled={isAdding || !isVariantInStock}
-                className="min-h-12 min-w-40 cursor-pointer rounded-xl bg-accent-brand px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-brand/90 disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11 md:min-w-0 md:px-6"
+                className={`min-h-12 min-w-40 cursor-pointer rounded-xl px-5 text-sm font-semibold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:min-h-11 md:min-w-0 md:px-6 ${
+                  justAdded ? "bg-green-600" : "bg-accent-brand hover:bg-accent-brand/90"
+                }`}
               >
                 {isAdding
                   ? tProducts("actions.adding")
-                  : isVariantInStock
-                    ? tProducts("actions.addToCart")
-                    : tProducts("actions.outOfStock")}
+                  : justAdded
+                    ? tProducts("actions.added")
+                    : isVariantInStock
+                      ? tProducts("actions.addToCart")
+                      : tProducts("actions.outOfStock")}
               </button>
             </div>
           </div>
@@ -666,7 +681,7 @@ export function ProductDetails({
       <AnimatedSection className="mx-auto w-full max-w-7xl">
       <CatalogFeedLoader />
       {/* Breadcrumb */}
-      <nav className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
+      <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-muted-foreground scrollbar-none sm:mb-6 sm:text-sm">
         <Link href="/" className="py-1 hover:text-foreground transition-colors">
           {t("header.home")}
         </Link>
@@ -682,7 +697,7 @@ export function ProductDetails({
           {product.category?.replace?.("-", " ") || product.category}
         </Link>
         <ChevronRight className="size-3.5 rtl:rotate-180 shrink-0" />
-        <span className="py-1 text-foreground font-medium truncate max-w-[200px]">{productName}</span>
+        <span className="py-1 text-foreground font-medium truncate max-w-[200px]" aria-current="page">{productName}</span>
       </nav>
 
       {/* Main Product Layout */}
@@ -713,7 +728,7 @@ export function ProductDetails({
               onSelectAxis={handleSelectAxis}
               availableStock={availableStock}
               isVariantInStock={isVariantInStock}
-              quantity={quantity}
+              quantity={effectiveQuantity}
               onQuantityChange={(val) => {
                 setActionError(null);
                 setQuantity(val);
@@ -722,6 +737,7 @@ export function ProductDetails({
               tierMinQuantity={tier.activeTier?.minQuantity}
               actionError={actionError}
               isAdding={isAdding}
+              justAdded={justAdded}
               isAuthenticated={isAuthenticated}
               isWishlisted={isWishlisted}
               onAddToCart={handleAddToCart}
@@ -739,7 +755,7 @@ export function ProductDetails({
           </div>
 
           <ProductHighlights highlights={highlights} />
-          <TierPricingTable tiers={tierPricing} baseUnitPrice={convertCurrency(currentPrice, baseCurrency, displayCurrency)} quantity={quantity} currency={displayCurrency} />
+          <TierPricingTable tiers={tierPricing} baseUnitPrice={convertCurrency(currentPrice, baseCurrency, displayCurrency)} quantity={effectiveQuantity} currency={displayCurrency} />
           <AddToCompareButton slug={product.slug || String(product.id)} productName={productName} />
         </div>
       </div>

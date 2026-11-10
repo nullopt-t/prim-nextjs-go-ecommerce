@@ -10,7 +10,12 @@ export function formatMoney(
 	currency?: string | null,
 ): string {
 	if (value === undefined || value === null || Number.isNaN(value)) return "—";
-	const amount = value.toFixed(2);
+	// Fixed locale: thousands grouping must be identical on the server and the
+	// client, and Arabic storefronts keep Latin digits.
+	const amount = value.toLocaleString("en-US", {
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	});
 	const code = currency?.trim() ?? "";
 	return code ? `${code} ${amount}` : amount;
 }

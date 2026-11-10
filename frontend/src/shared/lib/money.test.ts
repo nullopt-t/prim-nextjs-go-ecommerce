@@ -10,7 +10,11 @@ describe("formatMoney", () => {
 
 	it("formats with the currency code when provided", () => {
 		expect(formatMoney(10.5, "EGP")).toBe("EGP 10.50");
-		expect(formatMoney(1000, "USD")).toBe("USD 1000.00");
+		expect(formatMoney(1000, "USD")).toBe("USD 1,000.00");
+	});
+
+	it("groups thousands identically for English and Arabic storefronts", () => {
+		expect(formatMoney(1234567.891, "EGP")).toBe("EGP 1,234,567.89");
 	});
 
 	it("trims whitespace around the currency code", () => {

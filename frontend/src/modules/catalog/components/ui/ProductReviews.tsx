@@ -101,7 +101,7 @@ export function ProductReviews({
   };
 
   return (
-    <section id="reviews" className="scroll-mt-24">
+    <section className="scroll-mt-24">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-accent-brand">

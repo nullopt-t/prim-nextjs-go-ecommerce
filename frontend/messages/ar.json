@@ -2351,6 +2351,7 @@
     "actions": {
       "addToCart": "أضف إلى السلة",
       "addToWishlist": "أضف إلى المفضلة",
+      "added": "✓ تمت الإضافة إلى السلة",
       "adding": "جاري الإضافة...",
       "buyNow": "اشترِ الآن",
       "color": "اللون:",
@@ -2415,6 +2416,7 @@
     },
     "gallery": {
       "closeLightbox": "إغلاق عارض الصور",
+      "goToSlide": "الانتقال إلى الشريحة {index}",
       "lightboxLabel": "عارض صور {productName}",
       "nextImage": "الصورة التالية",
       "off": "خصم {discount}",
