@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -25,6 +26,8 @@ import (
 )
 
 func main() {
+	runtime.GOMAXPROCS(1)
+
 	_ = config.LoadDotEnv(".env", "backend/.env", "../.env")
 	logger := log.NewConsoleLogger()
 	cfg, err := config.Load()
