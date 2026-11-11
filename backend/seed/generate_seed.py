@@ -1181,7 +1181,7 @@ ON CONFLICT (id) DO NOTHING;
 lines.append("\nCOMMIT;\n")
 
 sql_content = "\n".join(lines)
-with open("migrations/000002_seed_data.up.sql", "w") as f:
+with open("migrations/000002_seed.up.sql", "w") as f:
     f.write(sql_content)
 
-print(f"Generated 000002_seed_data.up.sql with {len(storage_objects)} storage_objects and {len(variants)} variants ({len(sql_content)} bytes).")
+print(f"Generated 000002_seed.up.sql with {len(storage_objects)} storage_objects and {len(variants)} variants ({len(sql_content)} bytes).")

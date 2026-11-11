@@ -123,8 +123,8 @@ the order, and that hold is resolved explicitly.
   release are transactional and idempotent, so overlapping runs and multiple
   worker/API instances are safe.
 
-Reservations are keyed by `order_id` (`inventory_reservations.order_id`,
-migration `000004`). Stock math is: `on_hand` = sum of ledger entries,
+Reservations are keyed by `order_id` (`inventory_reservations.order_id`, part of
+`000001_init`). Stock math is: `on_hand` = sum of ledger entries,
 `reserved` = live holds, `available` = `max(on_hand - reserved, 0)`.
 
 ### Media uploads
@@ -136,7 +136,13 @@ cause stored XSS when served from the public bucket.
 
 ## Migrations
 
-The schema and seed data live in `migrations/` and are applied with `golang-migrate`:
+The schema and seed data live in `migrations/` and are applied with `golang-migrate`.
+There are exactly two migration versions:
+
+| Version | Purpose |
+| --- | --- |
+| `000001_init` | The full schema: types, tables, indexes, constraints. |
+| `000002_seed` | Demo/development data for the storefront. |
 
 ```bash
 make migrate-up      # apply pending migrations
@@ -144,6 +150,9 @@ make migrate-down    # roll back the last one
 make migrate-reset   # drop everything and re-apply
 make migrate-force   # force a version (when a migration is stuck)
 ```
+
+Add new schema changes to `000001_init.up.sql` (with the matching rollback in
+`000001_init.down.sql`) rather than creating another numbered migration.
 
 ## Endpoint overview
 

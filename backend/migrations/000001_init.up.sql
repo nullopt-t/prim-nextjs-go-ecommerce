@@ -53,6 +53,9 @@ BEGIN
     IF to_regtype('inventory_reason') IS NULL THEN
         CREATE TYPE inventory_reason AS ENUM ('restock', 'sale', 'return', 'adjustment', 'reservation_release');
     END IF;
+    IF to_regtype('fulfillment_status') IS NULL THEN
+        CREATE TYPE fulfillment_status AS ENUM ('pending', 'shipped', 'delivered');
+    END IF;
 END
 $$;
 
@@ -461,6 +464,10 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity             int NOT NULL,
     price_at_purchase    bigint NOT NULL,
     product_snapshot     jsonb NOT NULL,
+    fulfillment_status   fulfillment_status NOT NULL DEFAULT 'pending',
+    tracking_number      text NULL,
+    carrier              text NULL,
+    shipped_at           timestamptz NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (order_id) REFERENCES orders (id),
     FOREIGN KEY (variant_id) REFERENCES product_variants (id),
@@ -469,6 +476,40 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items (order_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_variant_id ON order_items (variant_id);
+
+-- =====================================================================
+-- ORDER RETURNS (RMA)
+-- =====================================================================
+-- Customer return requests for delivered orders. Cumulative returned
+-- quantities per line item are enforced across multiple requests, not
+-- just within one.
+CREATE TABLE IF NOT EXISTS order_returns (
+    id          uuid NOT NULL,
+    order_id    uuid NOT NULL,
+    customer_id uuid NOT NULL,
+    reason      text NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+    FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_returns_order_id ON order_returns (order_id);
+
+CREATE TABLE IF NOT EXISTS order_return_items (
+    id             uuid NOT NULL,
+    return_id      uuid NOT NULL,
+    order_item_id  uuid NOT NULL,
+    quantity       int NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE (return_id, order_item_id),
+    CHECK (quantity > 0),
+    FOREIGN KEY (return_id) REFERENCES order_returns (id) ON DELETE CASCADE,
+    FOREIGN KEY (order_item_id) REFERENCES order_items (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_return_items_return_id ON order_return_items (return_id);
+CREATE INDEX IF NOT EXISTS idx_order_return_items_order_item_id ON order_return_items (order_item_id);
 
 CREATE TABLE IF NOT EXISTS order_status_history (
     id            bigint GENERATED ALWAYS AS IDENTITY,
@@ -727,6 +768,10 @@ ALTER TABLE order_items ADD COLUMN seller_earning bigint NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS idx_products_seller_id ON products (seller_id);
 CREATE INDEX IF NOT EXISTS idx_order_items_seller_id ON order_items (seller_id);
+
+-- Seller fulfillment queue: the seller's own lines and their shipping state.
+CREATE INDEX IF NOT EXISTS idx_order_items_fulfillment_status
+    ON order_items (order_id, seller_id, fulfillment_status);
 
 
 -- ---- 000004_merchant_lifecycle.up.sql ----

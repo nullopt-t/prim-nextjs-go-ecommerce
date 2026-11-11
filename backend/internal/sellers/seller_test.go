@@ -545,7 +545,6 @@ func (s *SellerServiceSuite) SetupSuite() {
 
 	for _, f := range []string{
 		"../../migrations/000001_init.up.sql",
-		"../../migrations/000005_order_fulfillment.up.sql",
 	} {
 		migration, err := os.ReadFile(f)
 		require.NoError(err)

@@ -1,95 +1,52 @@
--- Order Status History
+-- Remove every seeded row. The seed owns whole tables, so the deletes are
+-- table-wide and ordered so that no foreign key is violated on the way down.
+
+-- Reviews depend on order items; review votes depend on reviews.
+DELETE FROM review_votes;
+DELETE FROM reviews;
+
+-- Order dependents before their parents.
 DELETE FROM order_status_history;
-
--- Coupon Redemptions
 DELETE FROM coupon_redemptions;
-
--- Payments
 DELETE FROM payments;
-
--- Reviews
-DELETE FROM reviews WHERE id IN (
-    '92000000-0000-0000-0000-000000000001',
-    '92000000-0000-0000-0000-000000000002',
-    '92000000-0000-0000-0000-000000000003',
-    '92000000-0000-0000-0000-000000000004',
-    '92000000-0000-0000-0000-000000000005'
-);
-
--- Order Items
+DELETE FROM order_return_items;
+DELETE FROM order_returns;
 DELETE FROM order_items;
-
--- Orders
 DELETE FROM orders;
 
--- Inventory Ledgers
-DELETE FROM inventory_ledgers WHERE id IN (
-    '80000000-0000-0000-0000-000000000001',
-    '80000000-0000-0000-0000-000000000002',
-    '80000000-0000-0000-0000-000000000003',
-    '80000000-0000-0000-0000-000000000004',
-    '80000000-0000-0000-0000-000000000005',
-    '80000000-0000-0000-0000-000000000006',
-    '80000000-0000-0000-0000-000000000007'
-);
+-- Cart and inventory.
+DELETE FROM cart_items;
+DELETE FROM carts;
+DELETE FROM inventory_reservations;
+DELETE FROM inventory_ledgers;
 
--- Tag Assignments
-DELETE FROM product_tag_assignments WHERE product_id IN (
-    '60000000-0000-0000-0000-000000000001',
-    '60000000-0000-0000-0000-000000000003',
-    '60000000-0000-0000-0000-000000000005',
-    '60000000-0000-0000-0000-000000000007'
-);
+-- Wishlist and browsing history reference products, variants, and users.
+DELETE FROM wishlist_items;
+DELETE FROM user_product_views;
 
--- Variants
-DELETE FROM product_variants WHERE product_id IN (
-    '60000000-0000-0000-0000-000000000001',
-    '60000000-0000-0000-0000-000000000003',
-    '60000000-0000-0000-0000-000000000005',
-    '60000000-0000-0000-0000-000000000007'
-);
+-- Catalog children before parents.
+DELETE FROM variant_media;
+DELETE FROM product_tag_assignments;
+DELETE FROM bundle_items;
+DELETE FROM product_bundles;
+DELETE FROM product_variants;
+DELETE FROM products;
+DELETE FROM category_attributes;
+DELETE FROM seller_attributes;
+DELETE FROM product_categories;
+DELETE FROM product_tags;
+DELETE FROM product_brands;
 
--- Products
-DELETE FROM products WHERE id IN (
-    '60000000-0000-0000-0000-000000000001',
-    '60000000-0000-0000-0000-000000000003',
-    '60000000-0000-0000-0000-000000000005',
-    '60000000-0000-0000-0000-000000000007'
-);
+-- Promotions reference sellers.
+DELETE FROM coupons;
 
--- Tags
-DELETE FROM product_tags WHERE id IN (
-    '50000000-0000-0000-0000-000000000001',
-    '50000000-0000-0000-0000-000000000003',
-    '50000000-0000-0000-0000-000000000005'
-);
+-- Marketplace money trail: payouts restrict seller deletion.
+DELETE FROM seller_payouts;
+DELETE FROM sellers;
 
--- Categories
-DELETE FROM product_categories WHERE id IN (
-    '40000000-0000-0000-0000-000000000001',
-    '40000000-0000-0000-0000-000000000003',
-    '40000000-0000-0000-0000-000000000005',
-    '40000000-0000-0000-0000-000000000007',
-    '40000000-0000-0000-0000-000000000009'
-);
+-- Customer data.
+DELETE FROM addresses;
+DELETE FROM users;
 
--- Brands
-DELETE FROM product_brands WHERE id IN (
-    '30000000-0000-0000-0000-000000000001',
-    '30000000-0000-0000-0000-000000000003',
-    '30000000-0000-0000-0000-000000000005',
-    '30000000-0000-0000-0000-000000000007'
-);
-
--- Addresses
-DELETE FROM addresses WHERE id IN (
-    '20000000-0000-0000-0000-000000000001',
-    '20000000-0000-0000-0000-000000000002'
-);
-
--- Users
-DELETE FROM users WHERE id IN (
-    '10000000-0000-0000-0000-000000000001',
-    '10000000-0000-0000-0000-000000000002',
-    '10000000-0000-0000-0000-000000000003'
-);
+-- Media.
+DELETE FROM storage_objects;

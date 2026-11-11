@@ -20,6 +20,8 @@ DROP TABLE IF EXISTS user_notifications CASCADE;
 -- Drop orders & payments
 DROP TABLE IF EXISTS payments CASCADE;
 DROP TABLE IF EXISTS order_status_history CASCADE;
+DROP TABLE IF EXISTS order_return_items CASCADE;
+DROP TABLE IF EXISTS order_returns CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 
@@ -72,5 +74,6 @@ DROP TYPE IF EXISTS product_status CASCADE;
 DROP TYPE IF EXISTS product_type CASCADE;
 DROP TYPE IF EXISTS seller_status CASCADE;
 DROP TYPE IF EXISTS payout_status CASCADE;
+DROP TYPE IF EXISTS fulfillment_status CASCADE;
 
 COMMIT;
