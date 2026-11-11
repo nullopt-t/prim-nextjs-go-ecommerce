@@ -14,6 +14,15 @@ interface ProductReviewsProps {
   canReview?: boolean;
   onAddReview: (review: { rating: number; title: string; content: string }) => Promise<{ success: boolean; error?: string } | boolean | void> | void;
   onVoteHelpful: (reviewId: string | number) => void;
+  /**
+   * Authoritative star breakdown from the backend, keyed by score ("1".."5").
+   * The loaded review page is only a slice, so the histogram must not be
+   * derived from it.
+   */
+  distribution?: Record<string, number>;
+  /** Fetches the next page of reviews when the loaded ones run out. */
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 }
 
 type ReviewSort = "newest" | "helpful" | "highest" | "lowest";
@@ -25,6 +34,9 @@ export function ProductReviews({
   canReview = false,
   onAddReview,
   onVoteHelpful,
+  distribution,
+  onLoadMore,
+  loadingMore = false,
 }: ProductReviewsProps) {
   const t = useTranslations("reviews");
   const { isAuthenticated } = useAuthContext();
@@ -68,15 +80,20 @@ export function ProductReviews({
   };
 
   const loadedCount = reviews.length;
-  const averageRating =
-    loadedCount > 0
-      ? reviews.reduce((total, review) => total + (Number(review.rating) || 0), 0) / loadedCount
-      : Number(stars) || 0;
-  const displayCount = loadedCount || reviewsCount;
+  const averageRating = Number(stars) || 0;
+  const displayCount = reviewsCount || loadedCount;
+  // The backend breakdown covers every approved review; fall back to the
+  // loaded slice only when the backend did not send one.
+  const backendTotal = distribution
+    ? Object.values(distribution).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    : 0;
   const ratingCounts = [5, 4, 3, 2, 1].map((starValue) => ({
     rating: starValue,
-    count: reviews.filter((review) => Math.round(Number(review.rating)) === starValue).length,
+    count: distribution
+      ? Number(distribution[String(starValue)] ?? 0)
+      : reviews.filter((review) => Math.round(Number(review.rating)) === starValue).length,
   }));
+  const histogramTotal = backendTotal || loadedCount;
 
   const filteredReviews =
     ratingFilter === "all"
@@ -93,7 +110,10 @@ export function ProductReviews({
   }
 
   const visibleReviews = sortedReviews.slice(0, visibleCount);
-  const hasMore = visibleReviews.length < sortedReviews.length;
+  // More reviews exist on the server than are loaded here: either the loaded
+  // page has unrevealed entries, or a further page has to be fetched.
+  const hasMore = visibleReviews.length < sortedReviews.length || (Boolean(onLoadMore) && sortedReviews.length < displayCount);
+  const canShowLess = visibleCount > 5 && sortedReviews.length > 5;
 
   const changeRatingFilter = (nextFilter: number | "all") => {
     setRatingFilter(nextFilter);
@@ -150,7 +170,7 @@ export function ProductReviews({
 
             <div className="mt-5 flex flex-col gap-2">
               {ratingCounts.map(({ rating, count }) => {
-                const pct = loadedCount > 0 ? Math.round((count / loadedCount) * 100) : 0;
+                const pct = histogramTotal > 0 ? Math.round((count / histogramTotal) * 100) : 0;
                 const isActive = ratingFilter === rating;
                 return (
                   <button
@@ -318,7 +338,7 @@ export function ProductReviews({
             <span className="text-xs text-muted-foreground">
               {t("showingCount", {
                 shown: visibleReviews.length,
-                total: sortedReviews.length,
+                total: Math.max(sortedReviews.length, reviewsCount),
               })}
             </span>
 
@@ -471,14 +491,23 @@ export function ProductReviews({
           {hasMore && (
             <button
               type="button"
-              onClick={() => setVisibleCount((count) => count + 5)}
-              className="mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary"
+              onClick={() => {
+                // Reveal what is already loaded; only ask the server for the
+                // next page once the loaded ones are all visible.
+                if (visibleReviews.length < sortedReviews.length) {
+                  setVisibleCount((count) => count + 5);
+                } else {
+                  onLoadMore?.();
+                }
+              }}
+              disabled={loadingMore}
+              className="mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {t("showMore")}
             </button>
           )}
 
-          {!hasMore && visibleCount > 5 && sortedReviews.length > 5 && (
+          {!hasMore && canShowLess && (
             <button
               type="button"
               onClick={() => setVisibleCount(5)}

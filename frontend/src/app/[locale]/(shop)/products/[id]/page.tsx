@@ -6,6 +6,7 @@ import { getProductBySlug, getReviewsByProduct } from "@/shared/lib/server/catal
 import { getPublicSettings } from "@/shared/lib/server/publicSettings";
 import { routing } from "@/shared/i18n/routing";
 import type { ProductReview, Review } from "@/modules/catalog/types";
+import { mapReview } from "@/modules/catalog/utils/mapReview";
 
 type ProductPageProps = {
 	params: Promise<{ locale: string; id: string }>;
@@ -76,24 +77,14 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		getTranslations({ locale, namespace: "products" }),
 	]);
 
-	const initialReviews: ProductReview[] = rawReviews.map((r: Review) => ({
-		id: r.id,
-		author: r.user?.name || tProducts("details.customer"),
-		avatar: r.user?.avatar || null,
-		rating: Number(r.rating) || 0,
-		date: r.createdAt
-			? new Date(r.createdAt).toLocaleDateString(locale, {
-					year: "numeric",
-					month: "long",
-					day: "numeric",
-				})
-			: tProducts("details.recently"),
-		title: r.title || tProducts("details.customerReview"),
-		content: r.body || "",
-		helpful: r.helpfulCount ?? 0,
-		verified: Boolean(r.orderItemId),
-		userVoted: false,
-	}));
+	const initialReviews: ProductReview[] = rawReviews.map((r: Review) =>
+		mapReview(r, {
+			locale,
+			authorLabel: tProducts("details.customer"),
+			titleLabel: tProducts("details.customerReview"),
+			dateLabel: tProducts("details.recently"),
+		}),
+	);
 
 	const price = Number(product.price);
 	const brandName =
@@ -102,6 +93,19 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 			: typeof product.brand?.name === "string"
 				? product.brand.name
 				: undefined;
+	// The product's SKU comes from its default variant; a configurable product
+	// has no product-level code of its own.
+	const sku =
+		product.sku ??
+		product.variants?.find((variant) => variant.isDefault)?.sku ??
+		product.variants?.[0]?.sku;
+	// Availability follows the variants: a product whose default variant sold
+	// out but whose other variants remain is still purchasable.
+	const variants = product.variants ?? [];
+	const anyVariantInStock = variants.some(
+		(variant) => variant.stock?.isInStock === true || (variant.stock?.availableQuantity ?? 0) > 0,
+	);
+	const inStock = variants.length > 0 ? anyVariantInStock : (product.inStock ?? true);
 
 	// Per-review markup enables review rich snippets; the first five match the
 	// order shown on the page. datePublished is the raw ISO timestamp.
@@ -129,7 +133,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		description:
 			typeof product.description === "string" ? product.description : undefined,
 		image: product.img ? [product.img] : undefined,
-		sku: product.sku || undefined,
+		sku: sku || undefined,
 		brand: brandName ? { "@type": "Brand", name: brandName } : undefined,
 		aggregateRating:
 			Number(product.stars) > 0 && Number(product.reviews) > 0
@@ -147,7 +151,7 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 						price,
 						priceCurrency: settings?.currency || product.currency || undefined,
 						itemCondition: "https://schema.org/NewCondition",
-						availability: product.inStock
+						availability: inStock
 							? "https://schema.org/InStock"
 							: "https://schema.org/OutOfStock",
 						seller: settings?.storeName

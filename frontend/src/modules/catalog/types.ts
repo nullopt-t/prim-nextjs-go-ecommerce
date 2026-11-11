@@ -39,7 +39,8 @@ export interface Brand {
 export interface Tag {
   id: string;
   name: string;
-  slug: string;
+  /** The backend tag summary carries no slug; it is optional on purpose. */
+  slug?: string;
 }
 
 export interface ProductVariantStock {
@@ -73,6 +74,8 @@ export interface ProductVariant {
   media?: ProductVariantMedia[];
   thumbnail?: string;
   color?: string;
+  /** Volume-discount thresholds; the PDP normalizes them before display. */
+  tierPricing?: unknown;
   [key: string]: unknown;
 }
 
@@ -91,8 +94,8 @@ export interface ProductVariationAxis {
 export interface ProductRatingSummary {
   averageRating: number;
   reviewCount: number;
-  ratingDistribution?: Record<number, number>;
-  distribution?: Record<number, number>;
+  /** Backend sends the star breakdown keyed by score ("1".."5"). */
+  distribution?: Record<string, number>;
 }
 
 export interface Product {
@@ -188,6 +191,9 @@ export interface ProductDetailsEntity {
   id: string | number;
   slug?: string;
   sku?: string;
+  /** Variant ids the payload points at, kept for cart payloads. */
+  variantId?: string;
+  defaultVariantId?: string;
   product?: {
     en?: string;
     ar?: string;
@@ -216,6 +222,12 @@ export interface ProductDetailsEntity {
   description?: string;
   highlights?: string[];
   bundle?: ProductBundle;
+  /** Authoritative review aggregate from the backend (all approved reviews). */
+  rating?: ProductRatingSummary;
+  /** Taxonomy tags assigned to the product. */
+  tags?: Tag[];
+  /** Volume-discount tiers; the PDP normalizes them before display. */
+  tierPricing?: unknown;
 }
 
 /** UI review model */

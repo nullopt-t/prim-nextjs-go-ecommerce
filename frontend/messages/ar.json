@@ -2446,6 +2446,9 @@
     "highlights": {
       "title": "أبرز المزايا"
     },
+    "tags": {
+      "title": "الوسوم"
+    },
     "layout": {
       "allProducts": "جميع المنتجات",
       "pagination": {

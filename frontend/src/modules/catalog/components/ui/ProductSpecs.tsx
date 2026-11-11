@@ -1,14 +1,19 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import type { CategoryAttribute } from "../../types";
 
 interface ProductSpecsProps {
-	productName: string;
-	category?: string;
 	brand?: string;
+	category?: string;
 	description?: string;
+	/** Attribute values carried by the selected variant. */
 	attributes?: Record<string, unknown>;
-	condition?: string;
-	warranty?: string;
+	/**
+	 * The category's own attribute definitions. Their labels are what the
+	 * merchant configured, so the spec rows use them instead of a guessed
+	 * translation of the raw key.
+	 */
+	categoryAttributes?: CategoryAttribute[];
 }
 
 function SectionHeading({ children }: { children: ReactNode }) {
@@ -26,12 +31,15 @@ export function ProductSpecs({
 	brand,
 	description,
 	attributes,
-	condition,
-	warranty,
+	categoryAttributes,
 }: ProductSpecsProps) {
 	const t = useTranslations("products");
 
   const attributeLabel = (key: string) => {
+    // The category's attribute definitions carry the merchant's own labels;
+    // prefer them over the guessed key translation.
+    const defined = categoryAttributes?.find((attribute) => attribute.key === key)?.label;
+    if (defined) return defined;
     const normalized = key.toLowerCase().replace(/[_-]/g, " ");
     if (normalized === "color") return t("actions.color").replace(/[:：]/g, "").trim();
     if (normalized === "storage") return t("specs.storage");
@@ -89,18 +97,6 @@ export function ProductSpecs({
                   </span>
                 </div>
               ))}
-              {condition ? (
-                <div className="flex items-center justify-between gap-4 py-3">
-                  <span className="text-muted-foreground">{t("specs.condition")}</span>
-                  <span className="text-end font-semibold text-foreground">{condition}</span>
-                </div>
-              ) : null}
-              {warranty ? (
-                <div className="flex items-center justify-between gap-4 py-3 last:pb-0">
-                  <span className="text-muted-foreground">{t("specs.warranty")}</span>
-                  <span className="text-end font-semibold text-foreground">{warranty}</span>
-                </div>
-              ) : null}
             </div>
           </div>
         </section>

@@ -109,11 +109,20 @@ describe("server catalog fetchers", () => {
 
 		expect(reviews).toEqual([expect.objectContaining({ id: "r1" })]);
 		const [url, init] = fetchMock.mock.calls[0];
-		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1");
+		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&page=1&pageSize=20");
 		expect(init).toMatchObject({
 			next: { revalidate: 300, tags: ["product-reviews:p1"] },
 			headers: { Accept: "application/json" },
 		});
+	});
+
+	it("getReviewsByProduct requests the given page", async () => {
+		respondWith({ data: [] });
+
+		await getReviewsByProduct("p1", 3, 10);
+
+		const [url] = fetchMock.mock.calls[0];
+		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&page=3&pageSize=10");
 	});
 
 	it("getCategories fetches the category list", async () => {

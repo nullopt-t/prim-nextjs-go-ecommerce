@@ -69,7 +69,7 @@ export interface RawProductPayload {
 	oldPrice?: string | number;
 	extractedOriginalPrice?: number;
 	discountPercentage?: string | number;
-	rating?: { averageRating?: number; reviewCount?: number };
+	rating?: { averageRating?: number; reviewCount?: number; distribution?: Record<string, number> };
 	stars?: number | string;
 	reviews?: number | string;
 	thumbnail?: string | { url?: string; publicUrl?: string };
@@ -88,6 +88,8 @@ export interface RawProductPayload {
 	defaultVariantId?: string;
 	brand?: string | { logoUrl?: string; logo?: string; [key: string]: unknown };
 	bundle?: RawBundlePayload;
+	tags?: Array<{ id?: string; name?: string }>;
+	sku?: string;
 }
 
 export function normalizeProduct(raw: RawProductPayload | null) {
@@ -277,11 +279,19 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 		})
 		.filter((axis) => axis.values.length > 0);
 
-	// Extract stock info from first variant
-	const firstVariant =
-		Array.isArray(raw.variants) && raw.variants.length > 0 ? raw.variants[0] : null;
-	const inStock = firstVariant?.stock?.isInStock ?? raw.inStock ?? true;
-	const stockCount = firstVariant?.stock?.availableQuantity ?? raw.stockCount ?? 0;
+	// Product-level stock: a product is purchasable when any of its variants
+	// is in stock. The detail payload carries no top-level flag, so the first
+	// variant alone must not decide the badge.
+	const variantList = Array.isArray(raw.variants) ? raw.variants : [];
+	const anyVariantInStock = variantList.some(
+		(v) => v.stock?.isInStock === true || (v.stock?.availableQuantity ?? 0) > 0,
+	);
+	const inStock = variantList.length > 0 ? anyVariantInStock : (raw.inStock ?? true);
+	const stockCount =
+		variantList.find((v) => v.isDefault)?.stock?.availableQuantity ??
+		variantList[0]?.stock?.availableQuantity ??
+		raw.stockCount ??
+		0;
 
 	// Extract category — backend list/detail may provide category object { id, name } or string or categories array
 	const firstCategory = Array.isArray(raw.categories) ? raw.categories[0] : undefined;
@@ -393,6 +403,26 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 				}
 			: null;
 
+	// Authoritative review aggregate. The backend counts every approved
+	// review, while the loaded review page only holds a slice — keep the
+	// backend numbers so the badge and histogram match the true totals.
+	const rawRating = p.rating ?? raw.rating;
+	const rating = rawRating
+		? {
+				averageRating: Number(rawRating.averageRating ?? stars) || 0,
+				reviewCount: Number(rawRating.reviewCount ?? reviews) || 0,
+				distribution: rawRating.distribution,
+			}
+		: undefined;
+
+	// Taxonomy tags as assigned by the backend.
+	const tags = Array.isArray(raw.tags)
+		? raw.tags
+				.filter((tag): tag is { id?: string; name?: string } => Boolean(tag))
+				.map((tag) => ({ id: String(tag.id ?? ""), name: String(tag.name ?? "") }))
+				.filter((tag) => tag.name !== "")
+		: undefined;
+
 	return {
 		...raw,
 		id,
@@ -427,5 +457,7 @@ export function normalizeProduct(raw: RawProductPayload | null) {
 		category: categoryName || p.categoryName || "",
 		categoryId,
 		bundle,
+		rating,
+		tags,
 	};
 }

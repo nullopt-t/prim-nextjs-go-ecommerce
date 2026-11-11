@@ -85,12 +85,23 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailsEnti
 }
 
 /**
+ * Reviews fetched per page on the product detail route. The server renders
+ * the first page into the HTML and the PDP appends further pages when the
+ * shopper asks for more, so the visible list can reach every review.
+ */
+export const REVIEWS_PAGE_SIZE = 20;
+
+/**
  * Server-side review list for the product detail route so reviews are part of
  * the initial HTML instead of appearing only after hydration.
  */
-export async function getReviewsByProduct(productId: string): Promise<Review[]> {
+export async function getReviewsByProduct(
+	productId: string,
+	page = 1,
+	pageSize = REVIEWS_PAGE_SIZE,
+): Promise<Review[]> {
 	const raw = await fetchJson<Review[]>(
-		`/api/v1/reviews?productId=${encodeURIComponent(productId)}`,
+		`/api/v1/reviews?productId=${encodeURIComponent(productId)}&page=${page}&pageSize=${pageSize}`,
 		[`product-reviews:${productId}`],
 	);
 	return asList<Review>(raw);

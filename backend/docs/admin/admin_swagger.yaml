@@ -680,6 +680,27 @@ definitions:
     required:
     - title
     type: object
+  CurrencyInfo:
+    properties:
+      code:
+        type: string
+      decimals:
+        type: integer
+      enabled:
+        type: boolean
+      flag:
+        type: string
+      isBase:
+        type: boolean
+      name:
+        type: string
+      rateToBase:
+        type: number
+      rateToEGP:
+        type: number
+      symbol:
+        type: string
+    type: object
   CursorPage:
     properties:
       hasMore:
@@ -728,6 +749,16 @@ definitions:
         example: You do not have permission to access this resource
         type: string
     type: object
+  FulfillmentStatus:
+    enum:
+    - pending
+    - shipped
+    - delivered
+    type: string
+    x-enum-varnames:
+    - FulfillmentStatusPending
+    - FulfillmentStatusShipped
+    - FulfillmentStatusDelivered
   HealthReport:
     properties:
       checkedAt:
@@ -815,6 +846,14 @@ definitions:
     type: object
   OrderItemResponse:
     properties:
+      carrier:
+        description: Carrier is the logistics delivery service (e.g. "Aramex", "Bosta").
+        type: string
+      fulfillmentStatus:
+        allOf:
+        - $ref: '#/definitions/FulfillmentStatus'
+        description: FulfillmentStatus is the seller fulfillment state for this line
+          item (pending, shipped, delivered).
       id:
         description: ID is the unique UUID of the order line item.
         type: string
@@ -829,12 +868,39 @@ definitions:
       quantity:
         description: Quantity is the number of units purchased.
         type: integer
+      shippedAt:
+        description: ShippedAt is the RFC3339 timestamp when the seller marked this
+          line item as shipped.
+        type: string
+      trackingNumber:
+        description: TrackingNumber is the carrier shipment tracking number for this
+          line item.
+        type: string
       variantId:
         description: VariantID is the product variant purchased in this line item.
         type: string
     type: object
+  OrderMilestone:
+    enum:
+    - pre_transit
+    - picked_at_warehouse
+    - arrived_regional_hub
+    - arrived_local_depot
+    - out_for_delivery
+    - delivered
+    type: string
+    x-enum-varnames:
+    - OrderMilestonePreTransit
+    - OrderMilestonePickedAtWarehouse
+    - OrderMilestoneArrivedRegionalHub
+    - OrderMilestoneArrivedLocalDepot
+    - OrderMilestoneOutForDelivery
+    - OrderMilestoneDelivered
   OrderResponse:
     properties:
+      carrier:
+        description: Carrier is the shipping carrier (null when not yet shipped/assigned).
+        type: string
       codFee:
         description: CODFee is the cash-on-delivery surcharge applied to the order
           in minor currency units.
@@ -871,6 +937,9 @@ definitions:
         items:
           $ref: '#/definitions/OrderItemResponse'
         type: array
+      milestonePercent:
+        description: MilestonePercent is the 0-100 fulfillment percent of Substatus.
+        type: integer
       paymentMethod:
         description: PaymentMethod is the payment method used for the order.
         type: string
@@ -886,6 +955,19 @@ definitions:
         allOf:
         - $ref: '#/definitions/OrderStatus'
         description: Status is the current state of the order lifecycle.
+      statusHistory:
+        description: |-
+          StatusHistory is the chronological order_status_history audit trail
+          (oldest first), empty when no entries exist.
+        items:
+          $ref: '#/definitions/OrderStatusHistoryResponse'
+        type: array
+      substatus:
+        allOf:
+        - $ref: '#/definitions/OrderMilestone'
+        description: |-
+          Substatus is the granular fulfillment milestone derived from Status
+          (see docs/order-milestones.md).
       taxAmount:
         description: TaxAmount is the tax amount applied to the order in minor currency
           units.
@@ -896,6 +978,9 @@ definitions:
         type: integer
       trackingNumber:
         description: TrackingNumber is the carrier tracking number for shipped orders.
+        type: string
+      trackingUrl:
+        description: TrackingURL is the carrier tracking page URL (null when absent).
         type: string
       updatedAt:
         description: UpdatedAt is the RFC3339 last update timestamp.
@@ -919,6 +1004,26 @@ definitions:
     - OrderStatusDelivered
     - OrderStatusCancelled
     - OrderStatusRefunded
+  OrderStatusHistoryResponse:
+    properties:
+      createdAt:
+        description: CreatedAt is the RFC3339 timestamp when the entry was recorded.
+        type: string
+      id:
+        description: ID is the bigint identity of the history row, as a string for
+          JSON safety.
+        type: string
+      notes:
+        description: Notes is the optional admin/operational note for this entry.
+        type: string
+      orderId:
+        description: OrderID is the parent order UUID.
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/OrderStatus'
+        description: Status is the status this entry recorded.
+    type: object
   Page:
     properties:
       hasNext:
@@ -2658,10 +2763,17 @@ paths:
         records are excluded.
       parameters:
       - collectionFormat: csv
+        description: |-
+          Optional attribute filter(s) in "key:value" format. Accepts repeated query
+          params (?attribute=color:red&attribute=size:xl) and legacy comma-joined
+          single params (?attribute=color:red,size:xl). Duplicate keys: last wins.
+        example:
+        - color:black
+        - size:XL
         in: query
         items:
           type: string
-        name: '-'
+        name: attribute
         type: array
       - description: Optional brand name(s) or UUID(s) (comma-separated, e.g. "apple,sony")
         example: apple,sony
@@ -4040,6 +4152,52 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Update administrative settings (Admin)
+      tags:
+      - Admin Settings
+  /admin/settings/currencies:
+    put:
+      consumes:
+      - application/json
+      description: Updates custom exchange rates relative to the store base currency
+        (EGP). Admin only.
+      parameters:
+      - description: Exchange rates map
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated currencies
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/CurrencyInfo'
+                  type: array
+              type: object
+        "400":
+          description: Invalid exchange rates payload
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "403":
+          description: Admin privileges required
+          schema:
+            $ref: '#/definitions/ForbiddenErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Update currency exchange rates (Admin)
       tags:
       - Admin Settings
   /admin/system/health:

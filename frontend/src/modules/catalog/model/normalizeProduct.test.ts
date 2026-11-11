@@ -98,4 +98,60 @@ describe("normalizeProduct", () => {
 	it("returns null for an empty payload", () => {
 		expect(normalizeProduct(null)).toBeNull();
 	});
+
+	it("keeps the backend rating aggregate, its distribution and the tags", () => {
+		const product = normalizeProduct({
+			id: "prod-5",
+			slug: "rated-product",
+			title: "Rated Product",
+			price: 100,
+			rating: {
+				averageRating: 4.5,
+				reviewCount: 24,
+				distribution: { "1": 1, "2": 0, "3": 2, "4": 8, "5": 13 },
+			},
+			tags: [
+				{ id: "tag-1", name: "Featured" },
+				{ id: "tag-2", name: "New Arrival" },
+			],
+		});
+
+		expect(product?.rating?.averageRating).toBe(4.5);
+		expect(product?.rating?.reviewCount).toBe(24);
+		expect(product?.rating?.distribution?.["5"]).toBe(13);
+		expect(product?.stars).toBe(4.5);
+		expect(product?.reviews).toBe(24);
+		expect(product?.tags).toEqual([
+			{ id: "tag-1", name: "Featured" },
+			{ id: "tag-2", name: "New Arrival" },
+		]);
+	});
+
+	it("stays in stock when any variant is purchasable", () => {
+		const product = normalizeProduct({
+			id: "prod-6",
+			slug: "multi-variant",
+			title: "Multi Variant",
+			price: 100,
+			variants: [
+				{ id: "v1", stock: { isInStock: false, availableQuantity: 0 } },
+				{ id: "v2", isDefault: true, stock: { isInStock: true, availableQuantity: 4 } },
+			],
+		});
+
+		expect(product?.inStock).toBe(true);
+		expect(product?.stockCount).toBe(4);
+	});
+
+	it("is out of stock when no variant is purchasable", () => {
+		const product = normalizeProduct({
+			id: "prod-7",
+			slug: "sold-out",
+			title: "Sold Out",
+			price: 100,
+			variants: [{ id: "v1", stock: { isInStock: false, availableQuantity: 0 } }],
+		});
+
+		expect(product?.inStock).toBe(false);
+	});
 });

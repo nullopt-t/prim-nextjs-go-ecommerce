@@ -1317,7 +1317,12 @@ const docTemplateadmin = `{
                             "type": "string"
                         },
                         "collectionFormat": "csv",
-                        "name": "-",
+                        "example": [
+                            "color:black",
+                            "size:XL"
+                        ],
+                        "description": "Optional attribute filter(s) in \"key:value\" format. Accepts repeated query\nparams (?attribute=color:red\u0026attribute=size:xl) and legacy comma-joined\nsingle params (?attribute=color:red,size:xl). Duplicate keys: last wins.",
+                        "name": "attribute",
                         "in": "query"
                     },
                     {
@@ -3366,6 +3371,79 @@ const docTemplateadmin = `{
                     },
                     "400": {
                         "description": "Invalid request body",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Admin privileges required",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/settings/currencies": {
+            "put": {
+                "description": "Updates custom exchange rates relative to the store base currency (EGP). Admin only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Settings"
+                ],
+                "summary": "Update currency exchange rates (Admin)",
+                "parameters": [
+                    {
+                        "description": "Exchange rates map",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Updated currencies",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/CurrencyInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid exchange rates payload",
                         "schema": {
                             "$ref": "#/definitions/BadRequestErrorResponse"
                         }
@@ -5445,6 +5523,38 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "CurrencyInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "flag": {
+                    "type": "string"
+                },
+                "isBase": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rateToBase": {
+                    "type": "number"
+                },
+                "rateToEGP": {
+                    "type": "number"
+                },
+                "symbol": {
+                    "type": "string"
+                }
+            }
+        },
         "CursorPage": {
             "type": "object",
             "properties": {
@@ -5505,6 +5615,19 @@ const docTemplateadmin = `{
                     "example": "You do not have permission to access this resource"
                 }
             }
+        },
+        "FulfillmentStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "shipped",
+                "delivered"
+            ],
+            "x-enum-varnames": [
+                "FulfillmentStatusPending",
+                "FulfillmentStatusShipped",
+                "FulfillmentStatusDelivered"
+            ]
         },
         "HealthReport": {
             "type": "object",
@@ -5625,6 +5748,18 @@ const docTemplateadmin = `{
         "OrderItemResponse": {
             "type": "object",
             "properties": {
+                "carrier": {
+                    "description": "Carrier is the logistics delivery service (e.g. \"Aramex\", \"Bosta\").",
+                    "type": "string"
+                },
+                "fulfillmentStatus": {
+                    "description": "FulfillmentStatus is the seller fulfillment state for this line item (pending, shipped, delivered).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/FulfillmentStatus"
+                        }
+                    ]
+                },
                 "id": {
                     "description": "ID is the unique UUID of the order line item.",
                     "type": "string"
@@ -5641,15 +5776,46 @@ const docTemplateadmin = `{
                     "description": "Quantity is the number of units purchased.",
                     "type": "integer"
                 },
+                "shippedAt": {
+                    "description": "ShippedAt is the RFC3339 timestamp when the seller marked this line item as shipped.",
+                    "type": "string"
+                },
+                "trackingNumber": {
+                    "description": "TrackingNumber is the carrier shipment tracking number for this line item.",
+                    "type": "string"
+                },
                 "variantId": {
                     "description": "VariantID is the product variant purchased in this line item.",
                     "type": "string"
                 }
             }
         },
+        "OrderMilestone": {
+            "type": "string",
+            "enum": [
+                "pre_transit",
+                "picked_at_warehouse",
+                "arrived_regional_hub",
+                "arrived_local_depot",
+                "out_for_delivery",
+                "delivered"
+            ],
+            "x-enum-varnames": [
+                "OrderMilestonePreTransit",
+                "OrderMilestonePickedAtWarehouse",
+                "OrderMilestoneArrivedRegionalHub",
+                "OrderMilestoneArrivedLocalDepot",
+                "OrderMilestoneOutForDelivery",
+                "OrderMilestoneDelivered"
+            ]
+        },
         "OrderResponse": {
             "type": "object",
             "properties": {
+                "carrier": {
+                    "description": "Carrier is the shipping carrier (null when not yet shipped/assigned).",
+                    "type": "string"
+                },
                 "codFee": {
                     "description": "CODFee is the cash-on-delivery surcharge applied to the order in minor currency units.",
                     "type": "integer"
@@ -5693,6 +5859,10 @@ const docTemplateadmin = `{
                         "$ref": "#/definitions/OrderItemResponse"
                     }
                 },
+                "milestonePercent": {
+                    "description": "MilestonePercent is the 0-100 fulfillment percent of Substatus.",
+                    "type": "integer"
+                },
                 "paymentMethod": {
                     "description": "PaymentMethod is the payment method used for the order.",
                     "type": "string"
@@ -5717,6 +5887,21 @@ const docTemplateadmin = `{
                         }
                     ]
                 },
+                "statusHistory": {
+                    "description": "StatusHistory is the chronological order_status_history audit trail\n(oldest first), empty when no entries exist.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderStatusHistoryResponse"
+                    }
+                },
+                "substatus": {
+                    "description": "Substatus is the granular fulfillment milestone derived from Status\n(see docs/order-milestones.md).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderMilestone"
+                        }
+                    ]
+                },
                 "taxAmount": {
                     "description": "TaxAmount is the tax amount applied to the order in minor currency units.",
                     "type": "integer"
@@ -5727,6 +5912,10 @@ const docTemplateadmin = `{
                 },
                 "trackingNumber": {
                     "description": "TrackingNumber is the carrier tracking number for shipped orders.",
+                    "type": "string"
+                },
+                "trackingUrl": {
+                    "description": "TrackingURL is the carrier tracking page URL (null when absent).",
                     "type": "string"
                 },
                 "updatedAt": {
@@ -5755,6 +5944,35 @@ const docTemplateadmin = `{
                 "OrderStatusCancelled",
                 "OrderStatusRefunded"
             ]
+        },
+        "OrderStatusHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the RFC3339 timestamp when the entry was recorded.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the bigint identity of the history row, as a string for JSON safety.",
+                    "type": "string"
+                },
+                "notes": {
+                    "description": "Notes is the optional admin/operational note for this entry.",
+                    "type": "string"
+                },
+                "orderId": {
+                    "description": "OrderID is the parent order UUID.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the status this entry recorded.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                }
+            }
         },
         "Page": {
             "type": "object",

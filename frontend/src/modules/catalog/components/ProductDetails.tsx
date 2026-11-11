@@ -3,8 +3,7 @@
 import { Link, useRouter } from "@/shared/i18n/navigation";import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ChevronRight, Package } from "lucide-react";
-import { useState, useMemo, useEffect, useRef } from "react";
-import { AnimatedSection, CustomButton } from "@/shared/ui";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";import { AnimatedSection, CustomButton } from "@/shared/ui";
 import { LazyImage } from "@/shared/ui/lazyImage";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
@@ -19,6 +18,7 @@ import { recordRecentlyViewed } from "@/shared/lib/recentlyViewed";
 import { recordProductView } from "@/modules/history/lib/recordProductView";
 
 import type {
+  CategoryAttribute,
   ProductBundleItem,
   ProductDetailsEntity,
   ProductReview,
@@ -30,13 +30,16 @@ import {
   resolveVariantByAttributes,
   resolveVariantStock,
   resolveProductImageEntries,
+  type ProductImageEntry,
 } from "../utils/productHelpers";
 import { selectRelatedProducts, type RelatedCandidate } from "../utils/relatedProducts";
 import { normalizeTiers, resolveTier } from "../utils/tierPricing";
+import { mapReview } from "../utils/mapReview";
 import { ProductGallery } from "./ui/ProductGallery";
 import { ProductActions } from "./ui/ProductActions";
 import { ProductSpecs } from "./ui/ProductSpecs";
 import { ProductHighlights } from "./ui/ProductHighlights";
+import { ProductTags } from "./ui/ProductTags";
 import { ProductBundleContents } from "./ui/ProductBundleContents";
 import { ProductReviews } from "./ui/ProductReviews";
 import { PdpSkeleton } from "./ui/PdpSkeleton";
@@ -44,6 +47,7 @@ import { AddToCompareButton } from "@/modules/compare/components/ui/AddToCompare
 import { NotifyMeDialog } from "./ui/NotifyMeDialog";
 import { TierPricingTable } from "./ui/TierPricingTable";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
+import { REVIEWS_PAGE_SIZE } from "@/shared/lib/server/catalog";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/publicSettingsContext";
@@ -82,6 +86,25 @@ export function ProductDetails({
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState(false);
+  // The category's attribute definitions carry the merchant's own labels for
+  // the spec table. They are public and change rarely, so they load once per
+  // category.
+  const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
+
+  // Review mapping options for the shared mapper.
+  const reviewMapOptions = useCallback(
+    () => ({
+      locale,
+      authorLabel: tProducts("details.customer"),
+      ownAuthorLabel: tProducts("details.you"),
+      titleLabel: tProducts("details.customerReview"),
+      dateLabel: tProducts("details.recently"),
+      currentUserId: user?.id,
+      currentUserName: user?.name,
+    }),
+    [locale, tProducts, user?.id, user?.name],
+  );
 
   // Mobile sticky buy bar: appears once the in-card purchase actions scroll
   // out of view, and hides while the footer is on screen so it never covers it.
@@ -198,30 +221,7 @@ export function ProductDetails({
       .then((publicRes) => {
         if (!isMounted) return;
         const publicList = publicRes?.data ?? [];
-
-        const mapped: ProductReview[] = publicList.map((r: Review) => {
-          const isOwn = user?.id && String(r.userId) === String(user.id);
-          return {
-            id: r.id,
-            author: isOwn ? (user.name || tProducts("details.you")) : r.user?.name || tProducts("details.customer"),
-            avatar: isOwn ? null : r.user?.avatar || null,
-            rating: Number(r.rating) || 0,
-            date: r.createdAt
-              ? new Date(r.createdAt).toLocaleDateString(locale, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              : tProducts("details.recently"),
-            title: r.title || tProducts("details.customerReview"),
-            content: r.body || "",
-            helpful: r.helpfulCount ?? 0,
-            verified: Boolean(r.orderItemId),
-            userVoted: r.userVoted ?? false,
-          };
-        });
-
-        setReviews(mapped);
+        setReviews(publicList.map((r: Review) => mapReview(r, reviewMapOptions())));
       })
       .catch((err) => {
         console.error("Failed to load product reviews:", err);
@@ -230,7 +230,38 @@ export function ProductDetails({
     return () => {
       isMounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user, product?.id]);
+
+  // Fetch the next page of reviews. The list is paginated server-side, so the
+  // badge count (the backend total) can exceed what is loaded.
+  const handleLoadMoreReviews = useCallback(async () => {
+    const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
+    if (!targetProductId || loadingMoreReviews) return;
+
+    setLoadingMoreReviews(true);
+    try {
+      const nextPage = Math.floor(reviews.length / REVIEWS_PAGE_SIZE) + 1;
+      const res = await catalogService.getProductReviews(
+        String(targetProductId),
+        `page=${nextPage}&pageSize=${REVIEWS_PAGE_SIZE}`,
+      );
+      const publicList = res?.data ?? [];
+      if (!publicList.length) return;
+      setReviews((prev) => {
+        const seen = new Set(prev.map((review) => String(review.id)));
+        const additions = publicList
+          .map((r: Review) => mapReview(r, reviewMapOptions()))
+          .filter((review) => !seen.has(String(review.id)));
+        return additions.length ? [...prev, ...additions] : prev;
+      });
+    } catch (err) {
+      console.error("Failed to load more reviews:", err);
+    } finally {
+      setLoadingMoreReviews(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, id, reviews.length, loadingMoreReviews, user?.id, user?.name, locale]);
 
   // Check if current logged-in user is eligible to review this product via dedicated endpoint
   useEffect(() => {
@@ -255,6 +286,29 @@ export function ProductDetails({
       isMounted = false;
     };
   }, [user, product?.id]);
+
+  // Load the category's attribute definitions for labelled spec rows.
+  useEffect(() => {
+    let isMounted = true;
+    const categoryId = product?.categoryId;
+    if (!categoryId) {
+      setCategoryAttributes([]);
+      return;
+    }
+    catalogService
+      .getCategoryAttributes(categoryId)
+      .then((res) => {
+        if (!isMounted) return;
+        const list = (res?.data ?? []) as unknown as CategoryAttribute[];
+        setCategoryAttributes(Array.isArray(list) ? list : []);
+      })
+      .catch(() => {
+        if (isMounted) setCategoryAttributes([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [product?.categoryId]);
 
   const similarProducts = useMemo(() => {
     if (!product || !allProducts) return [];
@@ -296,7 +350,7 @@ export function ProductDetails({
   // gallery click from changing the (single) kit selection.
   const baseImageEntries = resolveProductImageEntries(product, activeVariant);
   const seenImageUrls = new Set(baseImageEntries.map((entry) => entry.url));
-  const bundleImageEntries = (product.bundle?.items ?? []).flatMap((item: ProductBundleItem) => {
+  const bundleImageEntries = (product.bundle?.items ?? []).flatMap((item: ProductBundleItem): ProductImageEntry[] => {
     if (!item.thumbnail || seenImageUrls.has(item.thumbnail)) return [];
     seenImageUrls.add(item.thumbnail);
     return [{ url: item.thumbnail }];
@@ -304,12 +358,11 @@ export function ProductDetails({
   const imageEntries = [...baseImageEntries, ...bundleImageEntries];
   const images = imageEntries.map((image) => image.url);
   const highlights = Array.isArray(product.highlights) ? product.highlights : [];
-  const reviewCount = reviews.length || product.reviews || 0;
-  const averageRating =
-    reviews.length > 0
-      ? reviews.reduce((total, review) => total + (Number(review.rating) || 0), 0) /
-        reviews.length
-      : Number(product.stars) || 0;
+  // The backend counts every approved review; the loaded page is only a
+  // slice, so the badge must use the authoritative number.
+  const reviewCount = product.reviews || reviews.length || 0;
+  const averageRating = product.stars || 0;
+  const productTags = product.tags ?? [];
 
   const isWishlisted = Boolean(
     activeVariant?.id
@@ -382,10 +435,7 @@ export function ProductDetails({
 
   // Volume/tier pricing: thresholds arrive on the variant/product payload when
   // the backend provides them; display-only, charged price stays server-side.
-  const tierPricing = normalizeTiers(
-    (activeVariant as unknown as { tierPricing?: unknown } | null)?.tierPricing ??
-      (product as unknown as { tierPricing?: unknown }).tierPricing,
-  );
+  const tierPricing = normalizeTiers(activeVariant?.tierPricing ?? product.tierPricing);
   const tier = resolveTier(currentPrice, tierPricing, effectiveQuantity);
   const hasTierDiscount = tier.activeTier !== null && tier.savingsPerUnit > 0;
   const displayPrice = hasTierDiscount ? tier.unitPrice : currentPrice;
@@ -751,6 +801,7 @@ export function ProductDetails({
           </div>
 
           <ProductHighlights highlights={highlights} />
+          <ProductTags tags={productTags} />
           <TierPricingTable tiers={tierPricing} baseUnitPrice={convertCurrency(currentPrice, baseCurrency, displayCurrency)} quantity={effectiveQuantity} currency={displayCurrency} />
           <AddToCompareButton slug={product.slug || String(product.id)} productName={productName} />
         </div>
@@ -765,13 +816,11 @@ export function ProductDetails({
 
       {/* Specifications & Shipping Sections */}
       <ProductSpecs
-        productName={productName}
         category={product.category}
         brand={typeof product.brand === "string" ? product.brand : product.brand?.name}
         description={product.description}
         attributes={activeVariant?.attributes}
-        condition={product.condition}
-        warranty={product.warranty}
+        categoryAttributes={categoryAttributes}
       />
 
       {/* Reviews Section */}
@@ -783,6 +832,9 @@ export function ProductDetails({
           canReview={canReview}
           onAddReview={handleAddReview}
           onVoteHelpful={handleVoteHelpful}
+          distribution={product.rating?.distribution}
+          onLoadMore={handleLoadMoreReviews}
+          loadingMore={loadingMoreReviews}
         />
       </div>
 

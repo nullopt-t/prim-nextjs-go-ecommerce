@@ -220,6 +220,10 @@ type ProductDetailsResponse struct {
 	ProductResponse
 	// Associated brand summary
 	Brand *ProductBrandSummary `json:"brand,omitempty"`
+	// Associated category summary, used for taxonomy links and attribute lookups
+	Category *ProductCategorySummary `json:"category,omitempty"`
+	// Stock Keeping Unit of the default variant, empty when the product has no variant
+	SKU *string `json:"sku,omitempty"`
 	// List of all active product variants
 	Variants []ProductVariantResponse `json:"variants"`
 	// Assigned taxonomy tags
@@ -1102,6 +1106,22 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 		return
 	}
 
+	summary, err := h.service.GetProductRatingSummary(c.Request.Context(), details.Product.ID)
+	if err != nil {
+		summary = nil
+	}
+
+	res := MapProductDetailsResponse(details, summary)
+
+	c.JSON(http.StatusOK, api.DataResponse{
+		Data: res,
+	})
+}
+
+// MapProductDetailsResponse projects hydrated product details onto the public
+// storefront payload. It is a pure function so the mapping rules (default
+// variant price and SKU, category, rating) can be tested without a database.
+func MapProductDetailsResponse(details *ProductDetails, rating *model.RatingSummary) ProductDetailsResponse {
 	res := ProductDetailsResponse{
 		ProductResponse: mapProductResponse(details.Product),
 		Variants:        make([]ProductVariantResponse, 0),
@@ -1113,6 +1133,13 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 			Name:    details.Brand.Name,
 			Link:    details.Brand.Link,
 			LogoURL: details.Brand.LogoURL,
+		}
+	}
+
+	if details.Category != nil {
+		res.Category = &ProductCategorySummary{
+			ID:   details.Category.ID.String(),
+			Name: details.Category.Name,
 		}
 	}
 
@@ -1199,6 +1226,12 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 						defaultPriceSet = true
 					}
 				}
+				// The default variant carries the product-level SKU that
+				// product feeds and JSON-LD need.
+				if v.SKU != "" {
+					sku := v.SKU
+					res.SKU = &sku
+				}
 			} else if !defaultPriceSet && res.Price == nil && priceStr != nil {
 				res.Price = priceStr
 				res.ExtractedPrice = extPrice
@@ -1221,20 +1254,17 @@ func (h *ProductHandler) GetProductBySlug(c *gin.Context) {
 		res.Tags = tagRes
 	}
 
-	summary, err := h.service.GetProductRatingSummary(c.Request.Context(), details.Product.ID)
-	if err == nil && summary != nil {
+	if rating != nil {
 		res.Rating = &ProductRatingSummaryResponse{
-			AverageRating: summary.AverageRating,
-			ReviewCount:   summary.ReviewCount,
-			Distribution:  summary.Distribution,
+			AverageRating: rating.AverageRating,
+			ReviewCount:   rating.ReviewCount,
+			Distribution:  rating.Distribution,
 		}
 	}
 
 	res.Bundle = mapBundleResponse(details.Bundle)
 
-	c.JSON(http.StatusOK, api.DataResponse{
-		Data: res,
-	})
+	return res
 }
 
 // mapBundleResponse projects a kit composition onto the public response shape.

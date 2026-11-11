@@ -1064,6 +1064,72 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/orders/lookup": {
+            "get": {
+                "description": "Allows guest shoppers or unauthenticated users to lookup their order status, tracking, and items by order number and billing/shipping email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Lookup order for guests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "customer@example.com",
+                        "name": "email",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "example": "10000000-0000-0000-0000-000000000001",
+                        "name": "orderNumber",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Order details",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/OrderResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid email or order number format",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Order not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orders/{id}": {
             "get": {
                 "description": "Retrieves full order details by its UUID.",
@@ -1190,6 +1256,78 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/orders/{id}/returns": {
+            "post": {
+                "description": "Allows a customer to submit a return request for a delivered order with reason and items.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Request return for order (RMA)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Return details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateOrderReturnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return request confirmation",
+                        "schema": {
+                            "$ref": "#/definitions/MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or order not eligible for return",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Not authorized to return this order",
+                        "schema": {
+                            "$ref": "#/definitions/ForbiddenErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Order not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/products": {
             "get": {
                 "description": "Returns a paginated list of active, published products for customer browsing with optional brand, category, tag, search, and sort filters. Soft-deleted and draft products are hidden.",
@@ -1207,7 +1345,12 @@ const docTemplatepublic = `{
                             "type": "string"
                         },
                         "collectionFormat": "csv",
-                        "name": "-",
+                        "example": [
+                            "color:black",
+                            "size:XL"
+                        ],
+                        "description": "Optional attribute filter(s) in \"key:value\" format. Accepts repeated query\nparams (?attribute=color:red\u0026attribute=size:xl) and legacy comma-joined\nsingle params (?attribute=color:red,size:xl). Duplicate keys: last wins.",
+                        "name": "attribute",
                         "in": "query"
                     },
                     {
@@ -2967,6 +3110,83 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/seller/orders/{id}/fulfill": {
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Fulfills specific line items or advances one of the authenticated seller's orders to processing or shipped and records the tracking details.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Fulfill one of my orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Order UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fulfillment details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/FulfillMyOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerOrderResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid transition or missing tracking number",
+                        "schema": {
+                            "$ref": "#/definitions/BadReqResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found or order not yours",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/seller/payouts": {
             "get": {
                 "security": [
@@ -4205,6 +4425,44 @@ const docTemplatepublic = `{
                         "description": "Variant or seller not found",
                         "schema": {
                             "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings/currencies": {
+            "get": {
+                "description": "Returns supported currencies, their symbols, decimal places, and exchange conversion rates relative to the store base currency.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Get supported currencies and exchange rates",
+                "responses": {
+                    "200": {
+                        "description": "Supported currencies",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/CurrencyInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -6594,6 +6852,24 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "CreateOrderReturnRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderReturnItemRequest"
+                    }
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "Item is defective or damaged"
+                }
+            }
+        },
         "CreateReviewRequest": {
             "type": "object",
             "required": [
@@ -6627,6 +6903,38 @@ const docTemplatepublic = `{
                     "description": "Optional review headline title",
                     "type": "string",
                     "example": "Unbelievable performance!"
+                }
+            }
+        },
+        "CurrencyInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "flag": {
+                    "type": "string"
+                },
+                "isBase": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "rateToBase": {
+                    "type": "number"
+                },
+                "rateToEGP": {
+                    "type": "number"
+                },
+                "symbol": {
+                    "type": "string"
                 }
             }
         },
@@ -6758,6 +7066,66 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "FulfillMyOrderRequest": {
+            "type": "object",
+            "properties": {
+                "carrier": {
+                    "description": "Logistics carrier name, e.g. \"Aramex\".",
+                    "type": "string"
+                },
+                "itemIds": {
+                    "description": "CamelCase alias for item_ids.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "item_ids": {
+                    "description": "Specific item IDs to fulfill. When empty, all items owned by the seller on this order are fulfilled.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "notes": {
+                    "description": "Optional note recorded in the status history.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Target lifecycle status (optional, defaults to shipped).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                },
+                "trackingNumber": {
+                    "description": "CamelCase alias for tracking_number.",
+                    "type": "string"
+                },
+                "trackingUrl": {
+                    "description": "Direct carrier tracking URL.",
+                    "type": "string"
+                },
+                "tracking_number": {
+                    "description": "Carrier tracking number.",
+                    "type": "string"
+                }
+            }
+        },
+        "FulfillmentStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "shipped",
+                "delivered"
+            ],
+            "x-enum-varnames": [
+                "FulfillmentStatusPending",
+                "FulfillmentStatusShipped",
+                "FulfillmentStatusDelivered"
+            ]
+        },
         "HelpfulVoteResponse": {
             "type": "object",
             "properties": {
@@ -6879,6 +7247,18 @@ const docTemplatepublic = `{
         "OrderItemResponse": {
             "type": "object",
             "properties": {
+                "carrier": {
+                    "description": "Carrier is the logistics delivery service (e.g. \"Aramex\", \"Bosta\").",
+                    "type": "string"
+                },
+                "fulfillmentStatus": {
+                    "description": "FulfillmentStatus is the seller fulfillment state for this line item (pending, shipped, delivered).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/FulfillmentStatus"
+                        }
+                    ]
+                },
                 "id": {
                     "description": "ID is the unique UUID of the order line item.",
                     "type": "string"
@@ -6895,15 +7275,46 @@ const docTemplatepublic = `{
                     "description": "Quantity is the number of units purchased.",
                     "type": "integer"
                 },
+                "shippedAt": {
+                    "description": "ShippedAt is the RFC3339 timestamp when the seller marked this line item as shipped.",
+                    "type": "string"
+                },
+                "trackingNumber": {
+                    "description": "TrackingNumber is the carrier shipment tracking number for this line item.",
+                    "type": "string"
+                },
                 "variantId": {
                     "description": "VariantID is the product variant purchased in this line item.",
                     "type": "string"
                 }
             }
         },
+        "OrderMilestone": {
+            "type": "string",
+            "enum": [
+                "pre_transit",
+                "picked_at_warehouse",
+                "arrived_regional_hub",
+                "arrived_local_depot",
+                "out_for_delivery",
+                "delivered"
+            ],
+            "x-enum-varnames": [
+                "OrderMilestonePreTransit",
+                "OrderMilestonePickedAtWarehouse",
+                "OrderMilestoneArrivedRegionalHub",
+                "OrderMilestoneArrivedLocalDepot",
+                "OrderMilestoneOutForDelivery",
+                "OrderMilestoneDelivered"
+            ]
+        },
         "OrderResponse": {
             "type": "object",
             "properties": {
+                "carrier": {
+                    "description": "Carrier is the shipping carrier (null when not yet shipped/assigned).",
+                    "type": "string"
+                },
                 "codFee": {
                     "description": "CODFee is the cash-on-delivery surcharge applied to the order in minor currency units.",
                     "type": "integer"
@@ -6947,6 +7358,10 @@ const docTemplatepublic = `{
                         "$ref": "#/definitions/OrderItemResponse"
                     }
                 },
+                "milestonePercent": {
+                    "description": "MilestonePercent is the 0-100 fulfillment percent of Substatus.",
+                    "type": "integer"
+                },
                 "paymentMethod": {
                     "description": "PaymentMethod is the payment method used for the order.",
                     "type": "string"
@@ -6971,6 +7386,21 @@ const docTemplatepublic = `{
                         }
                     ]
                 },
+                "statusHistory": {
+                    "description": "StatusHistory is the chronological order_status_history audit trail\n(oldest first), empty when no entries exist.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderStatusHistoryResponse"
+                    }
+                },
+                "substatus": {
+                    "description": "Substatus is the granular fulfillment milestone derived from Status\n(see docs/order-milestones.md).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderMilestone"
+                        }
+                    ]
+                },
                 "taxAmount": {
                     "description": "TaxAmount is the tax amount applied to the order in minor currency units.",
                     "type": "integer"
@@ -6983,9 +7413,30 @@ const docTemplatepublic = `{
                     "description": "TrackingNumber is the carrier tracking number for shipped orders.",
                     "type": "string"
                 },
+                "trackingUrl": {
+                    "description": "TrackingURL is the carrier tracking page URL (null when absent).",
+                    "type": "string"
+                },
                 "updatedAt": {
                     "description": "UpdatedAt is the RFC3339 last update timestamp.",
                     "type": "string"
+                }
+            }
+        },
+        "OrderReturnItemRequest": {
+            "type": "object",
+            "required": [
+                "itemId",
+                "quantity"
+            ],
+            "properties": {
+                "itemId": {
+                    "type": "string",
+                    "example": "91000000-0000-0000-0000-000000000001"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -7009,6 +7460,35 @@ const docTemplatepublic = `{
                 "OrderStatusCancelled",
                 "OrderStatusRefunded"
             ]
+        },
+        "OrderStatusHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "description": "CreatedAt is the RFC3339 timestamp when the entry was recorded.",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID is the bigint identity of the history row, as a string for JSON safety.",
+                    "type": "string"
+                },
+                "notes": {
+                    "description": "Notes is the optional admin/operational note for this entry.",
+                    "type": "string"
+                },
+                "orderId": {
+                    "description": "OrderID is the parent order UUID.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is the status this entry recorded.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/OrderStatus"
+                        }
+                    ]
+                }
+            }
         },
         "Page": {
             "type": "object",
@@ -7156,6 +7636,21 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "ProductCategorySummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Category UUID",
+                    "type": "string",
+                    "example": "40000000-0000-0000-0000-000000000002"
+                },
+                "name": {
+                    "description": "Category name",
+                    "type": "string",
+                    "example": "Electronics"
+                }
+            }
+        },
         "ProductDetailsResponse": {
             "type": "object",
             "properties": {
@@ -7172,6 +7667,14 @@ const docTemplatepublic = `{
                     "allOf": [
                         {
                             "$ref": "#/definitions/BundleResponse"
+                        }
+                    ]
+                },
+                "category": {
+                    "description": "Associated category summary, used for taxonomy links and attribute lookups",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ProductCategorySummary"
                         }
                     ]
                 },
@@ -7229,6 +7732,10 @@ const docTemplatepublic = `{
                             "$ref": "#/definitions/ProductRatingSummaryResponse"
                         }
                     ]
+                },
+                "sku": {
+                    "description": "Stock Keeping Unit of the default variant, empty when the product has no variant",
+                    "type": "string"
                 },
                 "slug": {
                     "description": "URL-friendly unique slug",
@@ -7459,11 +7966,13 @@ const docTemplatepublic = `{
             "type": "string",
             "enum": [
                 "simple",
-                "variable"
+                "variable",
+                "downloadable"
             ],
             "x-enum-varnames": [
                 "ProductTypeSimple",
-                "ProductTypeVariable"
+                "ProductTypeVariable",
+                "ProductTypeDownloadable"
             ]
         },
         "ProductVariantResponse": {
@@ -8034,8 +8543,16 @@ const docTemplatepublic = `{
                     "type": "string",
                     "example": "40000000-0000-0000-0000-000000000002"
                 },
+                "deliveryInstructions": {
+                    "description": "Delivery note shown to buyers of a downloadable product.",
+                    "type": "string"
+                },
                 "description": {
                     "description": "Full product description.",
+                    "type": "string"
+                },
+                "downloadUrl": {
+                    "description": "Public file URL for downloadable products.",
                     "type": "string"
                 },
                 "highlights": {
@@ -8050,11 +8567,12 @@ const docTemplatepublic = `{
                     ]
                 },
                 "productType": {
-                    "description": "Product classification: simple or variable.",
+                    "description": "Product classification: simple, variable, or downloadable.",
                     "type": "string",
                     "enum": [
                         "simple",
-                        "variable"
+                        "variable",
+                        "downloadable"
                     ],
                     "example": "simple"
                 },
@@ -8201,6 +8719,10 @@ const docTemplatepublic = `{
         "SellerOrderItemResponse": {
             "type": "object",
             "properties": {
+                "carrier": {
+                    "description": "Logistics carrier name (e.g. \"Aramex\").",
+                    "type": "string"
+                },
                 "commissionAmount": {
                     "description": "Frozen platform commission amount for this line, in minor units.",
                     "type": "integer"
@@ -8208,6 +8730,14 @@ const docTemplatepublic = `{
                 "commissionRateBps": {
                     "description": "Frozen commission rate applied to this line.",
                     "type": "integer"
+                },
+                "fulfillmentStatus": {
+                    "description": "Fulfillment status for this item: pending, shipped, delivered.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/FulfillmentStatus"
+                        }
+                    ]
                 },
                 "id": {
                     "description": "Line item id.",
@@ -8229,8 +8759,16 @@ const docTemplatepublic = `{
                     "description": "Frozen seller earning for this line, in minor units.",
                     "type": "integer"
                 },
+                "shippedAt": {
+                    "description": "Timestamp when marked shipped.",
+                    "type": "string"
+                },
                 "title": {
                     "description": "Product/variant title from the checkout snapshot, when present.",
+                    "type": "string"
+                },
+                "trackingNumber": {
+                    "description": "Carrier tracking number.",
                     "type": "string"
                 },
                 "variantId": {
@@ -8578,11 +9116,12 @@ const docTemplatepublic = `{
                     }
                 },
                 "productType": {
-                    "description": "Product classification: simple or variable.",
+                    "description": "Product classification: simple, variable, or downloadable.",
                     "type": "string",
                     "enum": [
                         "simple",
-                        "variable"
+                        "variable",
+                        "downloadable"
                     ]
                 },
                 "title": {

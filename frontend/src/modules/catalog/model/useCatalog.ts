@@ -3,6 +3,7 @@
 import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/catalogContext";
 import { useState, useEffect } from "react";
 import { catalogService } from "@/modules/catalog/api/catalogService";
+import type { ProductDetailsEntity } from "../types";
 
 export function useAllProducts() {
   const { products, loading, errorMsg, refreshCatalog } = useCatalogContext();
@@ -16,10 +17,13 @@ export function useAllProducts() {
  * first render and no client fetch happens on mount. Navigating to a different
  * slug still fetches the new product.
  */
-export function useProductBySlug(slug?: string | string[], initialProduct?: any) {
+export function useProductBySlug(
+  slug?: string | string[],
+  initialProduct?: ProductDetailsEntity | null,
+) {
   const cleanSlug = Array.isArray(slug) ? slug[0] : slug;
 
-  const [product, setProduct] = useState<any | null>(initialProduct ?? null);
+  const [product, setProduct] = useState<ProductDetailsEntity | null>(initialProduct ?? null);
   const [loading, setLoading] = useState(!initialProduct);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -46,7 +50,7 @@ export function useProductBySlug(slug?: string | string[], initialProduct?: any)
         const res: any = await catalogService.getProductBySlug(cleanSlug);
         const raw = res?.data || res;
         if (isMounted && raw) {
-          setProduct(normalizeProduct(raw));
+          setProduct(normalizeProduct(raw) as unknown as ProductDetailsEntity);
         }
       } catch (error: any) {
         if (isMounted) {

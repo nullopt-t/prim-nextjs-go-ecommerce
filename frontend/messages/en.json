@@ -2446,6 +2446,9 @@
     "highlights": {
       "title": "Highlights"
     },
+    "tags": {
+      "title": "Tags"
+    },
     "layout": {
       "allProducts": "All Products",
       "pagination": {
