@@ -44,7 +44,7 @@ export default async function UserReviewsPage({ params }: UserReviewsPageProps) 
   const authorName = rawReviews[0]?.user?.name || t("anonymous");
 
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+    <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
       <div className="flex items-center gap-3 border-b border-border pb-5">
         <CircleUser className="size-11 shrink-0 text-muted-foreground" aria-hidden="true" />
         <h1 dir="auto" className="text-lg font-bold text-foreground sm:text-xl">

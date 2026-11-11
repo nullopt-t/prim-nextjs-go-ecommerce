@@ -77,7 +77,7 @@ export function UserReviewsList({
   }
 
   return (
-    <div className="mt-6 flex flex-col gap-3">
+    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
       {reviews.map((review) => (
         <article
           key={review.id}
@@ -118,7 +118,7 @@ export function UserReviewsList({
           type="button"
           onClick={() => handleLoadMore()}
           disabled={loadingMore}
-          className="mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
+          className="col-span-full mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loadingMore ? t("loadingMore") : t("showMore")}
         </button>
