@@ -47,7 +47,7 @@ import { AddToCompareButton } from "@/modules/compare/components/ui/AddToCompare
 import { NotifyMeDialog } from "./ui/NotifyMeDialog";
 import { TierPricingTable } from "./ui/TierPricingTable";
 import { CatalogFeedLoader } from "./CatalogFeedLoader";
-import { REVIEWS_PAGE_SIZE } from "@/shared/lib/server/catalog";
+import { REVIEWS_PAGE_SIZE } from "@/shared/lib/reviewQuery";
 
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useCurrency, useDisplayCurrency } from "@/modules/settings/model/publicSettingsContext";
@@ -57,9 +57,15 @@ import { formatMoney } from "@/shared/lib/money";
 export function ProductDetails({
   initialProduct = null,
   initialReviews,
+  initialReviewsCursor,
+  initialReviewsHasMore = false,
 }: {
   initialProduct?: ProductDetailsEntity | null;
   initialReviews?: ProductReview[];
+  /** Cursor for the next page of reviews, empty when the list is exhausted. */
+  initialReviewsCursor?: string | null;
+  /** Whether the backend holds more reviews after the rendered page. */
+  initialReviewsHasMore?: boolean;
 }) {
   const { id } = useParams();
   const searchParams = useSearchParams();
@@ -83,6 +89,9 @@ export function ProductDetails({
   const [isAdding, setIsAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<ProductReview[]>(initialReviews ?? []);
+  const [reviewsCursor, setReviewsCursor] = useState<string | null>(initialReviewsCursor ?? null);
+  const [reviewsHasMore, setReviewsHasMore] = useState(initialReviewsHasMore);
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
   const [notifyMeOpen, setNotifyMeOpen] = useState(false);
   const [canReview, setCanReview] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
@@ -207,21 +216,45 @@ export function ProductDetails({
     }
   }, [product?.id, product?.slug, user?.id]);
 
+  const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
+
+  /**
+   * Loads a page of reviews from the backend. The backend applies the star
+   * filter, so the returned list always matches the histogram it counted.
+   */
+  const fetchReviewPage = useCallback(
+    async (cursor: string | null, filter: number | null) => {
+      if (!targetProductId) return null;
+      const res = await catalogService.getProductReviews(String(targetProductId), {
+        cursor,
+        pageSize: REVIEWS_PAGE_SIZE,
+        rating: filter,
+      });
+      const list = (res?.data ?? []).map((r: Review) => mapReview(r, reviewMapOptions()));
+      const meta = res?.meta as { nextCursor?: string; hasMore?: boolean } | undefined;
+      return {
+        list,
+        nextCursor: meta?.nextCursor ?? null,
+        hasMore: Boolean(meta?.hasMore),
+      };
+    },
+    [targetProductId, reviewMapOptions],
+  );
+
   useEffect(() => {
     let isMounted = true;
-    const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
     if (!targetProductId) return;
     if (initialReviews !== undefined) {
       // Reviews were pre-fetched server-side (possibly empty) - skip client fetch
       return;
     }
 
-    catalogService
-      .getProductReviews(String(targetProductId))
-      .then((publicRes) => {
-        if (!isMounted) return;
-        const publicList = publicRes?.data ?? [];
-        setReviews(publicList.map((r: Review) => mapReview(r, reviewMapOptions())));
+    fetchReviewPage(null, null)
+      .then((page) => {
+        if (!isMounted || !page) return;
+        setReviews(page.list);
+        setReviewsCursor(page.nextCursor);
+        setReviewsHasMore(page.hasMore);
       })
       .catch((err) => {
         console.error("Failed to load product reviews:", err);
@@ -233,35 +266,51 @@ export function ProductDetails({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user, product?.id]);
 
-  // Fetch the next page of reviews. The list is paginated server-side, so the
-  // badge count (the backend total) can exceed what is loaded.
+  // Fetch the next page of reviews and append it. The list is paginated
+  // server-side, so the badge count (the backend total) can exceed what is
+  // loaded.
   const handleLoadMoreReviews = useCallback(async () => {
-    const targetProductId = product?.id || (Array.isArray(id) ? id[0] : id);
-    if (!targetProductId || loadingMoreReviews) return;
+    if (loadingMoreReviews) return;
 
     setLoadingMoreReviews(true);
     try {
-      const nextPage = Math.floor(reviews.length / REVIEWS_PAGE_SIZE) + 1;
-      const res = await catalogService.getProductReviews(
-        String(targetProductId),
-        `page=${nextPage}&pageSize=${REVIEWS_PAGE_SIZE}`,
-      );
-      const publicList = res?.data ?? [];
-      if (!publicList.length) return;
+      const page = await fetchReviewPage(reviewsCursor, ratingFilter);
+      if (!page) return;
       setReviews((prev) => {
         const seen = new Set(prev.map((review) => String(review.id)));
-        const additions = publicList
-          .map((r: Review) => mapReview(r, reviewMapOptions()))
-          .filter((review) => !seen.has(String(review.id)));
+        const additions = page.list.filter((review) => !seen.has(String(review.id)));
         return additions.length ? [...prev, ...additions] : prev;
       });
+      setReviewsCursor(page.nextCursor);
+      setReviewsHasMore(page.hasMore);
     } catch (err) {
       console.error("Failed to load more reviews:", err);
     } finally {
       setLoadingMoreReviews(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?.id, id, reviews.length, loadingMoreReviews, user?.id, user?.name, locale]);
+  }, [fetchReviewPage, reviewsCursor, ratingFilter, loadingMoreReviews]);
+
+  // Apply the star filter by asking the backend for that rating's reviews.
+  // The previous list is replaced rather than appended to, because the
+  // filtered set is a different list.
+  const handleRatingFilterChange = useCallback(
+    async (filter: number | null) => {
+      setRatingFilter(filter);
+      setLoadingMoreReviews(true);
+      try {
+        const page = await fetchReviewPage(null, filter);
+        if (!page) return;
+        setReviews(page.list);
+        setReviewsCursor(page.nextCursor);
+        setReviewsHasMore(page.hasMore);
+      } catch (err) {
+        console.error("Failed to filter product reviews:", err);
+      } finally {
+        setLoadingMoreReviews(false);
+      }
+    },
+    [fetchReviewPage],
+  );
 
   // Check if current logged-in user is eligible to review this product via dedicated endpoint
   useEffect(() => {
@@ -840,6 +889,9 @@ export function ProductDetails({
           onAddReview={handleAddReview}
           onVoteHelpful={handleVoteHelpful}
           distribution={product.rating?.distribution}
+          ratingFilter={ratingFilter}
+          onRatingFilterChange={handleRatingFilterChange}
+          hasMore={reviewsHasMore}
           onLoadMore={handleLoadMoreReviews}
           loadingMore={loadingMoreReviews}
         />

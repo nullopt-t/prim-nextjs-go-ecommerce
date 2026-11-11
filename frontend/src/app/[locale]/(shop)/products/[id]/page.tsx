@@ -69,13 +69,12 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		getProductBySlug(id),
 		getPublicSettings(),
 	]);
+	const tProducts = await getTranslations({ locale, namespace: "products" });
 
 	if (!product) notFound();
 
-	const [rawReviews, tProducts] = await Promise.all([
-		getReviewsByProduct(String(product.id)),
-		getTranslations({ locale, namespace: "products" }),
-	]);
+	const { reviews: rawReviews, nextCursor: reviewsNextCursor, hasMore: reviewsHasMore } =
+		await getReviewsByProduct(String(product.id));
 
 	const initialReviews: ProductReview[] = rawReviews.map((r: Review) =>
 		mapReview(r, {
@@ -175,7 +174,12 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 		<>
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-			<ProductDetails initialProduct={product} initialReviews={initialReviews} />
+			<ProductDetails
+				initialProduct={product}
+				initialReviews={initialReviews}
+				initialReviewsCursor={reviewsNextCursor}
+				initialReviewsHasMore={reviewsHasMore}
+			/>
 		</>
 	);
 }

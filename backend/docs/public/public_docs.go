@@ -1648,7 +1648,7 @@ const docTemplatepublic = `{
         },
         "/products/{slug}/reviews": {
             "get": {
-                "description": "Returns a paginated list of approved reviews for a given product.",
+                "description": "Returns a cursor-paginated list of approved reviews for a given product.",
                 "produces": [
                     "application/json"
                 ],
@@ -1666,51 +1666,14 @@ const docTemplatepublic = `{
                     },
                     {
                         "type": "string",
-                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
-                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "description": "Cursor for the next page",
                         "name": "cursor",
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "example": true,
-                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
-                        "name": "keyset",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
-                        "example": 1,
-                        "description": "Page is the requested 1-based page number from query parameters.",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 10,
-                        "description": "PageSize is the requested number of items per page.",
+                        "description": "Reviews per page (max 100)",
                         "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "television",
-                        "description": "Search is an optional free-text search query string.",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "example": [
-                            "name",
-                            "-created_at"
-                        ],
-                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
-                        "name": "sort",
                         "in": "query"
                     }
                 ],
@@ -1732,7 +1695,7 @@ const docTemplatepublic = `{
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/CursorPage"
                                         }
                                     }
                                 }
@@ -1815,7 +1778,7 @@ const docTemplatepublic = `{
         },
         "/reviews": {
             "get": {
-                "description": "Returns a paginated list of approved reviews for storefront display.",
+                "description": "Returns a cursor-paginated list of approved reviews for storefront display.",
                 "produces": [
                     "application/json"
                 ],
@@ -1831,52 +1794,21 @@ const docTemplatepublic = `{
                         "in": "query"
                     },
                     {
+                        "type": "integer",
+                        "description": "Filter by star rating (1-5)",
+                        "name": "rating",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
-                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
-                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "description": "Cursor for the next page",
                         "name": "cursor",
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "example": true,
-                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
-                        "name": "keyset",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
-                        "example": 1,
-                        "description": "Page is the requested 1-based page number from query parameters.",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 10,
-                        "description": "PageSize is the requested number of items per page.",
+                        "description": "Reviews per page (max 100)",
                         "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "television",
-                        "description": "Search is an optional free-text search query string.",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "example": [
-                            "name",
-                            "-created_at"
-                        ],
-                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
-                        "name": "sort",
                         "in": "query"
                     }
                 ],
@@ -1898,7 +1830,7 @@ const docTemplatepublic = `{
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/CursorPage"
                                         }
                                     }
                                 }
@@ -2055,7 +1987,7 @@ const docTemplatepublic = `{
         },
         "/reviews/me": {
             "get": {
-                "description": "Returns a paginated list of all reviews written by the authenticated user.",
+                "description": "Returns a cursor-paginated list of all reviews written by the authenticated user.",
                 "produces": [
                     "application/json"
                 ],
@@ -2066,51 +1998,14 @@ const docTemplatepublic = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "example": "eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9",
-                        "description": "Cursor is an opaque keyset token. When present, repositories should use\nkeyset pagination instead of OFFSET.",
+                        "description": "Cursor for the next page",
                         "name": "cursor",
                         "in": "query"
                     },
                     {
-                        "type": "boolean",
-                        "example": true,
-                        "description": "KeysetMode explicitly requests keyset pagination even when no cursor has\nbeen supplied yet (i.e. for the very first page). Endpoints that still\nserve classic OFFSET pagination use this to opt in per request.",
-                        "name": "keyset",
-                        "in": "query"
-                    },
-                    {
                         "type": "integer",
-                        "example": 1,
-                        "description": "Page is the requested 1-based page number from query parameters.",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 10,
-                        "description": "PageSize is the requested number of items per page.",
+                        "description": "Reviews per page (max 100)",
                         "name": "pageSize",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "television",
-                        "description": "Search is an optional free-text search query string.",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "collectionFormat": "csv",
-                        "example": [
-                            "name",
-                            "-created_at"
-                        ],
-                        "description": "RawSort contains the raw sort query strings (e.g. [\"name,-created_at\"]).",
-                        "name": "sort",
                         "in": "query"
                     }
                 ],
@@ -2132,7 +2027,7 @@ const docTemplatepublic = `{
                                             }
                                         },
                                         "meta": {
-                                            "$ref": "#/definitions/Page"
+                                            "$ref": "#/definitions/CursorPage"
                                         }
                                     }
                                 }

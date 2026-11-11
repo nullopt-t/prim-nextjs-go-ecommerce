@@ -1,6 +1,7 @@
 import { normalizeProduct, type RawProductPayload } from "@/modules/catalog/model/normalizeProduct";
 import type { Brand, Category, ProductDetailsEntity, Review } from "@/modules/catalog/types";
 import { buildProductQuery } from "@/shared/lib/productQuery";
+import { buildReviewQuery, REVIEWS_PAGE_SIZE } from "@/shared/lib/reviewQuery";
 import { getServerApiBaseUrl } from "@/shared/lib/server/apiBaseUrl";
 
 // Server-side catalog revalidation window. Caching is on by default; set
@@ -84,27 +85,34 @@ export async function getProductBySlug(slug: string): Promise<ProductDetailsEnti
 	return raw ? (normalizeProduct(raw as RawProductPayload) as ProductDetailsEntity | null) : null;
 }
 
-/**
- * Reviews fetched per page on the product detail route. The server renders
- * the first page into the HTML and the PDP appends further pages when the
- * shopper asks for more, so the visible list can reach every review.
- */
-export const REVIEWS_PAGE_SIZE = 20;
+/** A page of reviews plus the cursor for the next one. */
+export interface ReviewPage {
+	reviews: Review[];
+	/** Cursor for the next page, empty when the list is exhausted. */
+	nextCursor: string | null;
+	/** Whether the backend holds more reviews after this page. */
+	hasMore: boolean;
+}
 
 /**
  * Server-side review list for the product detail route so reviews are part of
- * the initial HTML instead of appearing only after hydration.
+ * the initial HTML instead of appearing only after hydration. Paging is
+ * cursor-based, so the PDP passes back the cursor it received.
  */
 export async function getReviewsByProduct(
 	productId: string,
-	page = 1,
+	cursor?: string | null,
 	pageSize = REVIEWS_PAGE_SIZE,
-): Promise<Review[]> {
-	const raw = await fetchJson<Review[]>(
-		`/api/v1/reviews?productId=${encodeURIComponent(productId)}&page=${page}&pageSize=${pageSize}`,
+): Promise<ReviewPage> {
+	const query = buildReviewQuery({ cursor, pageSize });
+	const { data, meta } = await fetchEnvelope<Review[]>(
+		`/api/v1/reviews?productId=${encodeURIComponent(productId)}&${query.toString()}`,
 		[`product-reviews:${productId}`],
 	);
-	return asList<Review>(raw);
+	const reviews = asList<Review>(data ?? []);
+	const nextCursor = typeof meta?.nextCursor === "string" ? meta.nextCursor : null;
+	const hasMore = typeof meta?.hasMore === "boolean" ? meta.hasMore : false;
+	return { reviews, nextCursor, hasMore };
 }
 
 export interface CatalogQuery {

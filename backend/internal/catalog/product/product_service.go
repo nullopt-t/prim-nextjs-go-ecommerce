@@ -57,7 +57,7 @@ type InventoryReader interface {
 type ReviewReader interface {
 	GetRatingSummaryByProductID(ctx context.Context, productID uuid.UUID) (*model.RatingSummary, error)
 	GetRatingSummariesByProductIDs(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID]*model.RatingSummary, error)
-	List(ctx context.Context, q *pagination.ListQuery, productID *uuid.UUID, userID *uuid.UUID, status *model.ReviewStatus) ([]model.Review, int, error)
+	List(ctx context.Context, limit int, cursor *pagination.Keyset, filter model.ReviewFilter) ([]model.Review, *pagination.CursorPage, error)
 }
 
 // ObjectRepository defines persistence methods for storage media records.
@@ -1315,30 +1315,26 @@ func (ps *ProductService) DeleteProductThumbnail(ctx context.Context, productID 
 	return nil
 }
 
-// ListProductReviews retrieves paginated reviews for a product using the review repository.
+// ListProductReviews retrieves cursor-paginated reviews for a product using the review repository.
 func (s *ProductService) ListProductReviews(
 	ctx context.Context,
-	q *pagination.ListQuery,
+	limit int,
+	cursor *pagination.Keyset,
 	productID uuid.UUID,
 	status *model.ReviewStatus,
-) (*pagination.PagedResult[model.Review], error) {
+) ([]model.Review, *pagination.CursorPage, error) {
 	var items []model.Review
-	var total int
+	var page *pagination.CursorPage
 	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		items, total, err = s.reviewReader.List(ctx, q, &productID, nil, status)
+		items, page, err = s.reviewReader.List(ctx, limit, cursor, model.ReviewFilter{ProductID: &productID, Status: status})
 		return err
 	})
 	if err != nil {
-		return nil, s.handleError(err, "list reviews")
+		return nil, nil, s.handleError(err, "list reviews")
 	}
 
-	resultItems := make([]*model.Review, len(items))
-	for i := range items {
-		resultItems[i] = &items[i]
-	}
-
-	return pagination.NewPagedResult(resultItems, pagination.NewPage(q.Page, q.PageSize, total)), nil
+	return items, page, nil
 }
 
 // GetProductRatingSummary returns aggregated star rating statistics for a product.

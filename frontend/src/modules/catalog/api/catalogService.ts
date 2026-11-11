@@ -1,6 +1,8 @@
 import { api } from "@/shared/api/client";
 import type { ApiResponse, ApiPaginatedResponse } from "@/shared/api/types";
+import type { CursorMeta } from "@/shared/lib/pagination";
 import { buildProductQuery } from "@/shared/lib/productQuery";
+import { buildReviewQuery, type ReviewQuery } from "@/shared/lib/reviewQuery";
 import type {
   AdminCategory,
   Brand,
@@ -85,8 +87,13 @@ export const catalogService = {
   getVariantById: (id: string) =>
     api.get<ApiResponse<ProductVariant>>(`/api/v1/variants/${id}`),
 
-  getProductReviews: (slug: string, query?: string) =>
-    api.get<ApiPaginatedResponse<Review>>(`/api/v1/reviews?productId=${slug}${query ? `&${query}` : ""}`),
+  getProductReviews: (productId: string, params?: ReviewQuery) => {
+    const query = buildReviewQuery(params);
+    const search = query.toString();
+    return api.get<ApiPaginatedResponse<Review, CursorMeta>>(
+      `/api/v1/reviews?productId=${encodeURIComponent(productId)}${search ? `&${search}` : ""}`,
+    );
+  },
 
   getProductRatingSummary: (slug: string) =>
     api.get<ApiResponse<ProductRatingSummary>>(`/api/v1/products/${slug}/reviews/summary`),

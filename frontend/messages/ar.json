@@ -2516,14 +2516,8 @@
     },
     "sectionLabel": "التقييمات والمراجعات",
     "shareThoughts": "شارك تجربتك ورأيك مع العملاء الآخرين",
-    "showLess": "عرض أقل",
     "showMore": "عرض المزيد",
     "showingCount": "عرض {shown} من {total} مراجعة",
-    "sortBy": "الترتيب حسب",
-    "sortHighest": "الأعلى تقييماً",
-    "sortLowest": "الأقل تقييماً",
-    "sortMostHelpful": "الأكثر فائدة",
-    "sortNewest": "الأحدث أولاً",
     "starLabel": "{star} نجوم",
     "submit": "إرسال",
     "submitFailed": "فشل في إرسال المراجعة.",
@@ -2531,7 +2525,8 @@
     "submitting": "جاري الإرسال...",
     "verifiedPurchase": "شراء مؤكد",
     "writeReview": "كتابة مراجعة",
-    "writeShort": "اكتب مراجعة"
+    "writeShort": "اكتب مراجعة",
+    "loadingMore": "جارٍ تحميل المزيد..."
   },
   "settings": {
     "backToSettings": "العودة إلى الإعدادات",

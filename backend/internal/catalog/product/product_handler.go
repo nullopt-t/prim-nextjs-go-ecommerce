@@ -949,14 +949,15 @@ func (h *ProductHandler) AdminGetAllProducts(c *gin.Context) {
 // ListProductReviews godoc
 //
 //	@Summary		List reviews for a specific product
-//	@Description	Returns a paginated list of approved reviews for a given product.
+//	@Description	Returns a cursor-paginated list of approved reviews for a given product.
 //	@Tags			Products
 //	@Produce		json
 //	@Param			slug	path		string	true	"Product Slug"
-//	@Param			q	query		pagination.ListQuery												true	"Pagination, search query, and sorting parameters"
+//	@Param			cursor	query		string																false	"Cursor for the next page"
+//	@Param			pageSize	query		int																		false	"Reviews per page (max 100)"
 //	@Failure		400	{object}	api.BadRequestErrorResponse											"Invalid query parameters"
 //	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
-//	@Success		200	{object}	api.PaginatedResponse{data=[]ProductReviewResponse,meta=pagination.Page}	"Paginated list of product reviews"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]ProductReviewResponse,meta=pagination.CursorPage}	"Paginated list of product reviews"
 //	@Router			/products/{slug}/reviews [get]
 func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 	slug := c.Param("slug")
@@ -979,16 +980,22 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
 	status := model.ReviewStatusApproved
 
-	result, err := h.service.ListProductReviews(c.Request.Context(), q, productID, &status)
+	reviews, page, err := h.service.ListProductReviews(c.Request.Context(), q.PageSize, cursor, productID, &status)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	var responses []ProductReviewResponse
-	for _, rv := range result.Items {
+	for _, rv := range reviews {
 		responses = append(responses, ProductReviewResponse{
 			ID:          rv.ID.String(),
 			ProductID:   rv.ProductID.String(),
@@ -1004,7 +1011,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
-		Meta: result.Page,
+		Meta: page,
 	})
 }
 

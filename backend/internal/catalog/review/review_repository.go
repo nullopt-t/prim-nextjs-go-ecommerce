@@ -13,15 +13,6 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-var allowedReviewSortFields = map[string]string{
-	"id":         "r.id",
-	"rating":     "r.rating",
-	"status":     "r.status",
-	"helpful":    "r.helpful_count",
-	"created_at": "r.created_at",
-	"updated_at": "r.updated_at",
-}
-
 type ReviewRepository struct{}
 
 func NewReviewRepository() *ReviewRepository {
@@ -440,49 +431,54 @@ func (r *ReviewRepository) GetRatingSummariesByProductIDs(
 	return result, nil
 }
 
+// List returns the reviews matching the filter, newest first, plus the cursor
+// for the next page. Paging is keyset-based: the boundary row's (created_at,
+// id) is carried in the cursor, so concurrent inserts cannot shift rows
+// between pages the way OFFSET paging does.
 func (r *ReviewRepository) List(
 	ctx context.Context,
-	q *pagination.ListQuery,
-	productID *uuid.UUID,
-	userID *uuid.UUID,
-	status *model.ReviewStatus,
-) ([]model.Review, int, error) {
-	return r.ListWithVoter(ctx, q, productID, userID, status, nil)
-}
-
-func (r *ReviewRepository) ListWithVoter(
-	ctx context.Context,
-	q *pagination.ListQuery,
-	productID *uuid.UUID,
-	userID *uuid.UUID,
-	status *model.ReviewStatus,
-	voterID *uuid.UUID,
-) ([]model.Review, int, error) {
+	limit int,
+	cursor *pagination.Keyset,
+	filter model.ReviewFilter,
+) ([]model.Review, *pagination.CursorPage, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
 	var filters []string
 	var args []any
 	argID := 1
 
-	if productID != nil {
+	if filter.ProductID != nil {
 		filters = append(filters, fmt.Sprintf("r.product_id = $%d", argID))
-		args = append(args, *productID)
+		args = append(args, *filter.ProductID)
 		argID++
 	}
 
-	if userID != nil {
+	if filter.UserID != nil {
 		filters = append(filters, fmt.Sprintf("r.user_id = $%d", argID))
-		args = append(args, *userID)
+		args = append(args, *filter.UserID)
 		argID++
 	}
 
-	if status != nil {
+	if filter.Status != nil {
 		filters = append(filters, fmt.Sprintf("r.status = $%d", argID))
-		args = append(args, *status)
+		args = append(args, *filter.Status)
 		argID++
+	}
+
+	if filter.Rating != nil {
+		filters = append(filters, fmt.Sprintf("r.rating = $%d", argID))
+		args = append(args, *filter.Rating)
+		argID++
+	}
+
+	if cursor != nil {
+		clause, cursorArgs := pagination.KeysetClause("r", cursor, argID)
+		filters = append(filters, strings.TrimPrefix(clause, " AND "))
+		args = append(args, cursorArgs...)
+		argID += len(cursorArgs)
 	}
 
 	whereClause := ""
@@ -490,43 +486,12 @@ func (r *ReviewRepository) ListWithVoter(
 		whereClause = "WHERE " + strings.Join(filters, " AND ")
 	}
 
-	// Count query
-	countQuery := fmt.Sprintf(`SELECT COUNT(1) FROM reviews r %s`, whereClause)
-	var total int
-	if err := executor.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-
-	if total == 0 {
-		return []model.Review{}, 0, nil
-	}
-
-	orderBy := "ORDER BY r.created_at DESC"
-	if len(q.Sort) > 0 {
-		sortParts := make([]string, 0, len(q.Sort))
-		for _, sort := range q.Sort {
-			// Lookup is case-insensitive so "created_at" and "CreatedAt" both work
-			allowed, ok := allowedReviewSortFields[strings.ToLower(sort.Field)]
-			if !ok {
-				continue
-			}
-			dir := "DESC"
-			if sort.Order == pagination.SortAsc {
-				dir = "ASC"
-			}
-			sortParts = append(sortParts, fmt.Sprintf("%s %s", allowed, dir))
-		}
-		if len(sortParts) > 0 {
-			orderBy = "ORDER BY " + strings.Join(sortParts, ", ")
-		}
-	}
-
 	var voteSelect string
 	var voteJoin string
-	if voterID != nil {
+	if filter.VoterID != nil {
 		voteSelect = ", COALESCE(rv_vote.user_id IS NOT NULL, false) AS user_voted"
 		voteJoin = fmt.Sprintf("LEFT JOIN review_votes rv_vote ON rv_vote.review_id = r.id AND rv_vote.user_id = $%d", argID)
-		args = append(args, *voterID)
+		args = append(args, *filter.VoterID)
 		argID++
 	} else {
 		voteSelect = ", false AS user_voted"
@@ -547,16 +512,16 @@ func (r *ReviewRepository) ListWithVoter(
 			r.updated_at%s
 		FROM reviews r
 		%s
-		%s
-		%s
-		LIMIT $%d OFFSET $%d
-	`, voteSelect, voteJoin, whereClause, orderBy, argID, argID+1)
+		%s%s
+		LIMIT $%d
+	`, voteSelect, voteJoin, whereClause, pagination.KeysetOrderBy("r"), argID)
 
-	args = append(args, q.PageSize, q.Offset)
+	// One extra row tells us whether another page exists without a COUNT.
+	args = append(args, limit+1)
 
 	rows, err := executor.QueryContext(ctx, listQuery, args...)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -577,15 +542,19 @@ func (r *ReviewRepository) ListWithVoter(
 			&rv.UpdatedAt,
 			&rv.UserVoted,
 		); err != nil {
-			return nil, 0, err
+			return nil, nil, err
 		}
 		reviews = append(reviews, rv)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, nil, err
 	}
 
-	return reviews, total, nil
+	trimmed, page := pagination.NewCursorPageFrom(reviews, limit, func(rv model.Review) pagination.Keyset {
+		return pagination.Keyset{CreatedAt: rv.CreatedAt, ID: rv.ID}
+	})
+
+	return trimmed, page, nil
 }
 
 // ToggleVote toggles a helpful vote on a review by the given user.

@@ -103,26 +103,31 @@ describe("server catalog fetchers", () => {
 	});
 
 	it("getReviewsByProduct fetches reviews for a product", async () => {
-		respondWith({ data: [{ id: "r1", productId: "p1", rating: 5 }] });
+		respondWith({
+			data: [{ id: "r1", productId: "p1", rating: 5 }],
+			meta: { nextCursor: "cur1", hasMore: true },
+		});
 
-		const reviews = await getReviewsByProduct("p1");
+		const page = await getReviewsByProduct("p1");
 
-		expect(reviews).toEqual([expect.objectContaining({ id: "r1" })]);
+		expect(page.reviews).toEqual([expect.objectContaining({ id: "r1" })]);
+		expect(page.nextCursor).toBe("cur1");
+		expect(page.hasMore).toBe(true);
 		const [url, init] = fetchMock.mock.calls[0];
-		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&page=1&pageSize=20");
+		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&pageSize=20");
 		expect(init).toMatchObject({
 			next: { revalidate: 300, tags: ["product-reviews:p1"] },
 			headers: { Accept: "application/json" },
 		});
 	});
 
-	it("getReviewsByProduct requests the given page", async () => {
+	it("getReviewsByProduct requests the given cursor", async () => {
 		respondWith({ data: [] });
 
-		await getReviewsByProduct("p1", 3, 10);
+		await getReviewsByProduct("p1", "cur1", 10);
 
 		const [url] = fetchMock.mock.calls[0];
-		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&page=3&pageSize=10");
+		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&cursor=cur1&pageSize=10");
 	});
 
 	it("getCategories fetches the category list", async () => {

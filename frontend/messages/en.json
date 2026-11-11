@@ -2516,14 +2516,8 @@
     },
     "sectionLabel": "Ratings & reviews",
     "shareThoughts": "Share your thoughts with other customers",
-    "showLess": "Show less",
     "showMore": "Show more",
     "showingCount": "Showing {shown} of {total} reviews",
-    "sortBy": "Sort by",
-    "sortHighest": "Highest rated",
-    "sortLowest": "Lowest rated",
-    "sortMostHelpful": "Most helpful",
-    "sortNewest": "Newest first",
     "starLabel": "{star} star",
     "submit": "Submit",
     "submitFailed": "Failed to submit review.",
@@ -2531,7 +2525,8 @@
     "submitting": "Submitting...",
     "verifiedPurchase": "Verified Purchase",
     "writeReview": "Write a customer review",
-    "writeShort": "Write a review"
+    "writeShort": "Write a review",
+    "loadingMore": "Loading more..."
   },
   "settings": {
     "backToSettings": "Back to Settings",

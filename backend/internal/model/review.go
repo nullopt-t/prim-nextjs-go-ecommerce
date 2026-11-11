@@ -79,3 +79,19 @@ type RatingSummary struct {
 	Distribution map[int16]int
 }
 
+// ReviewFilter narrows a review listing. A nil field means "no constraint".
+// It lives in the model package because both the catalog and the product
+// domain list reviews and must not depend on each other.
+type ReviewFilter struct {
+	// ProductID limits the listing to one product's reviews.
+	ProductID *uuid.UUID
+	// UserID limits the listing to one author's reviews.
+	UserID *uuid.UUID
+	// Status limits the listing to one moderation status.
+	Status *ReviewStatus
+	// Rating limits the listing to one star score.
+	Rating *int16
+	// VoterID marks the reviews this voter has already voted helpful.
+	VoterID *uuid.UUID
+}
+

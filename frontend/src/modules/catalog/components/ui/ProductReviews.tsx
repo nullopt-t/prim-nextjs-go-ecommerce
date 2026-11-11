@@ -4,7 +4,6 @@ import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
 import { CatalogImage } from "@/shared/ui/catalogImage";
-import { CustomSelect } from "@/shared/ui/customSelect";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 
 interface ProductReviewsProps {
@@ -20,12 +19,18 @@ interface ProductReviewsProps {
    * derived from it.
    */
   distribution?: Record<string, number>;
-  /** Fetches the next page of reviews when the loaded ones run out. */
+  /**
+   * Active star filter, or null for every rating. The filter is applied by the
+   * backend, so the list always matches the histogram counts.
+   */
+  ratingFilter?: number | null;
+  onRatingFilterChange?: (rating: number | null) => void;
+  /** Whether the backend holds more reviews for the active filter. */
+  hasMore?: boolean;
+  /** Fetches the next page of reviews when the shopper asks for more. */
   onLoadMore?: () => void;
   loadingMore?: boolean;
 }
-
-type ReviewSort = "newest" | "helpful" | "highest" | "lowest";
 
 export function ProductReviews({
   stars = 0,
@@ -35,6 +40,9 @@ export function ProductReviews({
   onAddReview,
   onVoteHelpful,
   distribution,
+  ratingFilter = null,
+  onRatingFilterChange,
+  hasMore = false,
   onLoadMore,
   loadingMore = false,
 }: ProductReviewsProps) {
@@ -44,9 +52,6 @@ export function ProductReviews({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ rating: 0, title: "", content: "" });
   const [formError, setFormError] = useState<string | null>(null);
-  const [ratingFilter, setRatingFilter] = useState<number | "all">("all");
-  const [sort, setSort] = useState<ReviewSort>("newest");
-  const [visibleCount, setVisibleCount] = useState(5);
 
   const handleSubmit = async () => {
     if (!form.rating || !form.title.trim() || !form.content.trim() || isSubmitting) return;
@@ -94,30 +99,20 @@ export function ProductReviews({
       : reviews.filter((review) => Math.round(Number(review.rating)) === starValue).length,
   }));
   const histogramTotal = backendTotal || loadedCount;
+  // The backend applies the filter, so the list already holds only the
+  // matching reviews.
+  const visibleReviews = reviews;
+  // The total matching the active filter is the same count the histogram
+  // shows for that star, so the two never disagree.
+  const filterTotal =
+    ratingFilter !== null
+      ? distribution
+        ? Number(distribution[String(ratingFilter)] ?? 0)
+        : loadedCount
+      : histogramTotal;
 
-  const filteredReviews =
-    ratingFilter === "all"
-      ? reviews
-      : reviews.filter((review) => Math.round(Number(review.rating)) === ratingFilter);
-
-  const sortedReviews = [...filteredReviews];
-  if (sort === "helpful") {
-    sortedReviews.sort((a, b) => (b.helpful || 0) - (a.helpful || 0));
-  } else if (sort === "highest") {
-    sortedReviews.sort((a, b) => Number(b.rating) - Number(a.rating));
-  } else if (sort === "lowest") {
-    sortedReviews.sort((a, b) => Number(a.rating) - Number(b.rating));
-  }
-
-  const visibleReviews = sortedReviews.slice(0, visibleCount);
-  // More reviews exist on the server than are loaded here: either the loaded
-  // page has unrevealed entries, or a further page has to be fetched.
-  const hasMore = visibleReviews.length < sortedReviews.length || (Boolean(onLoadMore) && sortedReviews.length < displayCount);
-  const canShowLess = visibleCount > 5 && sortedReviews.length > 5;
-
-  const changeRatingFilter = (nextFilter: number | "all") => {
-    setRatingFilter(nextFilter);
-    setVisibleCount(5);
+  const changeRatingFilter = (nextFilter: number | null) => {
+    onRatingFilterChange?.(nextFilter);
   };
 
   return (
@@ -175,7 +170,7 @@ export function ProductReviews({
                   <button
                     key={rating}
                     type="button"
-                    onClick={() => changeRatingFilter(isActive ? "all" : rating)}
+                    onClick={() => changeRatingFilter(isActive ? null : rating)}
                     aria-label={t("starLabel", { star: rating })}
                     aria-pressed={isActive}
                     className={`group flex items-center gap-2.5 rounded-lg px-1 py-0.5 text-xs transition-colors cursor-pointer ${
@@ -197,10 +192,10 @@ export function ProductReviews({
               })}
             </div>
 
-            {ratingFilter !== "all" && (
+            {ratingFilter !== null && (
               <button
                 type="button"
-                onClick={() => changeRatingFilter("all")}
+                onClick={() => changeRatingFilter(null)}
                 className="mt-4 text-xs font-semibold text-accent-brand hover:underline cursor-pointer"
               >
                 {t("clearFilters")}
@@ -337,28 +332,9 @@ export function ProductReviews({
             <span className="text-xs text-muted-foreground">
               {t("showingCount", {
                 shown: visibleReviews.length,
-                total: Math.max(sortedReviews.length, reviewsCount),
+                total: filterTotal,
               })}
             </span>
-
-            <label className="sr-only" htmlFor="review-sort">
-              {t("sortBy")}
-            </label>
-            <CustomSelect
-              id="review-sort"
-              value={sort}
-              onChange={(value) => {
-                setSort(value as ReviewSort);
-                setVisibleCount(5);
-              }}
-              options={[
-                { value: "newest", label: t("sortNewest") },
-                { value: "helpful", label: t("sortMostHelpful") },
-                { value: "highest", label: t("sortHighest") },
-                { value: "lowest", label: t("sortLowest") },
-              ]}
-              size="sm"
-            />
           </div>
           )}
 
@@ -379,12 +355,12 @@ export function ProductReviews({
                 </button>
               )}
             </div>
-          ) : sortedReviews.length === 0 ? (
+          ) : visibleReviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-secondary/25 px-6 py-10 text-center">
               <p className="text-sm font-semibold text-foreground">{t("noMatchingReviews")}</p>
               <button
                 type="button"
-                onClick={() => changeRatingFilter("all")}
+                onClick={() => changeRatingFilter(null)}
                 className="mt-3 cursor-pointer text-xs font-semibold text-accent-brand hover:underline"
               >
                 {t("clearFilters")}
@@ -469,29 +445,11 @@ export function ProductReviews({
           {hasMore && (
             <button
               type="button"
-              onClick={() => {
-                // Reveal what is already loaded; only ask the server for the
-                // next page once the loaded ones are all visible.
-                if (visibleReviews.length < sortedReviews.length) {
-                  setVisibleCount((count) => count + 5);
-                } else {
-                  onLoadMore?.();
-                }
-              }}
+              onClick={() => onLoadMore?.()}
               disabled={loadingMore}
               className="mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {t("showMore")}
-            </button>
-          )}
-
-          {!hasMore && canShowLess && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount(5)}
-              className="mx-auto mt-1 cursor-pointer rounded-xl border border-border bg-background px-6 py-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary"
-            >
-              {t("showLess")}
+              {loadingMore ? t("loadingMore") : t("showMore")}
             </button>
           )}
         </div>

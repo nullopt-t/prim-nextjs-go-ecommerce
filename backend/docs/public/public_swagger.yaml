@@ -3862,53 +3862,22 @@ paths:
       - Products
   /products/{slug}/reviews:
     get:
-      description: Returns a paginated list of approved reviews for a given product.
+      description: Returns a cursor-paginated list of approved reviews for a given
+        product.
       parameters:
       - description: Product Slug
         in: path
         name: slug
         required: true
         type: string
-      - description: |-
-          Cursor is an opaque keyset token. When present, repositories should use
-          keyset pagination instead of OFFSET.
-        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+      - description: Cursor for the next page
         in: query
         name: cursor
         type: string
-      - description: |-
-          KeysetMode explicitly requests keyset pagination even when no cursor has
-          been supplied yet (i.e. for the very first page). Endpoints that still
-          serve classic OFFSET pagination use this to opt in per request.
-        example: true
-        in: query
-        name: keyset
-        type: boolean
-      - description: Page is the requested 1-based page number from query parameters.
-        example: 1
-        in: query
-        name: page
-        type: integer
-      - description: PageSize is the requested number of items per page.
-        example: 10
+      - description: Reviews per page (max 100)
         in: query
         name: pageSize
         type: integer
-      - description: Search is an optional free-text search query string.
-        example: television
-        in: query
-        name: search
-        type: string
-      - collectionFormat: csv
-        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
-        example:
-        - name
-        - -created_at
-        in: query
-        items:
-          type: string
-        name: sort
-        type: array
       produces:
       - application/json
       responses:
@@ -3923,7 +3892,7 @@ paths:
                     $ref: '#/definitions/ProductReviewResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/Page'
+                  $ref: '#/definitions/CursorPage'
               type: object
         "400":
           description: Invalid query parameters
@@ -3975,52 +3944,25 @@ paths:
       - Products
   /reviews:
     get:
-      description: Returns a paginated list of approved reviews for storefront display.
+      description: Returns a cursor-paginated list of approved reviews for storefront
+        display.
       parameters:
       - description: Filter by Product UUID
         in: query
         name: productId
         type: string
-      - description: |-
-          Cursor is an opaque keyset token. When present, repositories should use
-          keyset pagination instead of OFFSET.
-        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+      - description: Filter by star rating (1-5)
+        in: query
+        name: rating
+        type: integer
+      - description: Cursor for the next page
         in: query
         name: cursor
         type: string
-      - description: |-
-          KeysetMode explicitly requests keyset pagination even when no cursor has
-          been supplied yet (i.e. for the very first page). Endpoints that still
-          serve classic OFFSET pagination use this to opt in per request.
-        example: true
-        in: query
-        name: keyset
-        type: boolean
-      - description: Page is the requested 1-based page number from query parameters.
-        example: 1
-        in: query
-        name: page
-        type: integer
-      - description: PageSize is the requested number of items per page.
-        example: 10
+      - description: Reviews per page (max 100)
         in: query
         name: pageSize
         type: integer
-      - description: Search is an optional free-text search query string.
-        example: television
-        in: query
-        name: search
-        type: string
-      - collectionFormat: csv
-        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
-        example:
-        - name
-        - -created_at
-        in: query
-        items:
-          type: string
-        name: sort
-        type: array
       produces:
       - application/json
       responses:
@@ -4035,7 +3977,7 @@ paths:
                     $ref: '#/definitions/ReviewResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/Page'
+                  $ref: '#/definitions/CursorPage'
               type: object
         "400":
           description: Invalid input
@@ -4304,49 +4246,17 @@ paths:
       - Reviews
   /reviews/me:
     get:
-      description: Returns a paginated list of all reviews written by the authenticated
+      description: Returns a cursor-paginated list of all reviews written by the authenticated
         user.
       parameters:
-      - description: |-
-          Cursor is an opaque keyset token. When present, repositories should use
-          keyset pagination instead of OFFSET.
-        example: eyJ0IjoiLi4uIiwiaSI6Ii4uLiJ9
+      - description: Cursor for the next page
         in: query
         name: cursor
         type: string
-      - description: |-
-          KeysetMode explicitly requests keyset pagination even when no cursor has
-          been supplied yet (i.e. for the very first page). Endpoints that still
-          serve classic OFFSET pagination use this to opt in per request.
-        example: true
-        in: query
-        name: keyset
-        type: boolean
-      - description: Page is the requested 1-based page number from query parameters.
-        example: 1
-        in: query
-        name: page
-        type: integer
-      - description: PageSize is the requested number of items per page.
-        example: 10
+      - description: Reviews per page (max 100)
         in: query
         name: pageSize
         type: integer
-      - description: Search is an optional free-text search query string.
-        example: television
-        in: query
-        name: search
-        type: string
-      - collectionFormat: csv
-        description: RawSort contains the raw sort query strings (e.g. ["name,-created_at"]).
-        example:
-        - name
-        - -created_at
-        in: query
-        items:
-          type: string
-        name: sort
-        type: array
       produces:
       - application/json
       responses:
@@ -4361,7 +4271,7 @@ paths:
                     $ref: '#/definitions/ReviewResponse'
                   type: array
                 meta:
-                  $ref: '#/definitions/Page'
+                  $ref: '#/definitions/CursorPage'
               type: object
         "401":
           description: Unauthorized

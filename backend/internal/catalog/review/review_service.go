@@ -357,33 +357,26 @@ func (s *ReviewService) UpdateReviewStatus(
 	return nil
 }
 
+// ListReviews returns the reviews matching the filter, paged by cursor.
 func (s *ReviewService) ListReviews(
 	ctx context.Context,
-	q *pagination.ListQuery,
-	productID *uuid.UUID,
-	userID *uuid.UUID,
-	status *model.ReviewStatus,
-	voterID *uuid.UUID,
-) (*pagination.PagedResult[model.Review], error) {
+	limit int,
+	cursor *pagination.Keyset,
+	filter model.ReviewFilter,
+) ([]model.Review, *pagination.CursorPage, error) {
 	var reviews []model.Review
-	var total int
+	var page *pagination.CursorPage
 	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
 		var err error
-		reviews, total, err = s.repo.ListWithVoter(ctx, q, productID, userID, status, voterID)
+		reviews, page, err = s.repo.List(ctx, limit, cursor, filter)
 		return err
 	})
 
 	if err != nil {
-		return nil, s.handleError(err, "Failed to list reviews")
+		return nil, nil, s.handleError(err, "Failed to list reviews")
 	}
 
-	reviewPtrs := make([]*model.Review, len(reviews))
-	for i := range reviews {
-		reviewPtrs[i] = &reviews[i]
-	}
-
-	page := pagination.NewPage(q.Page, q.PageSize, total)
-	return pagination.NewPagedResult(reviewPtrs, page), nil
+	return reviews, page, nil
 }
 
 // ToggleHelpful toggles a helpful vote on a review by the given user.

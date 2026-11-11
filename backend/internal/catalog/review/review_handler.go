@@ -2,6 +2,7 @@ package review
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -180,11 +181,12 @@ func (h *ReviewHandler) CreateReview(c *gin.Context) {
 // GetMyReviews godoc
 //
 //	@Summary		List current user's reviews
-//	@Description	Returns a paginated list of all reviews written by the authenticated user.
+//	@Description	Returns a cursor-paginated list of all reviews written by the authenticated user.
 //	@Tags			Reviews
 //	@Produce		json
-//	@Param			q	query		pagination.ListQuery												true	"Pagination and sorting parameters"
-//	@Success		200	{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"User's reviews"
+//	@Param			cursor	query		string																false	"Cursor for the next page"
+//	@Param			pageSize	query		int																		false	"Reviews per page (max 100)"
+//	@Success		200	{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.CursorPage}	"User's reviews"
 //	@Failure		401	{object}	api.UnauthorizedErrorResponse										"Unauthorized"
 //	@Failure		500	{object}	api.InternalServerErrorResponse										"Internal server error"
 //	@Router			/reviews/me [get]
@@ -202,20 +204,29 @@ func (h *ReviewHandler) GetMyReviews(c *gin.Context) {
 	}
 	q.Process(pagination.QueryOptions{DefaultPageSize: 10, MaxPageSize: 100})
 
-	result, err := h.service.ListReviews(c.Request.Context(), q, nil, &userID, nil, &userID)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	reviews, page, err := h.service.ListReviews(c.Request.Context(), q.PageSize, cursor, model.ReviewFilter{
+		UserID:  &userID,
+		VoterID: &userID,
+	})
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	responses := make([]ReviewResponse, 0, len(result.Items))
-	for _, rv := range result.Items {
-		responses = append(responses, mapReviewToResponse(rv))
+	responses := make([]ReviewResponse, 0, len(reviews))
+	for _, rv := range reviews {
+		responses = append(responses, mapReviewToResponse(&rv))
 	}
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
-		Meta: result.Page,
+		Meta: page,
 	})
 }
 
@@ -271,12 +282,14 @@ func (h *ReviewHandler) CheckEligibility(c *gin.Context) {
 // ListPublicReviews godoc
 //
 //	@Summary		List public approved reviews
-//	@Description	Returns a paginated list of approved reviews for storefront display.
+//	@Description	Returns a cursor-paginated list of approved reviews for storefront display.
 //	@Tags			Reviews
 //	@Produce		json
 //	@Param			productId	query		string																false	"Filter by Product UUID"
-//	@Param			q			query		pagination.ListQuery												false	"Pagination and sorting parameters"
-//	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"Paginated list of approved reviews"
+//	@Param			rating		query		int																		false	"Filter by star rating (1-5)"
+//	@Param			cursor		query		string																false	"Cursor for the next page"
+//	@Param			pageSize	query		int																		false	"Reviews per page (max 100)"
+//	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.CursorPage}	"Paginated list of approved reviews"
 //	@Failure		400			{object}	api.BadRequestErrorResponse											"Invalid input"
 //	@Failure		500			{object}	api.InternalServerErrorResponse										"Internal server error"
 //	@Router			/reviews [get]
@@ -298,26 +311,48 @@ func (h *ReviewHandler) ListPublicReviews(c *gin.Context) {
 		productIDPtr = &pid
 	}
 
+	var ratingPtr *int16
+	if ratingStr := c.Query("rating"); ratingStr != "" {
+		rating, err := strconv.ParseInt(ratingStr, 10, 16)
+		if err != nil || rating < 1 || rating > 5 {
+			_ = c.Error(apierr.ValidationFailedError("rating must be between 1 and 5"))
+			return
+		}
+		parsed := int16(rating)
+		ratingPtr = &parsed
+	}
+
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
 	var voterID *uuid.UUID
 	if uid, ok := middleware.GetUserID(c); ok {
 		voterID = &uid
 	}
 
 	approvedStatus := model.ReviewStatusApproved
-	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, nil, &approvedStatus, voterID)
+	reviews, page, err := h.service.ListReviews(c.Request.Context(), q.PageSize, cursor, model.ReviewFilter{
+		ProductID: productIDPtr,
+		Status:    &approvedStatus,
+		Rating:    ratingPtr,
+		VoterID:   voterID,
+	})
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	responses := make([]ReviewResponse, 0, len(result.Items))
-	for _, rv := range result.Items {
-		responses = append(responses, mapReviewToResponse(rv))
+	responses := make([]ReviewResponse, 0, len(reviews))
+	for _, rv := range reviews {
+		responses = append(responses, mapReviewToResponse(&rv))
 	}
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
-		Meta: result.Page,
+		Meta: page,
 	})
 }
 
@@ -443,14 +478,15 @@ func (h *ReviewHandler) DeleteReview(c *gin.Context) {
 // AdminListReviews godoc
 //
 //	@Summary		List reviews (Admin)
-//	@Description	Returns a paginated list of reviews with optional filters for product, user, and status.
+//	@Description	Returns a cursor-paginated list of reviews with optional filters for product, user, and status.
 //	@Tags			Admin Reviews
 //	@Produce		json
-//	@Param			q			query		pagination.ListQuery												true	"Pagination and sorting parameters"
+//	@Param			cursor		query		string																false	"Cursor for the next page"
+//	@Param			pageSize	query		int																		false	"Reviews per page (max 100)"
 //	@Param			productId	query		string																false	"Filter by Product ID (UUID)"
 //	@Param			userId		query		string																false	"Filter by User ID (UUID)"
 //	@Param			status		query		string																false	"Filter by Review Status (pending, approved, rejected)"
-//	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.Page}	"Paginated list of reviews"
+//	@Success		200			{object}	api.PaginatedResponse{data=[]ReviewResponse,meta=pagination.CursorPage}	"Paginated list of reviews"
 //	@Failure		401			{object}	api.UnauthorizedErrorResponse										"Unauthorized"
 //	@Failure		403			{object}	api.ForbiddenErrorResponse											"Forbidden"
 //	@Failure		500			{object}	api.InternalServerErrorResponse										"Internal server error"
@@ -501,20 +537,30 @@ func (h *ReviewHandler) AdminListReviews(c *gin.Context) {
 		statusPtr = &s
 	}
 
-	result, err := h.service.ListReviews(c.Request.Context(), q, productIDPtr, userIDPtr, statusPtr, nil)
+	cursor, err := q.Keyset()
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Invalid pagination cursor").Wrap(err))
+		return
+	}
+
+	reviews, page, err := h.service.ListReviews(c.Request.Context(), q.PageSize, cursor, model.ReviewFilter{
+		ProductID: productIDPtr,
+		UserID:    userIDPtr,
+		Status:    statusPtr,
+	})
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	responses := make([]ReviewResponse, 0, len(result.Items))
-	for _, rv := range result.Items {
-		responses = append(responses, mapReviewToResponse(rv))
+	responses := make([]ReviewResponse, 0, len(reviews))
+	for _, rv := range reviews {
+		responses = append(responses, mapReviewToResponse(&rv))
 	}
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{
 		Data: responses,
-		Meta: result.Page,
+		Meta: page,
 	})
 }
 

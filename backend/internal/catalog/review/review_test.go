@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
+	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
@@ -179,6 +181,10 @@ func (s *ReviewHTTPTestSuite) createTestUser(role string) (uuid.UUID, string) {
 }
 
 func (s *ReviewHTTPTestSuite) createDeliveredOrder(userID uuid.UUID) uuid.UUID {
+	return s.createDeliveredOrderForVariant(userID, s.variantID)
+}
+
+func (s *ReviewHTTPTestSuite) createDeliveredOrderForVariant(userID, variantID uuid.UUID) uuid.UUID {
 	ctx := context.Background()
 	orderID := uuid.New()
 	orderItemID := uuid.New()
@@ -196,7 +202,7 @@ func (s *ReviewHTTPTestSuite) createDeliveredOrder(userID uuid.UUID) uuid.UUID {
 	_, err = s.db.ExecContext(ctx, `
 		INSERT INTO order_items (id, order_id, variant_id, quantity, price_at_purchase, product_snapshot)
 		VALUES ($1, $2, $3, 1, 29999, $4::jsonb)
-	`, orderItemID, orderID, s.variantID, snapshotJSON)
+	`, orderItemID, orderID, variantID, snapshotJSON)
 	s.Require().NoError(err)
 
 	return orderItemID
@@ -488,6 +494,208 @@ func (s *ReviewHTTPTestSuite) TestHTTP_04_RatingSummaryComputation() {
 	s.Equal(1, summary.Distribution[3])
 	s.Equal(1, summary.Distribution[4])
 	s.Equal(1, summary.Distribution[5])
+}
+
+func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
+	// A dedicated product keeps this test independent of the other tests'
+	// reviews on the shared product.
+	productID := uuid.New()
+	variantID := uuid.New()
+	categoryID := uuid.New()
+
+	_, err := s.db.ExecContext(context.Background(), `
+		INSERT INTO product_categories (id, name) VALUES ($1, 'Rating Filter Category')
+	`, categoryID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		INSERT INTO products (id, category_id, slug, title, status, product_type)
+		VALUES ($1, $2, 'rating-filter-product', 'Rating Filter Product', 'published', 'simple')
+	`, productID, categoryID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		INSERT INTO product_variants (id, product_id, sku, title, price)
+		VALUES ($1, $2, 'SKU-RATING-FILTER', 'Default', 19999)
+	`, variantID, productID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		UPDATE products SET default_variant_id = $2 WHERE id = $1
+	`, productID, variantID)
+	s.Require().NoError(err)
+
+	// Three approved reviews: two 5-star and one 3-star.
+	ratings := []int16{5, 5, 3}
+	for _, rating := range ratings {
+		custID, _ := s.createTestUser("customer")
+		orderItemID := s.createDeliveredOrderForVariant(custID, variantID)
+		rv, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
+			ProductID:   productID,
+			UserID:      custID,
+			OrderItemID: &orderItemID,
+			Rating:      rating,
+		})
+		s.Require().NoError(err)
+		err = s.service.UpdateReviewStatus(context.Background(), rv.ID, model.ReviewStatusApproved)
+		s.Require().NoError(err)
+	}
+
+	// 1. The rating filter returns only the matching reviews, and the total
+	// counts the filtered set rather than every review.
+	reqFive := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&rating=5", nil)
+	wFive := httptest.NewRecorder()
+	s.router.ServeHTTP(wFive, reqFive)
+
+	s.Require().Equal(http.StatusOK, wFive.Code)
+	var fiveResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wFive.Body.Bytes(), &fiveResp))
+	s.Len(fiveResp.Data, 2)
+	for _, rv := range fiveResp.Data {
+		s.Equal(int16(5), rv.Rating)
+	}
+
+	// The filtered set fits in one page, so the cursor reports no more pages.
+	var fiveMeta struct {
+		Meta pagination.CursorPage `json:"meta"`
+	}
+	s.Require().NoError(json.Unmarshal(wFive.Body.Bytes(), &fiveMeta))
+	s.False(fiveMeta.Meta.HasMore)
+	s.Empty(fiveMeta.Meta.NextCursor)
+
+	// 2. Without the filter every review of the product is listed.
+	reqAll := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String(), nil)
+	wAll := httptest.NewRecorder()
+	s.router.ServeHTTP(wAll, reqAll)
+
+	s.Require().Equal(http.StatusOK, wAll.Code)
+	var allResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wAll.Body.Bytes(), &allResp))
+	s.Len(allResp.Data, 3)
+
+	// 3. An out-of-range rating is rejected.
+	reqBad := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&rating=9", nil)
+	wBad := httptest.NewRecorder()
+	s.router.ServeHTTP(wBad, reqBad)
+	s.Require().Equal(http.StatusBadRequest, wBad.Code)
+}
+
+func (s *ReviewHTTPTestSuite) TestHTTP_06_PublicListPagesWithCursor() {
+	// A dedicated product with more reviews than one page holds.
+	productID := uuid.New()
+	variantID := uuid.New()
+	categoryID := uuid.New()
+
+	_, err := s.db.ExecContext(context.Background(), `
+		INSERT INTO product_categories (id, name) VALUES ($1, 'Cursor Test Category')
+	`, categoryID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		INSERT INTO products (id, category_id, slug, title, status, product_type)
+		VALUES ($1, $2, 'cursor-test-product', 'Cursor Test Product', 'published', 'simple')
+	`, productID, categoryID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		INSERT INTO product_variants (id, product_id, sku, title, price)
+		VALUES ($1, $2, 'SKU-CURSOR-TEST', 'Default', 19999)
+	`, variantID, productID)
+	s.Require().NoError(err)
+
+	_, err = s.db.ExecContext(context.Background(), `
+		UPDATE products SET default_variant_id = $2 WHERE id = $1
+	`, productID, variantID)
+	s.Require().NoError(err)
+
+	const total = 5
+	for i := 1; i <= total; i++ {
+		custID, _ := s.createTestUser("customer")
+		orderItemID := s.createDeliveredOrderForVariant(custID, variantID)
+		rv, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
+			ProductID:   productID,
+			UserID:      custID,
+			OrderItemID: &orderItemID,
+			Rating:      4,
+		})
+		s.Require().NoError(err)
+		err = s.service.UpdateReviewStatus(context.Background(), rv.ID, model.ReviewStatusApproved)
+		s.Require().NoError(err)
+	}
+
+	// 1. The first page holds pageSize reviews and hands back a cursor.
+	reqFirst := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&pageSize=2", nil)
+	wFirst := httptest.NewRecorder()
+	s.router.ServeHTTP(wFirst, reqFirst)
+
+	s.Require().Equal(http.StatusOK, wFirst.Code)
+	var firstResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wFirst.Body.Bytes(), &firstResp))
+	s.Len(firstResp.Data, 2)
+
+	var firstMeta struct {
+		Meta pagination.CursorPage `json:"meta"`
+	}
+	s.Require().NoError(json.Unmarshal(wFirst.Body.Bytes(), &firstMeta))
+	s.True(firstMeta.Meta.HasMore)
+	s.NotEmpty(firstMeta.Meta.NextCursor)
+
+	// 2. The cursor continues where the previous page stopped: together the
+	// two pages cover every review exactly once.
+	reqNext := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&pageSize=2&cursor="+url.QueryEscape(firstMeta.Meta.NextCursor), nil)
+	wNext := httptest.NewRecorder()
+	s.router.ServeHTTP(wNext, reqNext)
+
+	s.Require().Equal(http.StatusOK, wNext.Code)
+	var nextResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wNext.Body.Bytes(), &nextResp))
+	s.Len(nextResp.Data, 2)
+
+	var nextMeta struct {
+		Meta pagination.CursorPage `json:"meta"`
+	}
+	s.Require().NoError(json.Unmarshal(wNext.Body.Bytes(), &nextMeta))
+	s.True(nextMeta.Meta.HasMore)
+	s.NotEmpty(nextMeta.Meta.NextCursor)
+
+	// 3. The last page reports no more reviews.
+	reqLast := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&pageSize=2&cursor="+url.QueryEscape(nextMeta.Meta.NextCursor), nil)
+	wLast := httptest.NewRecorder()
+	s.router.ServeHTTP(wLast, reqLast)
+
+	s.Require().Equal(http.StatusOK, wLast.Code)
+	var lastResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wLast.Body.Bytes(), &lastResp))
+	s.Len(lastResp.Data, 1)
+
+	var lastMeta struct {
+		Meta pagination.CursorPage `json:"meta"`
+	}
+	s.Require().NoError(json.Unmarshal(wLast.Body.Bytes(), &lastMeta))
+	s.False(lastMeta.Meta.HasMore)
+	s.Empty(lastMeta.Meta.NextCursor)
+
+	// The three pages together cover every review once, with no overlap.
+	seen := map[string]bool{}
+	for _, rv := range append(append(firstResp.Data, nextResp.Data...), lastResp.Data...) {
+		s.False(seen[rv.ID], "review %s appeared on two pages", rv.ID)
+		seen[rv.ID] = true
+	}
+	s.Len(seen, total)
+
+	// 4. A malformed cursor is rejected instead of silently paging from the
+	// start.
+	reqBad := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String()+"&cursor=not-a-cursor", nil)
+	wBad := httptest.NewRecorder()
+	s.router.ServeHTTP(wBad, reqBad)
+	s.Require().Equal(http.StatusBadRequest, wBad.Code)
 }
 
 func TestReviewHTTPTestSuite(t *testing.T) {
