@@ -576,6 +576,12 @@ users = [
     (hex_id(0x10000000, 10), 'emily.watson@example.com', 'Emily Watson', 'customer', True, 'active'),
     (hex_id(0x10000000, 11), 'carlos.mendez@example.com', 'Carlos Mendez', 'customer', True, 'active'),
     (hex_id(0x10000000, 12), 'hannah.abbott@example.com', 'Hannah Abbott', 'customer', False, 'active'),
+    (hex_id(0x10000000, 13), 'omar.hassan@example.com', 'Omar Hassan', 'customer', True, 'active'),
+    (hex_id(0x10000000, 14), 'lucia.fernandez@example.com', 'Lucia Fernandez', 'customer', True, 'active'),
+    (hex_id(0x10000000, 15), 'kenji.tanaka@example.com', 'Kenji Tanaka', 'customer', True, 'active'),
+    (hex_id(0x10000000, 16), 'nina.petrova@example.com', 'Nina Petrova', 'customer', True, 'active'),
+    (hex_id(0x10000000, 17), 'diego.silva@example.com', 'Diego Silva', 'customer', True, 'active'),
+    (hex_id(0x10000000, 18), 'amara.okoye@example.com', 'Amara Okoye', 'customer', True, 'active'),
 ]
 
 addresses = [
@@ -589,6 +595,12 @@ addresses = [
     (hex_id(0x20000000, 8), hex_id(0x10000000, 10), 'Home', 'Emily Watson', '+12065554321', '500 Pine St', 'Floor 4', 'Seattle', 'WA', '98101', 'USA', True),
     (hex_id(0x20000000, 9), hex_id(0x10000000, 11), 'Apartment', 'Carlos Mendez', '+13055557890', '800 Brickell Ave', 'PH 3', 'Miami', 'FL', '33131', 'USA', True),
     (hex_id(0x20000000, 10), hex_id(0x10000000, 2), 'Beach House', 'John Doe', '+1234567890', '50 Ocean Drive', None, 'Miami Beach', 'FL', '33139', 'USA', False),
+    (hex_id(0x20000000, 11), hex_id(0x10000000, 13), 'Home', 'Omar Hassan', '+201001234567', '15 Tahrir Street', 'Apt 6', 'Cairo', 'Cairo', '11511', 'EGY', True),
+    (hex_id(0x20000000, 12), hex_id(0x10000000, 14), 'Home', 'Lucia Fernandez', '+34600123456', 'Calle Gran Via 21', None, 'Madrid', 'Madrid', '28013', 'ESP', True),
+    (hex_id(0x20000000, 13), hex_id(0x10000000, 15), 'Home', 'Kenji Tanaka', '+819012345678', '2-1 Marunouchi', 'Tower B', 'Tokyo', 'Tokyo', '100-0005', 'JPN', True),
+    (hex_id(0x20000000, 14), hex_id(0x10000000, 16), 'Home', 'Nina Petrova', '+74951234567', '12 Tverskaya Street', 'Apt 9', 'Moscow', 'Moscow', '125009', 'RUS', True),
+    (hex_id(0x20000000, 15), hex_id(0x10000000, 17), 'Home', 'Diego Silva', '+5511987654321', 'Av. Paulista 1000', 'Apt 22', 'Sao Paulo', 'SP', '01310-100', 'BRA', True),
+    (hex_id(0x20000000, 16), hex_id(0x10000000, 18), 'Home', 'Amara Okoye', '+2348012345678', '15 Awolowo Road', None, 'Lagos', 'Lagos', '101241', 'NGA', True),
 ]
 
 brands_list = [
@@ -1064,8 +1076,10 @@ for p_idx, prod in enumerate(products):
     # Get variants for this product
     prod_vars = [v for v in variants if v[2] == p_id]
     
-    # Create 2 to 4 reviews per product
-    num_revs = random.randint(2, 4)
+    # Create 12 to 16 reviews per product, so the storefront's cursor-paged
+    # review list always has a second page to fetch. Capped by the customer
+    # pool, because each product's reviews come from distinct shoppers.
+    num_revs = random.randint(12, 16)
     chosen_users = random.sample(customer_users, k=min(num_revs, len(customer_users)))
     
     for u_idx, u in enumerate(chosen_users):
@@ -1147,8 +1161,8 @@ lines.append("""INSERT INTO order_status_history (order_id, status, notes, creat
 lines.append("-- =====================================================================")
 lines.append("-- 20. COUPON REDEMPTIONS")
 lines.append("-- =====================================================================")
-lines.append("""INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, created_at) VALUES
-('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, now() - INTERVAL '18 days');
+lines.append("""INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, currency, created_at) VALUES
+('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, 'EGP', now() - INTERVAL '18 days');
 """)
 
 # 21. payments

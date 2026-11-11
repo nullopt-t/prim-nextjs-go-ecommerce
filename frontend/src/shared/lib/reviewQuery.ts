@@ -17,8 +17,12 @@ export interface ReviewQuery {
 	rating?: number | null;
 }
 
-/** Reviews fetched per page on the product detail route. */
-export const REVIEWS_PAGE_SIZE = 20;
+/**
+ * Reviews fetched per page on the product detail route. Kept below the number
+ * of reviews the seeded catalogue carries per product, so the list really has
+ * a second page to fetch.
+ */
+export const REVIEWS_PAGE_SIZE = 10;
 
 export function buildReviewQuery(query: ReviewQuery = {}): URLSearchParams {
 	const params = new URLSearchParams();

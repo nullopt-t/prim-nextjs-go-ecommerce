@@ -12,6 +12,7 @@ import {
 	CATEGORIES_TAG,
 	BRANDS_TAG,
 } from "@/shared/lib/server/catalog";
+import { REVIEWS_PAGE_SIZE } from "@/shared/lib/reviewQuery";
 
 const fetchMock = vi.fn();
 
@@ -114,7 +115,9 @@ describe("server catalog fetchers", () => {
 		expect(page.nextCursor).toBe("cur1");
 		expect(page.hasMore).toBe(true);
 		const [url, init] = fetchMock.mock.calls[0];
-		expect(url).toBe("http://api:8081/api/v1/reviews?productId=p1&pageSize=20");
+		expect(url).toBe(
+			`http://api:8081/api/v1/reviews?productId=p1&pageSize=${REVIEWS_PAGE_SIZE}`,
+		);
 		expect(init).toMatchObject({
 			next: { revalidate: 300, tags: ["product-reviews:p1"] },
 			headers: { Accept: "application/json" },

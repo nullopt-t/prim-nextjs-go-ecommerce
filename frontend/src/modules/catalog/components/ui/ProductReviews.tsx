@@ -99,17 +99,6 @@ export function ProductReviews({
       : reviews.filter((review) => Math.round(Number(review.rating)) === starValue).length,
   }));
   const histogramTotal = backendTotal || loadedCount;
-  // The backend applies the filter, so the list already holds only the
-  // matching reviews.
-  const visibleReviews = reviews;
-  // The total matching the active filter is the same count the histogram
-  // shows for that star, so the two never disagree.
-  const filterTotal =
-    ratingFilter !== null
-      ? distribution
-        ? Number(distribution[String(ratingFilter)] ?? 0)
-        : loadedCount
-      : histogramTotal;
 
   const changeRatingFilter = (nextFilter: number | null) => {
     onRatingFilterChange?.(nextFilter);
@@ -327,17 +316,6 @@ export function ProductReviews({
             </div>
           )}
 
-          {reviews.length > 0 && (
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-xs text-muted-foreground">
-              {t("showingCount", {
-                shown: visibleReviews.length,
-                total: filterTotal,
-              })}
-            </span>
-          </div>
-          )}
-
           {reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-secondary/25 px-6 py-12 text-center">
               <p className="text-base font-bold text-foreground">{t("noReviewsYet")}</p>
@@ -355,7 +333,7 @@ export function ProductReviews({
                 </button>
               )}
             </div>
-          ) : visibleReviews.length === 0 ? (
+          ) : reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-secondary/25 px-6 py-10 text-center">
               <p className="text-sm font-semibold text-foreground">{t("noMatchingReviews")}</p>
               <button
@@ -368,7 +346,7 @@ export function ProductReviews({
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {visibleReviews.map((review) => (
+              {reviews.map((review) => (
                 <article
                   key={review.id}
                   className="rounded-xl border border-border/70 bg-secondary/25 p-5"
