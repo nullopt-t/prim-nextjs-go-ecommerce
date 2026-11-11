@@ -1,6 +1,6 @@
 // Package variant provides HTTP handlers, request validation, response mapping,
 // and REST controller endpoints for product variant (SKU) management.
-package variant
+package product
 
 import (
 	"net/http"
@@ -24,7 +24,7 @@ type VariantHandler struct {
 }
 
 // NewHandler constructs a new VariantHandler instance.
-func NewHandler(s *VariantService) *VariantHandler {
+func NewVariantHandler(s *VariantService) *VariantHandler {
 	if s == nil {
 		panic("variant: service is required")
 	}
@@ -131,7 +131,7 @@ type AdminVariantResponse struct {
 	// Currency ISO code
 	Currency *string `json:"currency,omitempty" example:"EGP"`
 	// Thumbnail storage object details
-	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
+	Thumbnail *VariantStorageObjectResponse `json:"thumbnail,omitempty"`
 	// Attached gallery media assets
 	Media []VariantMediaSummary `json:"media"`
 	// Custom variant attributes
@@ -155,12 +155,12 @@ type AttachMediaRequest struct {
 	SortOrder int `json:"sortOrder" example:"1"`
 }
 
-type ReorderMediaRequest struct {
+type VariantReorderMediaRequest struct {
 	// Array of media ids in desired presentation sequence
 	OrderedMediaIDs []string `json:"orderedMediaIds" binding:"required,gt=0" example:"['1']"`
 }
 
-type StorageObjectResponse struct {
+type VariantStorageObjectResponse struct {
 	// Internal object storage UUID
 	ID string `json:"id" example:"80000000-0000-0000-0000-000000000001"`
 	// Storage bucket name
@@ -187,7 +187,7 @@ type VariantMediaResponse struct {
 	// Display sequence sort order
 	SortOrder int `json:"sortOrder" example:"1"`
 	// Detailed storage file metadata
-	Object *StorageObjectResponse `json:"object,omitempty"`
+	Object *VariantStorageObjectResponse `json:"object,omitempty"`
 }
 
 // mapVariantResponse converts a domain ProductVariant into a public storefront VariantResponse DTO.
@@ -317,7 +317,7 @@ func mapAdminVariantResponse(v *model.ProductVariant) AdminVariantResponse {
 	}
 
 	if v.Thumbnail != nil {
-		res.Thumbnail = &StorageObjectResponse{
+		res.Thumbnail = &VariantStorageObjectResponse{
 			ID:          v.Thumbnail.ID.String(),
 			Bucket:      v.Thumbnail.Bucket,
 			Key:         v.Thumbnail.Key,
@@ -344,7 +344,7 @@ func mapVariantMediaResponse(m *model.VariantMedia) VariantMediaResponse {
 	}
 
 	if m.Object != nil {
-		res.Object = &StorageObjectResponse{
+		res.Object = &VariantStorageObjectResponse{
 			ID:          m.Object.ID.String(),
 			Bucket:      m.Object.Bucket,
 			Key:         m.Object.Key,
@@ -427,7 +427,7 @@ func (vh *VariantHandler) CreateVariant(c *gin.Context) {
 	})
 }
 
-type BatchCreateVariantsRequest struct {
+type VariantBatchCreateVariantsRequest struct {
 	Variants []struct {
 		SKU             *string                `json:"sku,omitempty"`
 		Title           *string                `json:"title,omitempty"`
@@ -441,13 +441,14 @@ type BatchCreateVariantsRequest struct {
 }
 
 // CreateVariantsBatch godoc
+//
 //	@Summary		Create a variation matrix in bulk
 //	@Description	Atomically creates multiple child variants for a product.
 //	@Tags			Product Variants
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string						true	"Product ID (UUID)"	format(uuid)
-//	@Param			body	body		BatchCreateVariantsRequest	true	"Matrix rows"
+//	@Param			body	body		VariantBatchCreateVariantsRequest	true	"Matrix rows"
 //	@Failure		400		{object}	api.BadRequestErrorResponse
 //	@Failure		500		{object}	api.InternalServerErrorResponse
 //	@Success		201		{object}	api.DataResponse
@@ -466,7 +467,7 @@ func (vh *VariantHandler) CreateVariantsBatch(c *gin.Context) {
 		return
 	}
 
-	var body BatchCreateVariantsRequest
+	var body VariantBatchCreateVariantsRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		validation.ValidationError(c, err)
 		return
@@ -914,7 +915,7 @@ func (vh *VariantHandler) DetachMedia(c *gin.Context) {
 //	@Param			file	formData	file						true	"Thumbnail image file"
 //	@Failure		400		{object}	api.BadRequestErrorResponse	"Invalid UUID or missing file"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Upload failure"
-//	@Success		200		{object}	api.DataResponse{data=StorageObjectResponse}	"Uploaded storage object details"
+//	@Success		200		{object}	api.DataResponse{data=VariantStorageObjectResponse}	"Uploaded storage object details"
 //	@Router			/admin/variants/{id}/thumbnail [post]
 func (vh *VariantHandler) UploadVariantThumbnail(c *gin.Context) {
 	variantID, err := uuid.Parse(c.Param("id"))
@@ -940,7 +941,7 @@ func (vh *VariantHandler) UploadVariantThumbnail(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.DataResponse{
-		Data: StorageObjectResponse{
+		Data: VariantStorageObjectResponse{
 			PublicURL:   obj.PublicURL,
 			ContentType: obj.ContentType,
 			FileSize:    obj.FileSize,
@@ -1035,7 +1036,7 @@ func (vh *VariantHandler) UploadVariantMedia(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			id		path		string							true	"Variant UUID"	format(uuid)
-//	@Param			body	body		ReorderMediaRequest				true	"Ordered list of media ids"
+//	@Param			body	body		VariantReorderMediaRequest				true	"Ordered list of media ids"
 //	@Failure		400		{object}	api.BadRequestErrorResponse		"Invalid UUID format or empty list"
 //	@Failure		500		{object}	api.InternalServerErrorResponse	"Internal server error"
 //	@Success		200		{object}	api.MessageResponse				"Reorder confirmation message"
@@ -1050,7 +1051,7 @@ func (vh *VariantHandler) ReorderMedia(c *gin.Context) {
 		return
 	}
 
-	var body ReorderMediaRequest
+	var body VariantReorderMediaRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		validation.ValidationError(c, err)
 		return

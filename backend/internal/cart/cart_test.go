@@ -16,8 +16,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/cart"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -59,6 +60,15 @@ func (d *dummyProductService) GetBundleComposition(_ context.Context, _ uuid.UUI
 
 // dummySellerReader keeps all cart fixtures platform-owned by reporting an
 // active seller for any id (the dummy products carry no seller).
+type dummyAttributeReader struct{}
+
+func (dummyAttributeReader) ListByCategory(_ context.Context, _ uuid.UUID) ([]category.AttributeItem, error) {
+	return nil, nil
+}
+func (dummyAttributeReader) ListBySellerCategory(_ context.Context, _, _ uuid.UUID) ([]category.AttributeItem, error) {
+	return nil, nil
+}
+
 type dummySellerReader struct{}
 
 func (dummySellerReader) GetByID(ctx context.Context, id uuid.UUID) (*model.Seller, error) {
@@ -73,8 +83,8 @@ type CartHTTPTestSuite struct {
 	cartRepo         *cart.CartRepository
 	inventoryRepo    *inventory.InventoryRepository
 	inventoryService *inventory.InventoryService
-	variantRepo      *variant.VariantRepository
-	variantService   *variant.VariantService
+	variantRepo      *product.VariantRepository
+	variantService   *product.VariantService
 	productService   *dummyProductService
 	cartService      *cart.CartService
 	sessionService   *auth.SessionService
@@ -127,8 +137,8 @@ func (s *CartHTTPTestSuite) SetupSuite() {
 	s.inventoryRepo = inventory.NewRepository()
 	s.inventoryService = inventory.NewService(logger, s.txRunner, s.inventoryRepo, storage.NoopProvider{}, nil)
 
-	s.variantRepo = variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, s.variantRepo, s.inventoryRepo, s.inventoryService)
+	s.variantRepo = product.NewVariantRepository()
+	s.variantService = product.NewVariantService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, s.variantRepo, s.inventoryRepo, s.inventoryService, dummyAttributeReader{})
 
 	s.categoryID = uuid.New()
 	_, err = s.db.ExecContext(ctx, `
@@ -214,7 +224,7 @@ func (s *CartHTTPTestSuite) createGuestSession() string {
 func (s *CartHTTPTestSuite) createVariant(sku string, price int64, stock int) uuid.UUID {
 	priceVal := price
 	skuVal := sku
-	v, err := s.variantService.CreateVariant(context.Background(), &variant.CreateVariantInput{
+	v, err := s.variantService.CreateVariant(context.Background(), &product.CreateVariantInput{
 		ProductID:  s.productID,
 		SKU:        &skuVal,
 		Title:      "Black / Matte",

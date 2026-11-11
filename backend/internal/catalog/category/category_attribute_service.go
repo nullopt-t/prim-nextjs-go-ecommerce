@@ -1,4 +1,4 @@
-package attribute
+package category
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type AttributeService struct {
 	repo *AttributeRepository
 }
 
-func NewService(dr database.Runner, repo *AttributeRepository) *AttributeService {
+func NewAttributeService(dr database.Runner, repo *AttributeRepository) *AttributeService {
 	if dr == nil {
 		panic("attribute: database runner is required")
 	}
@@ -38,6 +38,19 @@ func (s *AttributeService) ListByCategory(ctx context.Context, categoryID uuid.U
 	})
 	if err != nil {
 		return nil, s.handleError(err, "Failed to fetch category attributes")
+	}
+	return list, nil
+}
+
+func (s *AttributeService) ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]AttributeItem, error) {
+	var list []AttributeItem
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
+		var err error
+		list, err = s.repo.ListBySellerCategory(ctx, sellerID, categoryID)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "Failed to fetch seller category attributes")
 	}
 	return list, nil
 }

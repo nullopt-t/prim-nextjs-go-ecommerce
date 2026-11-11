@@ -1,4 +1,4 @@
-package attribute
+package category
 
 import (
 	"encoding/json"
@@ -38,7 +38,7 @@ type AttributeHandler struct {
 	attributeService *AttributeService
 }
 
-func NewHandler(s *AttributeService) *AttributeHandler {
+func NewAttributeHandler(s *AttributeService) *AttributeHandler {
 	if s == nil {
 		panic("attribute: service is required")
 	}

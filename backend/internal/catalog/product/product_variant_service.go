@@ -1,4 +1,4 @@
-package variant
+package product
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
@@ -24,8 +24,8 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
-// ObjectRepository defines database persistence methods for media storage records.
-type ObjectRepository interface {
+// VariantObjectRepository defines database persistence methods for media storage records.
+type VariantObjectRepository interface {
 	Create(ctx context.Context, object *model.Object) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*model.Object, error)
@@ -33,9 +33,9 @@ type ObjectRepository interface {
 	MarkDeletedByKey(ctx context.Context, bucket, key string) error
 }
 
-// InventoryReader is the read-only subset of inventory persistence the
+// VariantInventoryReader is the read-only subset of inventory persistence the
 // variant domain needs for stock projections and ledger history.
-type InventoryReader interface {
+type VariantInventoryReader interface {
 	GetStock(ctx context.Context, variantID uuid.UUID) (*model.InventoryStock, error)
 	GetStockForVariants(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID]*model.InventoryStock, error)
 	ListVariantLedgers(ctx context.Context, variantID uuid.UUID, q *pagination.ListQuery) (*pagination.PagedResult[model.InventoryLedger], error)
@@ -168,18 +168,18 @@ func (vs *VariantService) validateVariantAttributes(
 		return attrs, context, nil
 	}
 
-	defs, err := attribute.NewRepository().ListByCategory(ctx, context.CategoryID)
+	defs, err := vs.attributeReader.ListByCategory(ctx, context.CategoryID)
 	if err != nil {
 		return nil, nil, err
 	}
 	if context.SellerID != nil && *context.SellerID != uuid.Nil {
-		sellerDefs, err := attribute.NewRepository().ListBySellerCategory(ctx, *context.SellerID, context.CategoryID)
+		sellerDefs, err := vs.attributeReader.ListBySellerCategory(ctx, *context.SellerID, context.CategoryID)
 		if err != nil {
 			return nil, nil, err
 		}
 		defs = append(defs, sellerDefs...)
 	}
-	defByKey := make(map[string]attribute.AttributeItem, len(defs))
+	defByKey := make(map[string]category.AttributeItem, len(defs))
 	for _, def := range defs {
 		defByKey[def.Key] = def
 	}
@@ -279,24 +279,26 @@ func buildVariantTitle(productTitle string, axes []string, attrs map[string]any)
 type VariantService struct {
 	logger          log.Logger
 	dr              database.Runner
-	objectRepo      ObjectRepository
+	objectRepo      VariantObjectRepository
 	storageProvider storage.StorageProvider
 	vr              *VariantRepository
-	inventoryReader InventoryReader
+	inventoryReader VariantInventoryReader
 	inventory       InventoryWriter
+	attributeReader AttributeReader
 }
 
 // NewService constructs a new VariantService with injected database runner, media object repository,
 // storage provider, variant repository, inventory read repository, and the inventory writer that
 // owns stock mutation invariants.
-func NewService(
+func NewVariantService(
 	logger log.Logger,
 	r database.Runner,
-	objectRepo ObjectRepository,
+	objectRepo VariantObjectRepository,
 	storageProvider storage.StorageProvider,
 	vr *VariantRepository,
-	inventoryReader InventoryReader,
+	inventoryReader VariantInventoryReader,
 	inventoryWriter InventoryWriter,
+	attributeReader AttributeReader,
 ) *VariantService {
 	if logger == nil {
 		panic("variant: logger is required")
@@ -319,6 +321,9 @@ func NewService(
 	if inventoryWriter == nil {
 		panic("variant: inventory writer is required")
 	}
+	if attributeReader == nil {
+		panic("variant: attribute reader is required")
+	}
 	return &VariantService{
 		logger:          logger,
 		dr:              r,
@@ -327,6 +332,7 @@ func NewService(
 		vr:              vr,
 		inventoryReader: inventoryReader,
 		inventory:       inventoryWriter,
+		attributeReader: attributeReader,
 	}
 }
 

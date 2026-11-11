@@ -7,11 +7,9 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/cart"
 	"github.com/nullopt-t/prim-backend/internal/catalog/brand"
 	"github.com/nullopt-t/prim-backend/internal/catalog/category"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/catalog/tag"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
@@ -210,15 +208,15 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	categoryRouter.MapRoutes(v1)
 
 	// attribute
-	attributeRepo := attribute.NewRepository()
-	attributeService := attribute.NewService(
+	attributeRepo := category.NewAttributeRepository()
+	attributeService := category.NewAttributeService(
 		txRunner,
 		attributeRepo,
 	)
-	attributeHandler := attribute.NewHandler(
+	attributeHandler := category.NewAttributeHandler(
 		attributeService,
 	)
-	attributeRouter := attribute.NewRouter(attributeHandler, sessionStore)
+	attributeRouter := category.NewAttributeRouter(attributeHandler, sessionStore)
 	attributeRouter.MapRoutes(v1)
 	attributeRouter.MapPublicRoutes(v1)
 
@@ -238,20 +236,21 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	inventoryRouter := inventory.NewRouter(inventoryHandler, sessionStore)
 	inventoryRouter.MapRoutes(v1)
 
-	variantRepository := variant.NewRepository()
-	variantService := variant.NewService(
+	productVariantRepository := product.NewVariantRepository()
+	productVariantService := product.NewVariantService(
 		app.logger,
 		txRunner,
 		objectRepository,
 		app.storageProvider,
-		variantRepository,
+		productVariantRepository,
 		inventoryRepo,
 		inventoryService,
+		attributeService,
 	)
 
-	variantHandler := variant.NewHandler(variantService)
-	variantRouter := variant.NewRouter(variantHandler, sessionStore)
-	variantRouter.MapRoutes(v1)
+	productVariantHandler := product.NewVariantHandler(productVariantService)
+	productVariantRouter := product.NewVariantRouter(productVariantHandler, sessionStore)
+	productVariantRouter.MapRoutes(v1)
 
 	// review
 	reviewRepo := review.NewReviewRepository()
@@ -274,10 +273,11 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		reviewRepo,
 		objectRepository,
 		app.storageProvider,
-		variantRepository,
+		productVariantRepository,
+		attributeService,
 	)
 	productHandler := product.NewHandler(productService)
-	productRouter := product.NewRouter(productHandler, variantHandler, sessionStore)
+	productRouter := product.NewRouter(productHandler, productVariantHandler, sessionStore)
 	productRouter.MapRoutes(v1)
 
 	// cart
@@ -285,7 +285,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	cartService := cart.NewService(
 		txRunner,
 		cartRepo,
-		variantRepository,
+		productVariantRepository,
 		productRepo,
 		sellers.NewRepository(),
 		inventoryRepo,
@@ -379,7 +379,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		settlementReader,
 		orderRepo,
 		productService,
-		variantService,
+		productVariantService,
 		couponService,
 		attributeRepo,
 		sellers.NewBundleStore(txRunner),
@@ -401,7 +401,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		userRepo,
 		addressRepo,
 		couponService,
-		variantRepository,
+		productVariantRepository,
 		productRepo,
 		sellerRepo,
 		objectRepository,

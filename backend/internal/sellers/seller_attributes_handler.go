@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/shared/validation"
 	"github.com/nullopt-t/prim-backend/pkg/api"
@@ -57,7 +57,7 @@ type SellerAttributeResponse struct {
 	SortOrder int `json:"sortOrder"`
 }
 
-func toSellerAttributeResponse(ai *attribute.AttributeItem) SellerAttributeResponse {
+func toSellerAttributeResponse(ai *category.AttributeItem) SellerAttributeResponse {
 	var values []string
 	_ = json.Unmarshal(ai.AllowedValues, &values)
 	res := SellerAttributeResponse{

@@ -1,6 +1,6 @@
 // Package variant provides routing, HTTP handlers, domain services, and database persistence
 // for product variants (SKUs), variant-specific media assets, and variant stock integration.
-package variant
+package product
 
 import (
 	"github.com/gin-gonic/gin"
@@ -16,7 +16,7 @@ type VariantRouter struct {
 }
 
 // NewRouter constructs a new VariantRouter with the provided VariantHandler and session store.
-func NewRouter(vh *VariantHandler, sessionStore middleware.SessionStore) *VariantRouter {
+func NewVariantRouter(vh *VariantHandler, sessionStore middleware.SessionStore) *VariantRouter {
 	if vh == nil {
 		panic("variant: handler is required")
 	}

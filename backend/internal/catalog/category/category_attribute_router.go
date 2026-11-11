@@ -1,4 +1,4 @@
-package attribute
+package category
 
 import (
 	"github.com/gin-gonic/gin"
@@ -11,7 +11,7 @@ type AttributeRouter struct {
 	sessionStore middleware.SessionStore
 }
 
-func NewRouter(h *AttributeHandler, sessionStore middleware.SessionStore) *AttributeRouter {
+func NewAttributeRouter(h *AttributeHandler, sessionStore middleware.SessionStore) *AttributeRouter {
 	if h == nil {
 		panic("attribute: handler is required")
 	}

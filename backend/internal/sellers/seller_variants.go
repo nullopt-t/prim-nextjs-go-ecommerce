@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
+	"github.com/nullopt-t/prim-backend/internal/catalog/product"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -18,8 +18,8 @@ import (
 // VariantCatalog is the seller portal's window into variant persistence.
 // SKU, pricing, and attribute rules stay in the variant domain.
 type VariantCatalog interface {
-	CreateVariant(ctx context.Context, in *variant.CreateVariantInput) (*model.ProductVariant, error)
-	UpdateVariant(ctx context.Context, variantID uuid.UUID, in variant.UpdateVariantInput) error
+	CreateVariant(ctx context.Context, in *product.CreateVariantInput) (*model.ProductVariant, error)
+	UpdateVariant(ctx context.Context, variantID uuid.UUID, in product.UpdateVariantInput) error
 	DeleteVariantByID(ctx context.Context, variantID uuid.UUID) error
 	ListVariantsByProductID(ctx context.Context, productID uuid.UUID, q *pagination.ListQuery, includeDeleted bool) (*pagination.PagedResult[model.ProductVariant], error)
 	GetVariantByID(ctx context.Context, variantID uuid.UUID) (*model.ProductVariant, error)
@@ -156,7 +156,7 @@ func (s *Service) CreateVariant(
 	userID uuid.UUID,
 	productID uuid.UUID,
 	thumbnailURL string,
-	in *variant.CreateVariantInput,
+	in *product.CreateVariantInput,
 ) (*model.ProductVariant, error) {
 	var created *model.ProductVariant
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
@@ -185,7 +185,7 @@ func (s *Service) CreateVariant(
 }
 
 // UpdateVariant edits a variant of a merchant-owned product.
-func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, thumbnailURL *string, in variant.UpdateVariantInput) error {
+func (s *Service) UpdateVariant(ctx context.Context, userID, variantID uuid.UUID, thumbnailURL *string, in product.UpdateVariantInput) error {
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		if _, _, err := s.requireOwnedVariant(ctx, userID, variantID); err != nil {
 			return err

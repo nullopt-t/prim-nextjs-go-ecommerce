@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
@@ -15,12 +15,12 @@ import (
 // SellerAttributeStore is the seller portal's window into seller-scoped
 // attribute definitions.
 type SellerAttributeStore interface {
-	ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]attribute.AttributeItem, error)
+	ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]category.AttributeItem, error)
 	// ListByCategory returns the platform definitions that already describe the
 	// category, so a merchant key cannot shadow one of them.
-	ListByCategory(ctx context.Context, categoryID uuid.UUID) ([]attribute.AttributeItem, error)
-	CreateSellerAttribute(ctx context.Context, sellerID uuid.UUID, ai *attribute.AttributeItem) error
-	UpdateSellerAttribute(ctx context.Context, sellerID, id uuid.UUID, fields attribute.UpdateAttributeFields) error
+	ListByCategory(ctx context.Context, categoryID uuid.UUID) ([]category.AttributeItem, error)
+	CreateSellerAttribute(ctx context.Context, sellerID uuid.UUID, ai *category.AttributeItem) error
+	UpdateSellerAttribute(ctx context.Context, sellerID, id uuid.UUID, fields category.UpdateAttributeFields) error
 	DeleteSellerAttribute(ctx context.Context, sellerID, id uuid.UUID) error
 }
 
@@ -33,8 +33,8 @@ var sellerAttributeAllowedTypes = map[string]struct{}{
 func (s *Service) ListAttributes(
 	ctx context.Context,
 	userID, categoryID uuid.UUID,
-) ([]attribute.AttributeItem, error) {
-	var items []attribute.AttributeItem
+) ([]category.AttributeItem, error) {
+	var items []category.AttributeItem
 	err := s.runner.WithExecutor(ctx, func(ctx context.Context) error {
 		seller, err := s.requireActiveSeller(ctx, userID)
 		if err != nil {
@@ -59,7 +59,7 @@ func (s *Service) CreateAttribute(
 	categoryID uuid.UUID,
 	key, label, valueType string,
 	allowedValues []string,
-) (*attribute.AttributeItem, error) {
+) (*category.AttributeItem, error) {
 	code := strings.TrimSpace(strings.ToLower(key))
 	if code == "" {
 		return nil, apierr.BadRequestError("Attribute key is required").WithCode(apierr.CodeInvalidInput)
@@ -79,7 +79,7 @@ func (s *Service) CreateAttribute(
 			WithCode(apierr.CodeInvalidInput)
 	}
 
-	var created *attribute.AttributeItem
+	var created *category.AttributeItem
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		seller, err := s.requireActiveSeller(ctx, userID)
 		if err != nil {
@@ -102,7 +102,7 @@ func (s *Service) CreateAttribute(
 		if err != nil {
 			return err
 		}
-		ai := &attribute.AttributeItem{
+		ai := &category.AttributeItem{
 			ID:            uuid.New(),
 			CategoryID:    &categoryID,
 			Key:           code,
@@ -167,7 +167,7 @@ func (s *Service) UpdateAttribute(
 		if err != nil {
 			return err
 		}
-		return s.attrs.UpdateSellerAttribute(ctx, seller.ID, attributeID, attribute.UpdateAttributeFields{
+		return s.attrs.UpdateSellerAttribute(ctx, seller.ID, attributeID, category.UpdateAttributeFields{
 			Label:         label,
 			AllowedValues: raw,
 		})

@@ -43,10 +43,10 @@ import (
 
 	"github.com/nullopt-t/prim-backend/internal/auth"
 	"github.com/nullopt-t/prim-backend/internal/cart"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/checkout"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/notifier"
@@ -73,6 +73,15 @@ const (
 
 // dummyProductService satisfies the cart.ProductRepository dependency so the cart
 // can resolve product metadata without pulling in the full catalog graph.
+type dummyAttributeReader struct{}
+
+func (dummyAttributeReader) ListByCategory(_ context.Context, _ uuid.UUID) ([]category.AttributeItem, error) {
+	return nil, nil
+}
+func (dummyAttributeReader) ListBySellerCategory(_ context.Context, _, _ uuid.UUID) ([]category.AttributeItem, error) {
+	return nil, nil
+}
+
 type dummyProductService struct{}
 
 func (d *dummyProductService) GetByID(_ context.Context, id uuid.UUID) (*model.Product, error) {
@@ -161,7 +170,7 @@ type CheckoutTestSuite struct {
 	txRunner         database.Runner
 	checkoutService  *checkout.CheckoutService
 	cartService      *cart.CartService
-	variantService   *variant.VariantService
+	variantService   *product.VariantService
 	inventoryService *inventory.InventoryService
 	inventoryRepo    *inventory.InventoryRepository
 	orderRepo        *order.Repository
@@ -170,7 +179,7 @@ type CheckoutTestSuite struct {
 	userService      *user.UserService
 	settingsService  *setting.Service
 	cartRepo         *cart.CartRepository
-	variantRepo      *variant.VariantRepository
+	variantRepo      *product.VariantRepository
 	productRepo      *product.ProductRepository
 	sellerRepo       *sellers.SellerRepository
 	couponService    *coupon.CouponService
@@ -241,8 +250,8 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	s.inventoryService = inventory.NewService(logger, s.txRunner, inventoryRepo, storage.NoopProvider{}, nil)
 	s.inventoryRepo = inventoryRepo
 
-	variantRepo := variant.NewRepository()
-	s.variantService = variant.NewService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, variantRepo, inventoryRepo, s.inventoryService)
+	variantRepo := product.NewVariantRepository()
+	s.variantService = product.NewVariantService(logger, s.txRunner, object.NewRepository(), storage.NoopProvider{}, variantRepo, inventoryRepo, s.inventoryService, dummyAttributeReader{})
 
 	cartRepo := cart.NewRepository()
 	s.cartRepo = cartRepo
@@ -376,7 +385,7 @@ func (s *CheckoutTestSuite) seedVariant(price *int64, stock int) uuid.UUID {
 
 	sku := "SKU-" + uuid.NewString()
 	currency := defaultCurrency
-	v, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
+	v, err := s.variantService.CreateVariant(ctx, &product.CreateVariantInput{
 		ProductID:  s.productID,
 		SKU:        &sku,
 		Title:      "Default / Standard",
@@ -1500,7 +1509,7 @@ func (s *CheckoutTestSuite) seedSellerVariant(price int64, stock int) uuid.UUID 
 	ctx := context.Background()
 	p := price
 	currency := defaultCurrency
-	v, err := s.variantService.CreateVariant(ctx, &variant.CreateVariantInput{
+	v, err := s.variantService.CreateVariant(ctx, &product.CreateVariantInput{
 		ProductID:  s.productID,
 		SKU:        func() *string { sku := "SKU-" + uuid.NewString(); return &sku }(),
 		Title:      "Seller Widget",

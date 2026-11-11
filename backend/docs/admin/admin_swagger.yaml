@@ -234,7 +234,7 @@ definitions:
       media:
         description: Media gallery
         items:
-          $ref: '#/definitions/VariantMediaSummary'
+          $ref: '#/definitions/ProductMediaSummary'
         type: array
       originalPrice:
         description: Formatted original price
@@ -394,7 +394,7 @@ definitions:
         type: string
       thumbnail:
         allOf:
-        - $ref: '#/definitions/StorageObjectResponse'
+        - $ref: '#/definitions/VariantStorageObjectResponse'
         description: Thumbnail storage object details
       title:
         description: Variant title
@@ -1243,6 +1243,25 @@ definitions:
         example: 70000000-0000-0000-0000-000000000001
         type: string
     type: object
+  ProductMediaSummary:
+    properties:
+      id:
+        description: Media record id
+        example: "1"
+        type: string
+      mediaType:
+        description: Media MIME type or format (e.g. image/jpeg, video/mp4)
+        example: image/jpeg
+        type: string
+      sortOrder:
+        description: Display sequence sort order
+        example: 1
+        type: integer
+      url:
+        description: Public CDN or storage URL of the media asset
+        example: https://example.com/media/headphones.jpg
+        type: string
+    type: object
   ProductRatingSummaryResponse:
     properties:
       averageRating:
@@ -1311,18 +1330,6 @@ definitions:
         type: array
     required:
     - tagIds
-    type: object
-  ReorderMediaRequest:
-    properties:
-      orderedMediaIds:
-        description: Array of media ids in desired presentation sequence
-        example:
-        - '[''1'']'
-        items:
-          type: string
-        type: array
-    required:
-    - orderedMediaIds
     type: object
   ResourceMetric:
     properties:
@@ -1566,28 +1573,16 @@ definitions:
     - SortDesc
   StorageObjectResponse:
     properties:
-      bucket:
-        description: Storage bucket name
-        example: product-media
-        type: string
       contentType:
-        description: MIME content type
+        description: MIME content type (e.g. image/webp)
         example: image/webp
         type: string
       fileSize:
         description: File size in bytes
         example: 1048576
         type: integer
-      id:
-        description: Internal object storage UUID
-        example: 80000000-0000-0000-0000-000000000001
-        type: string
-      key:
-        description: Storage object key / filepath
-        example: variants/70000000/image.webp
-        type: string
-      publicUrl:
-        description: Public CDN URL
+      url:
+        description: Public CDN access URL
         example: https://example.com/media/image.webp
         type: string
     type: object
@@ -1795,7 +1790,7 @@ definitions:
         type: string
       object:
         allOf:
-        - $ref: '#/definitions/StorageObjectResponse'
+        - $ref: '#/definitions/VariantStorageObjectResponse'
         description: Detailed storage file metadata
       objectId:
         description: Underlying storage object UUID
@@ -1828,6 +1823,18 @@ definitions:
         description: Public CDN or storage URL
         example: https://example.com/media/headphones.jpg
         type: string
+    type: object
+  VariantReorderMediaRequest:
+    properties:
+      orderedMediaIds:
+        description: Array of media ids in desired presentation sequence
+        example:
+        - '[''1'']'
+        items:
+          type: string
+        type: array
+    required:
+    - orderedMediaIds
     type: object
   VariantResponse:
     properties:
@@ -1883,6 +1890,33 @@ definitions:
       title:
         description: Variant title
         example: Space Black, 18GB RAM, 512GB SSD
+        type: string
+    type: object
+  VariantStorageObjectResponse:
+    properties:
+      bucket:
+        description: Storage bucket name
+        example: product-media
+        type: string
+      contentType:
+        description: MIME content type
+        example: image/webp
+        type: string
+      fileSize:
+        description: File size in bytes
+        example: 1048576
+        type: integer
+      id:
+        description: Internal object storage UUID
+        example: 80000000-0000-0000-0000-000000000001
+        type: string
+      key:
+        description: Storage object key / filepath
+        example: variants/70000000/image.webp
+        type: string
+      publicUrl:
+        description: Public CDN URL
+        example: https://example.com/media/image.webp
         type: string
     type: object
   auditEntryResponse:
@@ -4782,7 +4816,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/ReorderMediaRequest'
+          $ref: '#/definitions/VariantReorderMediaRequest'
       produces:
       - application/json
       responses:
@@ -4926,7 +4960,7 @@ paths:
             - $ref: '#/definitions/DataResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/StorageObjectResponse'
+                  $ref: '#/definitions/VariantStorageObjectResponse'
               type: object
         "400":
           description: Invalid UUID or missing file

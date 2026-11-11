@@ -13,8 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api"
@@ -35,6 +34,12 @@ type BrandReader interface {
 // CategoryReader defines read methods for product category associations.
 type CategoryReader interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.ProductCategory, error)
+}
+
+// AttributeReader defines read methods for category attribute definitions.
+type AttributeReader interface {
+	ListByCategory(ctx context.Context, categoryID uuid.UUID) ([]category.AttributeItem, error)
+	ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]category.AttributeItem, error)
 }
 
 // TagReader defines read methods for product tag queries.
@@ -73,7 +78,7 @@ type ObjectRepository interface {
 type VariantReader interface {
 	CountByProductID(ctx context.Context, productID uuid.UUID) (int, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.ProductVariant, error)
-	ListByProductID(ctx context.Context, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error)
+	ListByProductID(ctx context.Context, opts ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error)
 	ListMediaByVariantIDs(ctx context.Context, variantIDs []uuid.UUID) (map[uuid.UUID][]*model.VariantMedia, error)
 }
 
@@ -110,6 +115,7 @@ type ProductService struct {
 	objectRepo      ObjectRepository
 	storageProvider storage.StorageProvider
 	variantReader   VariantReader
+	attributeReader AttributeReader
 }
 
 // NewService constructs a new ProductService with decoupled repository interfaces and storage provider injected.
@@ -126,6 +132,7 @@ func NewService(
 	objectRepo ObjectRepository,
 	storageProvider storage.StorageProvider,
 	variantReader VariantReader,
+	attributeReader AttributeReader,
 ) *ProductService {
 	if r == nil {
 		panic("product: database runner is required")
@@ -163,6 +170,9 @@ func NewService(
 	if variantReader == nil {
 		panic("product: variant reader is required")
 	}
+	if attributeReader == nil {
+		panic("product: attribute reader is required")
+	}
 	return &ProductService{
 		dbRunner:        r,
 		logger:          logger,
@@ -176,6 +186,7 @@ func NewService(
 		objectRepo:      objectRepo,
 		storageProvider: storageProvider,
 		variantReader:   variantReader,
+		attributeReader: attributeReader,
 	}
 }
 
@@ -290,12 +301,12 @@ func (s *ProductService) validateVariationAxes(
 		return normalized, nil
 	}
 
-	defs, err := attribute.NewRepository().ListByCategory(ctx, categoryID)
+	defs, err := s.attributeReader.ListByCategory(ctx, categoryID)
 	if err != nil {
 		return nil, err
 	}
 	if sellerID != nil && *sellerID != uuid.Nil {
-		sellerDefs, err := attribute.NewRepository().ListBySellerCategory(ctx, *sellerID, categoryID)
+		sellerDefs, err := s.attributeReader.ListBySellerCategory(ctx, *sellerID, categoryID)
 		if err != nil {
 			return nil, err
 		}
@@ -673,7 +684,7 @@ func (s *ProductService) populateProductDetails(
 	}
 
 	if s.variantReader != nil {
-		variantRes, err := s.variantReader.ListByProductID(ctx, variant.ListVariantOptions{
+		variantRes, err := s.variantReader.ListByProductID(ctx, ListVariantOptions{
 			ProductID:      prod.ID,
 			Query:          &pagination.ListQuery{PageSize: 100},
 			IncludeDeleted: includeDeletedVariants,
@@ -991,7 +1002,7 @@ func (s *ProductService) PublishProduct(
 		// A publishable product must carry an image: its own thumbnail, or
 		// one on any variant (variant images are adopted onto the product
 		// when set, so this also covers data created before that adoption).
-		variantRes, err := s.variantReader.ListByProductID(ctx, variant.ListVariantOptions{
+		variantRes, err := s.variantReader.ListByProductID(ctx, ListVariantOptions{
 			ProductID:      productID,
 			Query:          &pagination.ListQuery{PageSize: 100},
 			IncludeDeleted: false,

@@ -51,7 +51,7 @@ const docTemplatepublic = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/BatchCreateVariantsRequest"
+                            "$ref": "#/definitions/VariantBatchCreateVariantsRequest"
                         }
                     }
                 ],
@@ -6251,47 +6251,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "BatchCreateVariantsRequest": {
-            "type": "object",
-            "required": [
-                "variants"
-            ],
-            "properties": {
-                "variants": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "attributes": {
-                                "type": "object",
-                                "additionalProperties": true
-                            },
-                            "crossedOutPrice": {
-                                "type": "integer"
-                            },
-                            "currency": {
-                                "type": "string"
-                            },
-                            "initialStock": {
-                                "type": "integer"
-                            },
-                            "isDefault": {
-                                "type": "boolean"
-                            },
-                            "price": {
-                                "type": "integer"
-                            },
-                            "sku": {
-                                "type": "string"
-                            },
-                            "title": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "BrandResponse": {
             "type": "object",
             "properties": {
@@ -7776,6 +7735,31 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "ProductMediaSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Media record id",
+                    "type": "string",
+                    "example": "1"
+                },
+                "mediaType": {
+                    "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",
+                    "type": "string",
+                    "example": "image/jpeg"
+                },
+                "sortOrder": {
+                    "description": "Display sequence sort order",
+                    "type": "integer",
+                    "example": 1
+                },
+                "url": {
+                    "description": "Public CDN or storage URL of the media asset",
+                    "type": "string",
+                    "example": "https://example.com/media/headphones.jpg"
+                }
+            }
+        },
         "ProductRatingSummaryResponse": {
             "type": "object",
             "properties": {
@@ -7931,7 +7915,7 @@ const docTemplatepublic = `{
                     "description": "Associated media gallery",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/VariantMediaSummary"
+                        "$ref": "#/definitions/ProductMediaSummary"
                     }
                 },
                 "originalPrice": {
@@ -9245,41 +9229,6 @@ const docTemplatepublic = `{
                 }
             }
         },
-        "StorageObjectResponse": {
-            "type": "object",
-            "properties": {
-                "bucket": {
-                    "description": "Storage bucket name",
-                    "type": "string",
-                    "example": "product-media"
-                },
-                "contentType": {
-                    "description": "MIME content type",
-                    "type": "string",
-                    "example": "image/webp"
-                },
-                "fileSize": {
-                    "description": "File size in bytes",
-                    "type": "integer",
-                    "example": 1048576
-                },
-                "id": {
-                    "description": "Internal object storage UUID",
-                    "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
-                },
-                "key": {
-                    "description": "Storage object key / filepath",
-                    "type": "string",
-                    "example": "variants/70000000/image.webp"
-                },
-                "publicUrl": {
-                    "description": "Public CDN URL",
-                    "type": "string",
-                    "example": "https://example.com/media/image.webp"
-                }
-            }
-        },
         "SyncHistoryRequest": {
             "type": "object",
             "properties": {
@@ -9588,6 +9537,47 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "VariantBatchCreateVariantsRequest": {
+            "type": "object",
+            "required": [
+                "variants"
+            ],
+            "properties": {
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "attributes": {
+                                "type": "object",
+                                "additionalProperties": true
+                            },
+                            "crossedOutPrice": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "initialStock": {
+                                "type": "integer"
+                            },
+                            "isDefault": {
+                                "type": "boolean"
+                            },
+                            "price": {
+                                "type": "integer"
+                            },
+                            "sku": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "VariantMediaResponse": {
             "type": "object",
             "properties": {
@@ -9605,7 +9595,7 @@ const docTemplatepublic = `{
                     "description": "Detailed storage file metadata",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/StorageObjectResponse"
+                            "$ref": "#/definitions/VariantStorageObjectResponse"
                         }
                     ]
                 },
@@ -9720,6 +9710,41 @@ const docTemplatepublic = `{
                     "description": "Variant title",
                     "type": "string",
                     "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "VariantStorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "description": "Storage bucket name",
+                    "type": "string",
+                    "example": "product-media"
+                },
+                "contentType": {
+                    "description": "MIME content type",
+                    "type": "string",
+                    "example": "image/webp"
+                },
+                "fileSize": {
+                    "description": "File size in bytes",
+                    "type": "integer",
+                    "example": 1048576
+                },
+                "id": {
+                    "description": "Internal object storage UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                },
+                "key": {
+                    "description": "Storage object key / filepath",
+                    "type": "string",
+                    "example": "variants/70000000/image.webp"
+                },
+                "publicUrl": {
+                    "description": "Public CDN URL",
+                    "type": "string",
+                    "example": "https://example.com/media/image.webp"
                 }
             }
         },

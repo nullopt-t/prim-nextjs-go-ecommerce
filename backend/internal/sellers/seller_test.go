@@ -18,11 +18,10 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/nullopt-t/prim-backend/internal/catalog/category/attribute"
+	"github.com/nullopt-t/prim-backend/internal/catalog/category"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/order"
@@ -109,18 +108,18 @@ func (f *fakeCouponCatalog) DeleteSellerCoupon(_ context.Context, sellerID, coup
 // fakeSellerAttributeStore is an in-memory SellerAttributeStore double.
 type fakeSellerAttributeStore struct {
 	mu           sync.Mutex
-	items        map[uuid.UUID]*attribute.AttributeItem
-	platformDefs []attribute.AttributeItem
+	items        map[uuid.UUID]*category.AttributeItem
+	platformDefs []category.AttributeItem
 }
 
 func newFakeSellerAttributeStore() *fakeSellerAttributeStore {
-	return &fakeSellerAttributeStore{items: map[uuid.UUID]*attribute.AttributeItem{}}
+	return &fakeSellerAttributeStore{items: map[uuid.UUID]*category.AttributeItem{}}
 }
 
-func (f *fakeSellerAttributeStore) ListByCategory(_ context.Context, categoryID uuid.UUID) ([]attribute.AttributeItem, error) {
+func (f *fakeSellerAttributeStore) ListByCategory(_ context.Context, categoryID uuid.UUID) ([]category.AttributeItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var list []attribute.AttributeItem
+	var list []category.AttributeItem
 	for _, def := range f.platformDefs {
 		if def.CategoryID != nil && *def.CategoryID == categoryID {
 			list = append(list, def)
@@ -129,10 +128,10 @@ func (f *fakeSellerAttributeStore) ListByCategory(_ context.Context, categoryID 
 	return list, nil
 }
 
-func (f *fakeSellerAttributeStore) ListBySellerCategory(_ context.Context, sellerID, categoryID uuid.UUID) ([]attribute.AttributeItem, error) {
+func (f *fakeSellerAttributeStore) ListBySellerCategory(_ context.Context, sellerID, categoryID uuid.UUID) ([]category.AttributeItem, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var list []attribute.AttributeItem
+	var list []category.AttributeItem
 	for _, item := range f.items {
 		if item.CategoryID != nil && *item.CategoryID == categoryID {
 			list = append(list, *item)
@@ -141,14 +140,14 @@ func (f *fakeSellerAttributeStore) ListBySellerCategory(_ context.Context, selle
 	return list, nil
 }
 
-func (f *fakeSellerAttributeStore) CreateSellerAttribute(_ context.Context, sellerID uuid.UUID, ai *attribute.AttributeItem) error {
+func (f *fakeSellerAttributeStore) CreateSellerAttribute(_ context.Context, sellerID uuid.UUID, ai *category.AttributeItem) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.items[ai.ID] = ai
 	return nil
 }
 
-func (f *fakeSellerAttributeStore) UpdateSellerAttribute(_ context.Context, sellerID, id uuid.UUID, fields attribute.UpdateAttributeFields) error {
+func (f *fakeSellerAttributeStore) UpdateSellerAttribute(_ context.Context, sellerID, id uuid.UUID, fields category.UpdateAttributeFields) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	item, ok := f.items[id]
@@ -283,7 +282,7 @@ func newFakeVariantCatalog() *fakeVariantCatalog {
 	return &fakeVariantCatalog{variants: map[uuid.UUID]*model.ProductVariant{}}
 }
 
-func (f *fakeVariantCatalog) CreateVariant(_ context.Context, in *variant.CreateVariantInput) (*model.ProductVariant, error) {
+func (f *fakeVariantCatalog) CreateVariant(_ context.Context, in *product.CreateVariantInput) (*model.ProductVariant, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	v := &model.ProductVariant{
@@ -302,7 +301,7 @@ func (f *fakeVariantCatalog) CreateVariant(_ context.Context, in *variant.Create
 	return v, nil
 }
 
-func (f *fakeVariantCatalog) UpdateVariant(_ context.Context, variantID uuid.UUID, in variant.UpdateVariantInput) error {
+func (f *fakeVariantCatalog) UpdateVariant(_ context.Context, variantID uuid.UUID, in product.UpdateVariantInput) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	v, ok := f.variants[variantID]
@@ -1247,7 +1246,7 @@ func (s *SellerServiceSuite) TestSellerCreatesVariantUnderOwnedProduct() {
 	s.Require().NoError(err)
 
 	price := int64(12500)
-	v, err := s.service.CreateVariant(s.ctx, s.sellerUID, created.ID, "", &variant.CreateVariantInput{
+	v, err := s.service.CreateVariant(s.ctx, s.sellerUID, created.ID, "", &product.CreateVariantInput{
 		Title: "Black",
 		Price: &price,
 	})
@@ -1280,7 +1279,7 @@ func (s *SellerServiceSuite) TestSellerCannotTouchForeignVariant() {
 	s.variants.mu.Unlock()
 
 	title := "Hijacked"
-	err := s.service.UpdateVariant(s.ctx, s.sellerUID, foreignVariant.ID, nil, variant.UpdateVariantInput{Title: &title})
+	err := s.service.UpdateVariant(s.ctx, s.sellerUID, foreignVariant.ID, nil, product.UpdateVariantInput{Title: &title})
 	apiErr := s.assertAPIError(err)
 	s.Equal(http.StatusNotFound, apiErr.Status)
 

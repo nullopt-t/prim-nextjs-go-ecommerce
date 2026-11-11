@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -176,7 +175,7 @@ func (s *Service) CreateBundle(
 			return err
 		}
 
-		if _, err := s.variants.CreateVariant(ctx, &variant.CreateVariantInput{
+		if _, err := s.variants.CreateVariant(ctx, &product.CreateVariantInput{
 			ProductID:         createdProduct.ID,
 			Title:             strings.TrimSpace(in.Title),
 			Price:             &in.BundlePrice,
@@ -326,7 +325,7 @@ func (s *Service) UpdateBundle(
 				return err
 			}
 			if len(variants.Items) > 0 {
-				if err := s.variants.UpdateVariant(ctx, variants.Items[0].ID, variant.UpdateVariantInput{
+				if err := s.variants.UpdateVariant(ctx, variants.Items[0].ID, product.UpdateVariantInput{
 					Title:    in.Title,
 					Price:    in.BundlePrice,
 					Currency: currency,

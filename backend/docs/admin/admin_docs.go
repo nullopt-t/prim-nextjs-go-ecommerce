@@ -4268,7 +4268,7 @@ const docTemplateadmin = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ReorderMediaRequest"
+                            "$ref": "#/definitions/VariantReorderMediaRequest"
                         }
                     }
                 ],
@@ -4500,7 +4500,7 @@ const docTemplateadmin = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/StorageObjectResponse"
+                                            "$ref": "#/definitions/VariantStorageObjectResponse"
                                         }
                                     }
                                 }
@@ -4877,7 +4877,7 @@ const docTemplateadmin = `{
                     "description": "Media gallery",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/VariantMediaSummary"
+                        "$ref": "#/definitions/ProductMediaSummary"
                     }
                 },
                 "originalPrice": {
@@ -5095,7 +5095,7 @@ const docTemplateadmin = `{
                     "description": "Thumbnail storage object details",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/StorageObjectResponse"
+                            "$ref": "#/definitions/VariantStorageObjectResponse"
                         }
                     ]
                 },
@@ -6233,6 +6233,31 @@ const docTemplateadmin = `{
                 }
             }
         },
+        "ProductMediaSummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Media record id",
+                    "type": "string",
+                    "example": "1"
+                },
+                "mediaType": {
+                    "description": "Media MIME type or format (e.g. image/jpeg, video/mp4)",
+                    "type": "string",
+                    "example": "image/jpeg"
+                },
+                "sortOrder": {
+                    "description": "Display sequence sort order",
+                    "type": "integer",
+                    "example": 1
+                },
+                "url": {
+                    "description": "Public CDN or storage URL of the media asset",
+                    "type": "string",
+                    "example": "https://example.com/media/headphones.jpg"
+                }
+            }
+        },
         "ProductRatingSummaryResponse": {
             "type": "object",
             "properties": {
@@ -6325,24 +6350,6 @@ const docTemplateadmin = `{
                     },
                     "example": [
                         "['50000000-0000-0000-0000-000000000001']"
-                    ]
-                }
-            }
-        },
-        "ReorderMediaRequest": {
-            "type": "object",
-            "required": [
-                "orderedMediaIds"
-            ],
-            "properties": {
-                "orderedMediaIds": {
-                    "description": "Array of media ids in desired presentation sequence",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "['1']"
                     ]
                 }
             }
@@ -6675,13 +6682,8 @@ const docTemplateadmin = `{
         "StorageObjectResponse": {
             "type": "object",
             "properties": {
-                "bucket": {
-                    "description": "Storage bucket name",
-                    "type": "string",
-                    "example": "product-media"
-                },
                 "contentType": {
-                    "description": "MIME content type",
+                    "description": "MIME content type (e.g. image/webp)",
                     "type": "string",
                     "example": "image/webp"
                 },
@@ -6690,18 +6692,8 @@ const docTemplateadmin = `{
                     "type": "integer",
                     "example": 1048576
                 },
-                "id": {
-                    "description": "Internal object storage UUID",
-                    "type": "string",
-                    "example": "80000000-0000-0000-0000-000000000001"
-                },
-                "key": {
-                    "description": "Storage object key / filepath",
-                    "type": "string",
-                    "example": "variants/70000000/image.webp"
-                },
-                "publicUrl": {
-                    "description": "Public CDN URL",
+                "url": {
+                    "description": "Public CDN access URL",
                     "type": "string",
                     "example": "https://example.com/media/image.webp"
                 }
@@ -6987,7 +6979,7 @@ const docTemplateadmin = `{
                     "description": "Detailed storage file metadata",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/StorageObjectResponse"
+                            "$ref": "#/definitions/VariantStorageObjectResponse"
                         }
                     ]
                 },
@@ -7030,6 +7022,24 @@ const docTemplateadmin = `{
                     "description": "Public CDN or storage URL",
                     "type": "string",
                     "example": "https://example.com/media/headphones.jpg"
+                }
+            }
+        },
+        "VariantReorderMediaRequest": {
+            "type": "object",
+            "required": [
+                "orderedMediaIds"
+            ],
+            "properties": {
+                "orderedMediaIds": {
+                    "description": "Array of media ids in desired presentation sequence",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "['1']"
+                    ]
                 }
             }
         },
@@ -7102,6 +7112,41 @@ const docTemplateadmin = `{
                     "description": "Variant title",
                     "type": "string",
                     "example": "Space Black, 18GB RAM, 512GB SSD"
+                }
+            }
+        },
+        "VariantStorageObjectResponse": {
+            "type": "object",
+            "properties": {
+                "bucket": {
+                    "description": "Storage bucket name",
+                    "type": "string",
+                    "example": "product-media"
+                },
+                "contentType": {
+                    "description": "MIME content type",
+                    "type": "string",
+                    "example": "image/webp"
+                },
+                "fileSize": {
+                    "description": "File size in bytes",
+                    "type": "integer",
+                    "example": 1048576
+                },
+                "id": {
+                    "description": "Internal object storage UUID",
+                    "type": "string",
+                    "example": "80000000-0000-0000-0000-000000000001"
+                },
+                "key": {
+                    "description": "Storage object key / filepath",
+                    "type": "string",
+                    "example": "variants/70000000/image.webp"
+                },
+                "publicUrl": {
+                    "description": "Public CDN URL",
+                    "type": "string",
+                    "example": "https://example.com/media/image.webp"
                 }
             }
         },

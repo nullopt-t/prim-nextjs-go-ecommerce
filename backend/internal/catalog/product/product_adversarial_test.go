@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
@@ -102,7 +101,7 @@ func (f *fakeVariantRepoForInvariants) GetByID(ctx context.Context, id uuid.UUID
 	return nil, nil
 }
 
-func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, opts variant.ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error) {
+func (f *fakeVariantRepoForInvariants) ListByProductID(ctx context.Context, opts ListVariantOptions) (*pagination.PagedResult[model.ProductVariant], error) {
 	if f.listFunc != nil {
 		items, err := f.listFunc()
 		if err != nil {

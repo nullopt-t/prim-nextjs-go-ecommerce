@@ -1,6 +1,6 @@
 // Package variant provides repository persistence for product variants, SKU management,
 // variant default selection flags, and media asset associations.
-package variant
+package product
 
 import (
 	"context"
@@ -63,7 +63,7 @@ type CreateVariantMediaInput struct {
 type VariantRepository struct{}
 
 // NewRepository creates and returns an initialized VariantRepository instance.
-func NewRepository() *VariantRepository {
+func NewVariantRepository() *VariantRepository {
 	return &VariantRepository{}
 }
 

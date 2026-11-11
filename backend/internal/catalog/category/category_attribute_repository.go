@@ -1,4 +1,4 @@
-package attribute
+package category
 
 import (
 	"context"
@@ -28,7 +28,7 @@ type AttributeItem struct {
 
 type AttributeRepository struct{}
 
-func NewRepository() *AttributeRepository {
+func NewAttributeRepository() *AttributeRepository {
 	return &AttributeRepository{}
 }
 

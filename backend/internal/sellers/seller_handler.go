@@ -9,7 +9,6 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/catalog/inventory"
 	"github.com/nullopt-t/prim-backend/internal/catalog/product"
-	"github.com/nullopt-t/prim-backend/internal/catalog/product/variant"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/object"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
@@ -1383,7 +1382,7 @@ func (h *Handler) CreateVariant(c *gin.Context) {
 		return
 	}
 
-	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, derefString(req.ThumbnailURL), &variant.CreateVariantInput{
+	created, err := h.service.CreateVariant(c.Request.Context(), userID, productID, derefString(req.ThumbnailURL), &product.CreateVariantInput{
 		SKU:             req.SKU,
 		Title:           req.Title,
 		Price:           req.Price,
@@ -1431,7 +1430,7 @@ func (h *Handler) UpdateVariant(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, req.ThumbnailURL, variant.UpdateVariantInput{
+	if err := h.service.UpdateVariant(c.Request.Context(), userID, variantID, req.ThumbnailURL, product.UpdateVariantInput{
 		SKU:             req.SKU,
 		Title:           req.Title,
 		Price:           req.Price,

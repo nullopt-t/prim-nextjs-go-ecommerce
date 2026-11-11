@@ -109,7 +109,7 @@ type AdminStockSummary struct {
 	IsInStock bool `json:"isInStock" example:"true"`
 }
 
-type VariantMediaSummary struct {
+type ProductMediaSummary struct {
 	// Media record id
 	ID string `json:"id" example:"1"`
 	// Media MIME type or format (e.g. image/jpeg, video/mp4)
@@ -140,7 +140,7 @@ type ProductVariantResponse struct {
 	// Primary variant thumbnail URL
 	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
 	// Associated media gallery
-	Media []VariantMediaSummary `json:"media"`
+	Media []ProductMediaSummary `json:"media"`
 	// Custom variant attributes (e.g. {"color":"Black","ram":"18GB"})
 	Attributes map[string]any `json:"attributes"`
 	// True if this variant is the default selection on product pages
@@ -169,7 +169,7 @@ type AdminProductVariantResponse struct {
 	// Storage object metadata for thumbnail
 	Thumbnail *StorageObjectResponse `json:"thumbnail,omitempty"`
 	// Media gallery
-	Media []VariantMediaSummary `json:"media"`
+	Media []ProductMediaSummary `json:"media"`
 	// Custom attributes
 	Attributes map[string]any `json:"attributes"`
 	// Default variant flag
@@ -505,10 +505,10 @@ func mapAdminProductDetailsResponse(details *ProductDetails) AdminProductDetails
 			if attrs == nil {
 				attrs = make(map[string]any)
 			}
-			mediaSummaries := make([]VariantMediaSummary, 0)
+			mediaSummaries := make([]ProductMediaSummary, 0)
 			for _, m := range v.Media {
 				if m != nil && m.Object != nil {
-					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+					mediaSummaries = append(mediaSummaries, ProductMediaSummary{
 						ID:        strconv.FormatInt(m.ID, 10),
 						MediaType: m.MediaType,
 						SortOrder: m.SortOrder,
@@ -1170,10 +1170,10 @@ func MapProductDetailsResponse(details *ProductDetails, rating *model.RatingSumm
 			if attrs == nil {
 				attrs = make(map[string]any)
 			}
-			mediaSummaries := make([]VariantMediaSummary, 0)
+			mediaSummaries := make([]ProductMediaSummary, 0)
 			for _, m := range v.Media {
 				if m != nil && m.Object != nil {
-					mediaSummaries = append(mediaSummaries, VariantMediaSummary{
+					mediaSummaries = append(mediaSummaries, ProductMediaSummary{
 						ID:        strconv.FormatInt(m.ID, 10),
 						MediaType: m.MediaType,
 						SortOrder: m.SortOrder,
