@@ -475,6 +475,10 @@ func (app *App) Shutdown() {
 		_ = app.kafkaProducer.Close()
 	}
 
+	if app.redisClient != nil {
+		_ = app.redisClient.Close()
+	}
+
 	app.logger.Debug("Graceful Shutdown")
 }
 
