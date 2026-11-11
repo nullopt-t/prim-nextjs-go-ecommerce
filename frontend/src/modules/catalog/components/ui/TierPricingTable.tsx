@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import { BadgePercent } from "lucide-react";
 import { formatMoney } from "@/shared/lib/money";
 import { resolveTier, type TierPricing } from "../../utils/tierPricing";
+import { ProductSection } from "./ProductSection";
 
 interface TierPricingTableProps {
 	tiers: TierPricing[];
@@ -22,12 +23,11 @@ export function TierPricingTable({ tiers, baseUnitPrice, quantity, currency }: T
 	const { activeTier } = resolveTier(baseUnitPrice, tiers, quantity);
 
 	return (
-		<section className="mt-5 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
-			<h2 className="flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
-				<BadgePercent className="size-4 text-accent-brand" aria-hidden="true" />
-				{t("tierPricing.title")}
-			</h2>
-			<div className="mt-4 overflow-x-auto rounded-xl border border-border/70">
+		<ProductSection
+			title={t("tierPricing.title")}
+			icon={<BadgePercent className="size-4 text-accent-brand" aria-hidden="true" />}
+		>
+			<div className="overflow-x-auto rounded-xl border border-border/70">
 				<table className="w-full text-start text-xs sm:text-sm">
 					<thead>
 						<tr className="bg-secondary/60 text-muted-foreground">
@@ -62,6 +62,6 @@ export function TierPricingTable({ tiers, baseUnitPrice, quantity, currency }: T
 					</tbody>
 				</table>
 			</div>
-		</section>
+		</ProductSection>
 	);
 }

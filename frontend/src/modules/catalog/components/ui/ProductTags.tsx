@@ -1,4 +1,6 @@
 import { useTranslations } from "next-intl";
+import { Tag } from "lucide-react";
+import { ProductSection } from "./ProductSection";
 
 interface ProductTagsProps {
   tags?: Array<{ id?: string; name?: string }>;
@@ -18,11 +20,8 @@ export function ProductTags({ tags }: ProductTagsProps) {
   if (items.length === 0) return null;
 
   return (
-    <section className="mt-5">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {t("tags.title")}
-      </h2>
-      <ul className="mt-2.5 flex flex-wrap gap-2">
+    <ProductSection title={t("tags.title")} icon={<Tag className="size-4 text-accent-brand" aria-hidden="true" />}>
+      <ul className="flex flex-wrap gap-2">
         {items.map((name) => (
           <li
             key={name}
@@ -32,6 +31,6 @@ export function ProductTags({ tags }: ProductTagsProps) {
           </li>
         ))}
       </ul>
-    </section>
+    </ProductSection>
   );
 }

@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { ArrowUpRight, ListChecks, Truck } from "lucide-react";
+import { Link } from "@/shared/i18n/navigation";
 import type { CategoryAttribute } from "../../types";
+import { ProductSection } from "./ProductSection";
 
 interface ProductSpecsProps {
 	brand?: string;
@@ -14,16 +16,6 @@ interface ProductSpecsProps {
 	 * translation of the raw key.
 	 */
 	categoryAttributes?: CategoryAttribute[];
-}
-
-function SectionHeading({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-4 border-b border-border pb-2.5">
-      <h2 className="text-base font-semibold text-foreground sm:text-lg">
-        {children}
-      </h2>
-    </div>
-  );
 }
 
 export function ProductSpecs({
@@ -53,27 +45,28 @@ export function ProductSpecs({
   );
 
   return (
-    <div className="mt-10 flex flex-col gap-8 sm:mt-14 sm:gap-10">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div className="flex flex-col gap-5 sm:gap-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 sm:gap-6">
         {/* Description Section: only when the catalog has real copy */}
         {description ? (
-        <section className="lg:col-span-7">
-          <SectionHeading>{t("specs.description")}</SectionHeading>
-          <div className="h-full rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="lg:col-span-7">
+          <ProductSection title={t("specs.description")}>
             <p
               dir="auto"
               className="whitespace-pre-line text-start text-sm leading-7 text-foreground/90 sm:text-base"
             >
               {description}
             </p>
-          </div>
-        </section>
+          </ProductSection>
+        </div>
         ) : null}
 
         {/* Specifications Section */}
-        <section className={description ? "lg:col-span-5" : "lg:col-span-12"}>
-          <SectionHeading>{t("specs.specifications")}</SectionHeading>
-          <div className="h-full rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+        <div className={description ? "lg:col-span-5" : "lg:col-span-12"}>
+          <ProductSection
+            title={t("specs.specifications")}
+            icon={<ListChecks className="size-4 text-accent-brand" aria-hidden="true" />}
+          >
             <div className="divide-y divide-border/70 text-sm">
               {brand ? (
                 <div className="flex items-center justify-between gap-4 py-3 first:pt-0">
@@ -98,13 +91,16 @@ export function ProductSpecs({
                 </div>
               ))}
             </div>
-          </div>
-        </section>
+          </ProductSection>
+        </div>
       </div>
 
-      {/* Shipping & Returns Section */}
-      <section>
-        <SectionHeading>{t("specs.shippingReturns")}</SectionHeading>
+      {/* Shipping & Returns: link to the policy pages so the copy always
+          matches the store settings instead of a stale inline summary. */}
+      <ProductSection
+        title={t("specs.shippingReturns")}
+        icon={<Truck className="size-4 text-accent-brand" aria-hidden="true" />}
+      >
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-10">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
@@ -113,6 +109,13 @@ export function ProductSpecs({
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {t("specs.shippingInfoText")}
             </p>
+            <Link
+              href="/shipping"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-accent-brand hover:underline"
+            >
+              {t("specs.shippingPolicyLink")}
+              <ArrowUpRight className="size-3.5 rtl:-scale-x-100" aria-hidden="true" />
+            </Link>
           </div>
 
           <div className="border-t border-border pt-6 md:border-s md:border-t-0 md:ps-10 md:pt-0">
@@ -122,9 +125,16 @@ export function ProductSpecs({
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {t("specs.returnPolicyText")}
             </p>
+            <Link
+              href="/returns"
+              className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-accent-brand hover:underline"
+            >
+              {t("specs.returnPolicyLink")}
+              <ArrowUpRight className="size-3.5 rtl:-scale-x-100" aria-hidden="true" />
+            </Link>
           </div>
         </div>
-      </section>
+      </ProductSection>
     </div>
   );
 }

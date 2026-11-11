@@ -758,8 +758,8 @@ export function ProductDetails({
           />
         </div>
 
-        <div className="flex flex-col gap-5 lg:col-span-5">
-          <div ref={actionsRef} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-7">
+        <div className="flex flex-col gap-5 lg:col-span-5 sm:gap-6">
+          <div ref={actionsRef} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
             <ProductActions
               productCategory={product.category}
               productName={productName}
@@ -798,33 +798,40 @@ export function ProductDetails({
               productName={productName}
               onClose={() => setNotifyMeOpen(false)}
             />
+            {/* Compare sits with the other secondary actions, under the buy box. */}
+            <div className="mt-3">
+              <AddToCompareButton slug={product.slug || String(product.id)} productName={productName} />
+            </div>
           </div>
 
           <ProductHighlights highlights={highlights} />
           <ProductTags tags={productTags} />
           <TierPricingTable tiers={tierPricing} baseUnitPrice={convertCurrency(currentPrice, baseCurrency, displayCurrency)} quantity={effectiveQuantity} currency={displayCurrency} />
-          <AddToCompareButton slug={product.slug || String(product.id)} productName={productName} />
         </div>
       </div>
 
       {/* Kit contents (bundles only) */}
-      <ProductBundleContents
-        bundle={product.bundle}
-        bundlePrice={currentPrice}
-        onBuyBundle={handleAddToCart}
-      />
+      <div className="mt-5 sm:mt-6">
+        <ProductBundleContents
+          bundle={product.bundle}
+          bundlePrice={currentPrice}
+          onBuyBundle={handleAddToCart}
+        />
+      </div>
 
       {/* Specifications & Shipping Sections */}
-      <ProductSpecs
-        category={product.category}
-        brand={typeof product.brand === "string" ? product.brand : product.brand?.name}
-        description={product.description}
-        attributes={activeVariant?.attributes}
-        categoryAttributes={categoryAttributes}
-      />
+      <div className="mt-5 sm:mt-6">
+        <ProductSpecs
+          category={product.category}
+          brand={typeof product.brand === "string" ? product.brand : product.brand?.name}
+          description={product.description}
+          attributes={activeVariant?.attributes}
+          categoryAttributes={categoryAttributes}
+        />
+      </div>
 
       {/* Reviews Section */}
-      <div id="reviews" className="mt-10 sm:mt-14 scroll-mt-24">
+      <div id="reviews" className="mt-5 scroll-mt-24 sm:mt-6">
         <ProductReviews
           stars={averageRating}
           reviewsCount={reviewCount}
@@ -840,7 +847,7 @@ export function ProductDetails({
 
       {/* Similar Products */}
       {similarProducts.length > 0 && (
-        <div className="mt-10 mb-6 sm:mt-14 sm:mb-8">
+        <div className="mt-5 mb-6 sm:mt-6 sm:mb-8">
           <SectionTitle
             title={tProducts("details.relatedProducts")}
             link={`/products?category=${product.categoryId || product.category}`}

@@ -1,9 +1,15 @@
 import { useTranslations } from "next-intl";
+import { Sparkles } from "lucide-react";
+import { ProductSection } from "./ProductSection";
 
 interface ProductHighlightsProps {
   highlights?: string[] | null;
 }
 
+/**
+ * The merchant's own bullet points for the product. These come from the
+ * database (`products.highlights`), not from a fixed list.
+ */
 export function ProductHighlights({ highlights }: ProductHighlightsProps) {
   const t = useTranslations("products");
 
@@ -15,12 +21,8 @@ export function ProductHighlights({ highlights }: ProductHighlightsProps) {
   if (items.length === 0) return null;
 
   return (
-    <section className="border-t border-border pt-5">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {t("highlights.title")}
-      </h2>
-
-      <ul className="mt-3 divide-y divide-border/60">
+    <ProductSection title={t("highlights.title")} icon={<Sparkles className="size-4 text-accent-brand" aria-hidden="true" />}>
+      <ul className="divide-y divide-border/60">
         {items.map((item, index) => (
           <li key={`${item}-${index}`} className="py-2.5 first:pt-0 last:pb-0">
             <span
@@ -32,6 +34,6 @@ export function ProductHighlights({ highlights }: ProductHighlightsProps) {
           </li>
         ))}
       </ul>
-    </section>
+    </ProductSection>
   );
 }

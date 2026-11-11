@@ -7,6 +7,7 @@ import { catalogService } from "@/modules/catalog/api/catalogService";
 import { normalizeProduct } from "@/modules/catalog/model/normalizeProduct";
 import { computeBundleSavings, resolveItemPrice } from "@/modules/catalog/utils/bundlePricing";
 import { usePriceFormatter } from "@/modules/settings/model/usePriceFormatter";
+import { ProductSection } from "./ProductSection";
 import type { ProductBundle } from "../../types";
 
 interface ProductBundleContentsProps {
@@ -75,15 +76,11 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
   );
 
   return (
-    <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-sm sm:mt-10 sm:p-7">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-foreground sm:text-xl">{t("title")}</h2>
-          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            {t("items", { count: bundle.itemCount })}
-          </p>
-        </div>
-
+    <ProductSection
+      title={t("title")}
+      icon={<ShoppingBag className="size-4 text-accent-brand" aria-hidden="true" />}
+      description={t("items", { count: bundle.itemCount })}
+      action={
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
             bundle.isInStock
@@ -100,10 +97,10 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
             ? t("kitAvailable", { count: bundle.availableQuantity })
             : t("kitUnavailable")}
         </span>
-      </div>
-
+      }
+    >
       {savings && (
-        <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:text-sm">
+        <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:text-sm">
           <BadgePercent className="size-4" aria-hidden="true" />
           {t("savings", {
             amount: formatPrice(savings.savings),
@@ -112,7 +109,7 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
         </p>
       )}
 
-      <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {bundle.items.map((item) => {
           const linePrice = prices[item.slug];
           const content = (
@@ -199,6 +196,6 @@ export function ProductBundleContents({ bundle, bundlePrice, onBuyBundle }: Prod
           </button>
         </div>
       )}
-    </section>
+    </ProductSection>
   );
 }

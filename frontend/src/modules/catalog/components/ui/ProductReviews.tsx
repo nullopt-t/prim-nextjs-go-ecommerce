@@ -121,17 +121,16 @@ export function ProductReviews({
   };
 
   return (
-    <section className="scroll-mt-24">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="scroll-mt-24 rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+      <div className="mb-5 flex flex-col gap-4 border-b border-border/70 pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-accent-brand">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-accent-brand">
             {t("sectionLabel")}
           </p>
-          <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
+          <h2 className="text-base font-semibold text-foreground sm:text-lg">
             {t("customerReviews")}
           </h2>
         </div>
-
         {isAuthenticated && canReview && !isFormOpen && (
           <button
             type="button"
@@ -149,7 +148,7 @@ export function ProductReviews({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Summary / Rating breakdown */}
         <aside className="lg:col-span-4">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-24">
             <div className="flex items-end gap-3">
               <span className="text-5xl font-bold leading-none text-foreground">
                 {averageRating.toFixed(1)}
@@ -234,7 +233,7 @@ export function ProductReviews({
         {/* Review form and list */}
         <div className="flex flex-col gap-4 lg:col-span-8">
           {isAuthenticated && canReview && isFormOpen && (
-            <div className="rounded-2xl border border-accent-brand/30 bg-card p-5 shadow-sm sm:p-6">
+            <div className="rounded-xl border border-accent-brand/30 bg-secondary/25 p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-base font-bold text-foreground">{t("reviewFormTitle")}</h3>
@@ -342,50 +341,29 @@ export function ProductReviews({
               })}
             </span>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="sr-only" htmlFor="review-rating-filter">
-                {t("filterByRating")}
-              </label>
-              <CustomSelect
-                id="review-rating-filter"
-                value={String(ratingFilter)}
-                onChange={(value) =>
-                  changeRatingFilter(value === "all" ? "all" : Number(value))
-                }
-                options={[
-                  { value: "all", label: t("allRatings") },
-                  ...[5, 4, 3, 2, 1].map((rating) => ({
-                    value: String(rating),
-                    label: t("starLabel", { star: rating }),
-                  })),
-                ]}
-                size="sm"
-              />
-
-              <label className="sr-only" htmlFor="review-sort">
-                {t("sortBy")}
-              </label>
-              <CustomSelect
-                id="review-sort"
-                value={sort}
-                onChange={(value) => {
-                  setSort(value as ReviewSort);
-                  setVisibleCount(5);
-                }}
-                options={[
-                  { value: "newest", label: t("sortNewest") },
-                  { value: "helpful", label: t("sortMostHelpful") },
-                  { value: "highest", label: t("sortHighest") },
-                  { value: "lowest", label: t("sortLowest") },
-                ]}
-                size="sm"
-              />
-            </div>
+            <label className="sr-only" htmlFor="review-sort">
+              {t("sortBy")}
+            </label>
+            <CustomSelect
+              id="review-sort"
+              value={sort}
+              onChange={(value) => {
+                setSort(value as ReviewSort);
+                setVisibleCount(5);
+              }}
+              options={[
+                { value: "newest", label: t("sortNewest") },
+                { value: "helpful", label: t("sortMostHelpful") },
+                { value: "highest", label: t("sortHighest") },
+                { value: "lowest", label: t("sortLowest") },
+              ]}
+              size="sm"
+            />
           </div>
           )}
 
           {reviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-12 text-center">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-secondary/25 px-6 py-12 text-center">
               <p className="text-base font-bold text-foreground">{t("noReviewsYet")}</p>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">{t("beTheFirst")}</p>
               {isAuthenticated && canReview && !isFormOpen && (
@@ -402,7 +380,7 @@ export function ProductReviews({
               )}
             </div>
           ) : sortedReviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center">
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/70 bg-secondary/25 px-6 py-10 text-center">
               <p className="text-sm font-semibold text-foreground">{t("noMatchingReviews")}</p>
               <button
                 type="button"
@@ -417,7 +395,7 @@ export function ProductReviews({
               {visibleReviews.map((review) => (
                 <article
                   key={review.id}
-                  className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6"
+                  className="rounded-xl border border-border/70 bg-secondary/25 p-5"
                 >
                   <div className="flex items-start gap-3">
                     {review.avatar && (
