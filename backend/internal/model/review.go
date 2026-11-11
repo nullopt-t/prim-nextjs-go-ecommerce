@@ -49,6 +49,10 @@ type Review struct {
 	ProductID uuid.UUID
 	// UserID is the author Customer UUID.
 	UserID uuid.UUID
+	// AuthorName is the reviewer's display name, snapshotted from the user
+	// account when the review is created and stored as reviews.user_name so
+	// listing reviews needs no join and the name survives account deletion.
+	AuthorName string
 	// OrderItemID is the purchased line item UUID verifying buyer authenticity.
 	OrderItemID uuid.UUID
 	// Rating is the numerical score between 1 and 5 stars.

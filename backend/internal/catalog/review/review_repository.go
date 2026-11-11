@@ -107,6 +107,7 @@ func (r *ReviewRepository) Create(ctx context.Context, rv *model.Review) error {
 			id,
 			product_id,
 			user_id,
+			user_name,
 			order_item_id,
 			rating,
 			title,
@@ -115,7 +116,7 @@ func (r *ReviewRepository) Create(ctx context.Context, rv *model.Review) error {
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
 		RETURNING created_at, updated_at
 	`
 
@@ -125,6 +126,7 @@ func (r *ReviewRepository) Create(ctx context.Context, rv *model.Review) error {
 		rv.ID,
 		rv.ProductID,
 		rv.UserID,
+		rv.AuthorName,
 		rv.OrderItemID,
 		rv.Rating,
 		rv.Title,
@@ -144,6 +146,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Re
 			id,
 			product_id,
 			user_id,
+			user_name,
 			order_item_id,
 			rating,
 			title,
@@ -160,6 +163,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Re
 		&rv.ID,
 		&rv.ProductID,
 		&rv.UserID,
+		&rv.AuthorName,
 		&rv.OrderItemID,
 		&rv.Rating,
 		&rv.Title,
@@ -509,7 +513,8 @@ func (r *ReviewRepository) List(
 			r.status,
 			r.helpful_count,
 			r.created_at,
-			r.updated_at%s
+			r.updated_at,
+			r.user_name%s
 		FROM reviews r
 		%s
 		%s%s
@@ -540,6 +545,7 @@ func (r *ReviewRepository) List(
 			&rv.HelpfulCount,
 			&rv.CreatedAt,
 			&rv.UpdatedAt,
+			&rv.AuthorName,
 			&rv.UserVoted,
 		); err != nil {
 			return nil, nil, err

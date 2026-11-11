@@ -307,6 +307,12 @@ type AdminProductDetailsResponse struct {
 	DeletedAt *string `json:"deletedAt,omitempty" example:"2026-08-05T19:30:00Z"`
 }
 
+// ProductReviewUserResponse identifies the customer who wrote a review.
+type ProductReviewUserResponse struct {
+	// Display name of the reviewer
+	Name string `json:"name" example:"Sarah Connor"`
+}
+
 type ProductReviewResponse struct {
 	// Review UUID
 	ID string `json:"id" example:"92000000-0000-0000-0000-000000000001"`
@@ -314,6 +320,8 @@ type ProductReviewResponse struct {
 	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
 	// Author customer UUID
 	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
+	// Reviewer display name, omitted when the review carries none
+	User *ProductReviewUserResponse `json:"user,omitempty"`
 	// Verified order item purchase UUID
 	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
 	// Score from 1 to 5 stars
@@ -996,7 +1004,7 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 
 	var responses []ProductReviewResponse
 	for _, rv := range reviews {
-		responses = append(responses, ProductReviewResponse{
+		resp := ProductReviewResponse{
 			ID:          rv.ID.String(),
 			ProductID:   rv.ProductID.String(),
 			UserID:      rv.UserID.String(),
@@ -1006,7 +1014,11 @@ func (h *ProductHandler) ListProductReviews(c *gin.Context) {
 			Body:        rv.Body,
 			CreatedAt:   rv.CreatedAt.Format(time.RFC3339),
 			UpdatedAt:   rv.UpdatedAt.Format(time.RFC3339),
-		})
+		}
+		if rv.AuthorName != "" {
+			resp.User = &ProductReviewUserResponse{Name: rv.AuthorName}
+		}
+		responses = append(responses, resp)
 	}
 
 	c.JSON(http.StatusOK, api.PaginatedResponse{

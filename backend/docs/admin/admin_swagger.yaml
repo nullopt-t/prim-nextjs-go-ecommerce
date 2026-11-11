@@ -1378,6 +1378,10 @@ definitions:
         description: Last updated timestamp (RFC3339)
         example: "2026-08-13T07:56:17Z"
         type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/ReviewUserResponse'
+        description: Reviewer display name, omitted when the review carries none
       userId:
         description: Author Customer UUID
         example: 10000000-0000-0000-0000-000000000002
@@ -1386,6 +1390,13 @@ definitions:
         description: Whether requesting user voted this review helpful
         example: false
         type: boolean
+    type: object
+  ReviewUserResponse:
+    properties:
+      name:
+        description: Display name of the reviewer
+        example: Sarah Connor
+        type: string
     type: object
   SalesPoint:
     properties:

@@ -575,6 +575,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     id               uuid NOT NULL,
     product_id       uuid NOT NULL,
     user_id          uuid NOT NULL,
+    user_name        text NOT NULL,
     order_item_id    uuid NOT NULL,
     rating           smallint NOT NULL,
     title            text NULL,

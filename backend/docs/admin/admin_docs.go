@@ -6413,6 +6413,14 @@ const docTemplateadmin = `{
                     "type": "string",
                     "example": "2026-08-13T07:56:17Z"
                 },
+                "user": {
+                    "description": "Reviewer display name, omitted when the review carries none",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ReviewUserResponse"
+                        }
+                    ]
+                },
                 "userId": {
                     "description": "Author Customer UUID",
                     "type": "string",
@@ -6422,6 +6430,16 @@ const docTemplateadmin = `{
                     "description": "Whether requesting user voted this review helpful",
                     "type": "boolean",
                     "example": false
+                }
+            }
+        },
+        "ReviewUserResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Display name of the reviewer",
+                    "type": "string",
+                    "example": "Sarah Connor"
                 }
             }
         },

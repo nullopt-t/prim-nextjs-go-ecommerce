@@ -366,11 +366,6 @@ export function ProductReviews({
                       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                         <div>
                           <p dir="auto" className="text-start text-sm font-semibold text-foreground">{review.author}</p>
-                          {review.verified && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {t("verifiedPurchase")}
-                            </p>
-                          )}
                         </div>
                         <time className="text-[11px] text-muted-foreground">{review.date}</time>
                       </div>

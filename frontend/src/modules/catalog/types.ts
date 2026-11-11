@@ -240,6 +240,5 @@ export interface ProductReview {
   title: string;
   content: string;
   helpful: number;
-  verified: boolean;
   userVoted?: boolean;
 }

@@ -1127,7 +1127,7 @@ for p_idx, prod in enumerate(products):
         # Review
         rating_score = random.choices([5, 4, 3], weights=[70, 25, 5])[0]
         t_title, t_body = random.choice(review_templates[rating_score])
-        reviews_data.append((rev_id, p_id, u_id, oi_id, rating_score, t_title, t_body, 'approved'))
+        reviews_data.append((rev_id, p_id, u_id, oi_id, rating_score, t_title, t_body, 'approved', u_name))
 
         o_counter += 1
         oi_counter += 1
@@ -1177,8 +1177,8 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append(f"-- 22. REVIEWS (Seeded for all {len(products)} products)")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO reviews (id, product_id, user_id, order_item_id, rating, title, body, status, created_at, updated_at) VALUES")
-val_rows = [f"({esc(rv[0])}, {esc(rv[1])}, {esc(rv[2])}, {esc(rv[3])}, {rv[4]}, {esc(rv[5])}, {esc(rv[6])}, {esc(rv[7])}, now() - INTERVAL '{random.randint(2, 20)} days', now() - INTERVAL '1 day')" for rv in reviews_data]
+lines.append("INSERT INTO reviews (id, product_id, user_id, user_name, order_item_id, rating, title, body, status, created_at, updated_at) VALUES")
+val_rows = [f"({esc(rv[0])}, {esc(rv[1])}, {esc(rv[2])}, {esc(rv[8])}, {esc(rv[3])}, {rv[4]}, {esc(rv[5])}, {esc(rv[6])}, {esc(rv[7])}, now() - INTERVAL '{random.randint(2, 20)} days', now() - INTERVAL '1 day')" for rv in reviews_data]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 23. wishlist_items

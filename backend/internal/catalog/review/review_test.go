@@ -19,6 +19,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
+	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/config"
@@ -88,7 +89,7 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 
 	s.txRunner = database.NewTxRunner(s.db, log.NewNoopLogger())
 	s.reviewRepo = review.NewReviewRepository()
-	s.service = review.NewService(s.txRunner, s.reviewRepo)
+	s.service = review.NewService(s.txRunner, s.reviewRepo, user.NewPostgresRepository())
 	s.handler = review.NewHandler(s.service)
 
 	// Start Redis Container
@@ -527,8 +528,10 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 
 	// Three approved reviews: two 5-star and one 3-star.
 	ratings := []int16{5, 5, 3}
+	authorIDs := make([]uuid.UUID, 0, len(ratings))
 	for _, rating := range ratings {
 		custID, _ := s.createTestUser("customer")
+		authorIDs = append(authorIDs, custID)
 		orderItemID := s.createDeliveredOrderForVariant(custID, variantID)
 		rv, err := s.service.CreateReview(context.Background(), review.CreateReviewInput{
 			ProductID:   productID,
@@ -564,7 +567,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	s.False(fiveMeta.Meta.HasMore)
 	s.Empty(fiveMeta.Meta.NextCursor)
 
-	// 2. Without the filter every review of the product is listed.
+	// 2. Without the filter every review of the product is listed, each one
+	// carrying the author's snapshotted display name.
 	reqAll := httptest.NewRequest(http.MethodGet,
 		"/api/v1/reviews?productId="+productID.String(), nil)
 	wAll := httptest.NewRecorder()
@@ -574,8 +578,32 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	var allResp StrictPaginatedEnvelope[review.ReviewResponse]
 	s.Require().NoError(json.Unmarshal(wAll.Body.Bytes(), &allResp))
 	s.Len(allResp.Data, 3)
+	for _, rv := range allResp.Data {
+		s.Require().NotNil(rv.User)
+		s.Equal("Test User", rv.User.Name)
+	}
 
-	// 3. An out-of-range rating is rejected.
+	// 3. The name is snapshotted on the review, so deleting the author's
+	// account keeps the review listed with the same name.
+	_, err = s.db.ExecContext(context.Background(),
+		`UPDATE users SET deleted_at = now() WHERE id = $1`, authorIDs[0])
+	s.Require().NoError(err)
+
+	reqAgain := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?productId="+productID.String(), nil)
+	wAgain := httptest.NewRecorder()
+	s.router.ServeHTTP(wAgain, reqAgain)
+
+	s.Require().Equal(http.StatusOK, wAgain.Code)
+	var againResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wAgain.Body.Bytes(), &againResp))
+	s.Len(againResp.Data, 3)
+	for _, rv := range againResp.Data {
+		s.Require().NotNil(rv.User)
+		s.Equal("Test User", rv.User.Name)
+	}
+
+	// 4. An out-of-range rating is rejected.
 	reqBad := httptest.NewRequest(http.MethodGet,
 		"/api/v1/reviews?productId="+productID.String()+"&rating=9", nil)
 	wBad := httptest.NewRecorder()

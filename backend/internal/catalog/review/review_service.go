@@ -12,14 +12,22 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
+// UserReader is the subset of user persistence the review domain needs to
+// snapshot the reviewer's display name at review time.
+type UserReader interface {
+	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
+}
+
 type ReviewService struct {
-	dbRunner database.Runner
-	repo     *ReviewRepository
+	dbRunner   database.Runner
+	repo       *ReviewRepository
+	userReader UserReader
 }
 
 func NewService(
 	dbRunner database.Runner,
 	repo *ReviewRepository,
+	userReader UserReader,
 ) *ReviewService {
 	if dbRunner == nil {
 		panic("review: database runner is required")
@@ -27,9 +35,13 @@ func NewService(
 	if repo == nil {
 		panic("review: review repository is required")
 	}
+	if userReader == nil {
+		panic("review: user reader is required")
+	}
 	return &ReviewService{
-		dbRunner: dbRunner,
-		repo:     repo,
+		dbRunner:   dbRunner,
+		repo:       repo,
+		userReader: userReader,
 	}
 }
 
@@ -142,12 +154,26 @@ func (s *ReviewService) CreateReview(
 				WithCode(errcode.CodeReviewAlreadyExists)
 		}
 
-		// 3. Create review (initialize as pending for moderation)
+		// 3. Snapshot the reviewer's display name so a review renders without
+		// joining users and keeps its author after an account is deleted.
+		author, err := s.userReader.GetByID(ctx, in.UserID)
+		if err != nil {
+			if errors.Is(database.MapError(err), database.ErrNotFound) {
+				return apierr.NotFoundError("user not found")
+			}
+			return err
+		}
+		if author == nil {
+			return apierr.NotFoundError("user not found")
+		}
+
+		// 4. Create review (initialize as pending for moderation)
 		reviewID := uuid.New()
 		rv := &model.Review{
 			ID:          reviewID,
 			ProductID:   in.ProductID,
 			UserID:      in.UserID,
+			AuthorName:  author.FullName,
 			OrderItemID: targetOrderItemID,
 			Rating:      in.Rating,
 			Title:       in.Title,

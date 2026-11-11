@@ -52,6 +52,12 @@ type UpdateReviewStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=pending approved rejected" example:"approved"`
 }
 
+// ReviewUserResponse identifies the customer who wrote a review.
+type ReviewUserResponse struct {
+	// Display name of the reviewer
+	Name string `json:"name" example:"Sarah Connor"`
+}
+
 type ReviewResponse struct {
 	// Review UUID
 	ID string `json:"id" example:"92000000-0000-0000-0000-000000000001"`
@@ -59,6 +65,8 @@ type ReviewResponse struct {
 	ProductID string `json:"productId" example:"60000000-0000-0000-0000-000000000001"`
 	// Author Customer UUID
 	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
+	// Reviewer display name, omitted when the review carries none
+	User *ReviewUserResponse `json:"user,omitempty"`
 	// Verified Order Item purchase UUID
 	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
 	// Star score (1-5)
@@ -94,7 +102,7 @@ type RatingSummaryResponse struct {
 }
 
 func mapReviewToResponse(r *model.Review) ReviewResponse {
-	return ReviewResponse{
+	resp := ReviewResponse{
 		ID:           r.ID.String(),
 		ProductID:    r.ProductID.String(),
 		UserID:       r.UserID.String(),
@@ -108,6 +116,10 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 		CreatedAt:    r.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
 	}
+	if r.AuthorName != "" {
+		resp.User = &ReviewUserResponse{Name: r.AuthorName}
+	}
+	return resp
 }
 
 func getUserIDFromContext(c *gin.Context) (uuid.UUID, error) {

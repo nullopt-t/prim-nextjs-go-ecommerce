@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/catalog/review"
+	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,15 +28,18 @@ func (fakeReviewRunner) WithRetry(ctx context.Context, fn func(ctx context.Conte
 
 func TestReviewService_ConstructorsFailFast(t *testing.T) {
 	assert.Panics(t, func() {
-		review.NewService(nil, review.NewReviewRepository())
+		review.NewService(nil, review.NewReviewRepository(), user.NewPostgresRepository())
 	})
 	assert.Panics(t, func() {
-		review.NewService(fakeReviewRunner{}, nil)
+		review.NewService(fakeReviewRunner{}, nil, user.NewPostgresRepository())
+	})
+	assert.Panics(t, func() {
+		review.NewService(fakeReviewRunner{}, review.NewReviewRepository(), nil)
 	})
 }
 
 func TestReviewService_ToggleHelpful_Validation(t *testing.T) {
-	svc := review.NewService(fakeReviewRunner{}, review.NewReviewRepository())
+	svc := review.NewService(fakeReviewRunner{}, review.NewReviewRepository(), user.NewPostgresRepository())
 
 	// Nil Review ID returns 400
 	_, _, err := svc.ToggleHelpful(context.Background(), uuid.Nil, uuid.New())

@@ -48,7 +48,6 @@ export function mapReview(review: Review, options: {
     title: review.title || titleLabel,
     content: review.body || "",
     helpful: review.helpfulCount ?? 0,
-    verified: Boolean(review.orderItemId),
     userVoted: review.userVoted ?? false,
   };
 }

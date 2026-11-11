@@ -629,10 +629,7 @@ export function ProductDetails({
         body: newReviewData.content,
       });
 
-      const serverReview = (res?.data ?? res) as {
-        id?: string | number;
-        verifiedPurchase?: boolean;
-      };
+      const serverReview = (res?.data ?? res) as { id?: string | number };
       notify.success(tReviews("submitSuccess"));
 
       const newRev: ProductReview = {
@@ -650,7 +647,6 @@ export function ProductDetails({
           }),
         }),
         helpful: 0,
-        verified: Boolean(serverReview?.verifiedPurchase ?? false),
       };
 
       setReviews((prev) => [newRev, ...prev]);
