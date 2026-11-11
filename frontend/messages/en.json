@@ -2481,6 +2481,16 @@
       "storage": "Storage"
     }
   },
+  "reviewerProfile": {
+    "anonymous": "Customer",
+    "description": "All product reviews written by {name}.",
+    "empty": "This reviewer hasn't written any reviews yet.",
+    "loadingMore": "Loading more…",
+    "noTitle": "Customer review",
+    "recently": "Recently",
+    "showMore": "Show more",
+    "title": "Reviews by {name}"
+  },
   "reviews": {
     "addHeadline": "Add a headline",
     "addWrittenReview": "Add a written review",

@@ -6387,6 +6387,11 @@
                     "type": "string",
                     "example": "60000000-0000-0000-0000-000000000001"
                 },
+                "productTitle": {
+                    "description": "Title of the reviewed product, resolved at read time",
+                    "type": "string",
+                    "example": "Aurora 27 4K Monitor"
+                },
                 "rating": {
                     "description": "Star score (1-5)",
                     "type": "integer",

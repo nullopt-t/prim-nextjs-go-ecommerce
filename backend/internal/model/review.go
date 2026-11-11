@@ -53,6 +53,9 @@ type Review struct {
 	// account when the review is created and stored as reviews.user_name so
 	// listing reviews needs no join and the name survives account deletion.
 	AuthorName string
+	// ProductTitle is the reviewed product's title, resolved live at listing
+	// time so profile pages can link each review to its product.
+	ProductTitle string
 	// OrderItemID is the purchased line item UUID verifying buyer authenticity.
 	OrderItemID uuid.UUID
 	// Rating is the numerical score between 1 and 5 stars.

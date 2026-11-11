@@ -514,8 +514,10 @@ func (r *ReviewRepository) List(
 			r.helpful_count,
 			r.created_at,
 			r.updated_at,
-			r.user_name%s
+			r.user_name,
+			p.title%s
 		FROM reviews r
+		INNER JOIN products p ON p.id = r.product_id
 		%s
 		%s%s
 		LIMIT $%d
@@ -546,6 +548,7 @@ func (r *ReviewRepository) List(
 			&rv.CreatedAt,
 			&rv.UpdatedAt,
 			&rv.AuthorName,
+			&rv.ProductTitle,
 			&rv.UserVoted,
 		); err != nil {
 			return nil, nil, err

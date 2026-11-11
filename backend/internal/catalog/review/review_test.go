@@ -603,7 +603,23 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 		s.Equal("Test User", rv.User.Name)
 	}
 
-	// 4. An out-of-range rating is rejected.
+	// 4. The author filter lists only one author's reviews, each carrying the
+	// reviewed product's title for the reviewer's public profile page.
+	reqAuthor := httptest.NewRequest(http.MethodGet,
+		"/api/v1/reviews?userId="+authorIDs[0].String(), nil)
+	wAuthor := httptest.NewRecorder()
+	s.router.ServeHTTP(wAuthor, reqAuthor)
+
+	s.Require().Equal(http.StatusOK, wAuthor.Code)
+	var authorResp StrictPaginatedEnvelope[review.ReviewResponse]
+	s.Require().NoError(json.Unmarshal(wAuthor.Body.Bytes(), &authorResp))
+	s.Require().NotEmpty(authorResp.Data)
+	for _, rv := range authorResp.Data {
+		s.Equal(authorIDs[0].String(), rv.UserID)
+		s.NotEmpty(rv.ProductTitle)
+	}
+
+	// 5. An out-of-range rating is rejected.
 	reqBad := httptest.NewRequest(http.MethodGet,
 		"/api/v1/reviews?productId="+productID.String()+"&rating=9", nil)
 	wBad := httptest.NewRecorder()

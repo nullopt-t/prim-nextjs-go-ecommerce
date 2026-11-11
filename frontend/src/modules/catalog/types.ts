@@ -149,6 +149,8 @@ export interface Review {
   userId: string;
   orderItemId?: string;
   user?: { name?: string; avatar?: string } | null;
+  /** Live title of the reviewed product, used by the reviewer profile page. */
+  productTitle?: string;
   rating: number;
   title?: string;
   body?: string;
@@ -235,6 +237,12 @@ export interface ProductReview {
   id: string | number;
   author: string;
   avatar: string | null;
+  /** Author's user UUID, used to link to their public review profile. */
+  userId: string | null;
+  /** Reviewed product UUID, used to link from the profile page to the PDP. */
+  productId: string | null;
+  /** Live title of the reviewed product on the reviewer profile page. */
+  productTitle: string | null;
   rating: number;
   date: string;
   title: string;

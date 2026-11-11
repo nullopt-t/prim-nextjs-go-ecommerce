@@ -115,6 +115,23 @@ export async function getReviewsByProduct(
 	return { reviews, nextCursor, hasMore };
 }
 
+/** A page of one author's reviews, for their public reviewer profile. */
+export async function getReviewsByUser(
+	userId: string,
+	cursor?: string | null,
+	pageSize = REVIEWS_PAGE_SIZE,
+): Promise<ReviewPage> {
+	const query = buildReviewQuery({ cursor, pageSize });
+	const { data, meta } = await fetchEnvelope<Review[]>(
+		`/api/v1/reviews?userId=${encodeURIComponent(userId)}&${query.toString()}`,
+		[`user-reviews:${userId}`],
+	);
+	const reviews = asList<Review>(data ?? []);
+	const nextCursor = typeof meta?.nextCursor === "string" ? meta.nextCursor : null;
+	const hasMore = typeof meta?.hasMore === "boolean" ? meta.hasMore : false;
+	return { reviews, nextCursor, hasMore };
+}
+
 export interface CatalogQuery {
 	pageSize?: number;
 	page?: number;

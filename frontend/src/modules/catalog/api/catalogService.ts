@@ -95,6 +95,14 @@ export const catalogService = {
     );
   },
 
+  getUserReviews: (userId: string, params?: ReviewQuery) => {
+    const query = buildReviewQuery(params);
+    const search = query.toString();
+    return api.get<ApiPaginatedResponse<Review, CursorMeta>>(
+      `/api/v1/reviews?userId=${encodeURIComponent(userId)}${search ? `&${search}` : ""}`,
+    );
+  },
+
   getProductRatingSummary: (slug: string) =>
     api.get<ApiResponse<ProductRatingSummary>>(`/api/v1/products/${slug}/reviews/summary`),
 

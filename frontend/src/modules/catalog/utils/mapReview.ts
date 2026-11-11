@@ -37,6 +37,9 @@ export function mapReview(review: Review, options: {
       ? currentUserName || ownAuthorLabel || authorLabel
       : review.user?.name || authorLabel,
     avatar: isOwn ? null : review.user?.avatar || null,
+    userId: review.userId ?? null,
+    productId: review.productId ?? null,
+    productTitle: review.productTitle ?? null,
     rating: Number(review.rating) || 0,
     date: review.createdAt
       ? new Date(review.createdAt).toLocaleDateString(locale, {

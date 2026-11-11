@@ -1794,6 +1794,12 @@ const docTemplatepublic = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Filter by author Customer UUID, e.g. for a reviewer's public profile",
+                        "name": "userId",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Filter by star rating (1-5)",
                         "name": "rating",
@@ -8178,6 +8184,11 @@ const docTemplatepublic = `{
                     "description": "Reviewed Product UUID",
                     "type": "string",
                     "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "productTitle": {
+                    "description": "Title of the reviewed product, resolved at read time",
+                    "type": "string",
+                    "example": "Aurora 27 4K Monitor"
                 },
                 "rating": {
                     "description": "Star score (1-5)",

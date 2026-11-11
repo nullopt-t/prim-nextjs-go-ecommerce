@@ -1523,6 +1523,10 @@ definitions:
         description: Reviewed Product UUID
         example: 60000000-0000-0000-0000-000000000001
         type: string
+      productTitle:
+        description: Title of the reviewed product, resolved at read time
+        example: Aurora 27 4K Monitor
+        type: string
       rating:
         description: Star score (1-5)
         example: 5
@@ -3972,6 +3976,11 @@ paths:
       - description: Filter by Product UUID
         in: query
         name: productId
+        type: string
+      - description: Filter by author Customer UUID, e.g. for a reviewer's public
+          profile
+        in: query
+        name: userId
         type: string
       - description: Filter by star rating (1-5)
         in: query

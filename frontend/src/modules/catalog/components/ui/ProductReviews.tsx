@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Star, AlertCircle } from "lucide-react";
+import { Star, AlertCircle, CircleUser } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
 import { CatalogImage } from "@/shared/ui/catalogImage";
 import { useAuthContext } from "@/modules/auth/model/authContext";
+import { Link } from "@/shared/i18n/navigation";
 
 interface ProductReviewsProps {
   stars?: number;
@@ -365,7 +366,21 @@ export function ProductReviews({
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
                         <div>
-                          <p dir="auto" className="text-start text-sm font-semibold text-foreground">{review.author}</p>
+                          {review.userId ? (
+                            <Link
+                              href={`/users/${review.userId}/reviews`}
+                              dir="auto"
+                              className="inline-flex items-center gap-1.5 text-start text-sm font-semibold text-foreground underline-offset-4 transition-colors hover:text-accent-brand hover:underline"
+                            >
+                              <CircleUser
+                                className="size-4 shrink-0 text-muted-foreground"
+                                aria-hidden="true"
+                              />
+                              {review.author}
+                            </Link>
+                          ) : (
+                            <p dir="auto" className="text-start text-sm font-semibold text-foreground">{review.author}</p>
+                          )}
                         </div>
                         <time className="text-[11px] text-muted-foreground">{review.date}</time>
                       </div>

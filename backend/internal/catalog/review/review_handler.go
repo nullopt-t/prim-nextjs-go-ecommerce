@@ -67,6 +67,8 @@ type ReviewResponse struct {
 	UserID string `json:"userId" example:"10000000-0000-0000-0000-000000000002"`
 	// Reviewer display name, omitted when the review carries none
 	User *ReviewUserResponse `json:"user,omitempty"`
+	// Title of the reviewed product, resolved at read time
+	ProductTitle string `json:"productTitle,omitempty" example:"Aurora 27 4K Monitor"`
 	// Verified Order Item purchase UUID
 	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
 	// Star score (1-5)
@@ -113,6 +115,7 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 		Status:       r.Status.String(),
 		HelpfulCount: r.HelpfulCount,
 		UserVoted:    r.UserVoted,
+		ProductTitle: r.ProductTitle,
 		CreatedAt:    r.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
 	}
@@ -298,6 +301,7 @@ func (h *ReviewHandler) CheckEligibility(c *gin.Context) {
 //	@Tags			Reviews
 //	@Produce		json
 //	@Param			productId	query		string																false	"Filter by Product UUID"
+//	@Param			userId		query		string																false	"Filter by author Customer UUID, e.g. for a reviewer's public profile"
 //	@Param			rating		query		int																		false	"Filter by star rating (1-5)"
 //	@Param			cursor		query		string																false	"Cursor for the next page"
 //	@Param			pageSize	query		int																		false	"Reviews per page (max 100)"
@@ -321,6 +325,16 @@ func (h *ReviewHandler) ListPublicReviews(c *gin.Context) {
 			return
 		}
 		productIDPtr = &pid
+	}
+
+	var userIDPtr *uuid.UUID
+	if uidStr := c.Query("userId"); uidStr != "" {
+		uid, err := uuid.Parse(uidStr)
+		if err != nil {
+			_ = c.Error(apierr.ValidationFailedError("invalid user id"))
+			return
+		}
+		userIDPtr = &uid
 	}
 
 	var ratingPtr *int16
@@ -348,6 +362,7 @@ func (h *ReviewHandler) ListPublicReviews(c *gin.Context) {
 	approvedStatus := model.ReviewStatusApproved
 	reviews, page, err := h.service.ListReviews(c.Request.Context(), q.PageSize, cursor, model.ReviewFilter{
 		ProductID: productIDPtr,
+		UserID:    userIDPtr,
 		Status:    &approvedStatus,
 		Rating:    ratingPtr,
 		VoterID:   voterID,

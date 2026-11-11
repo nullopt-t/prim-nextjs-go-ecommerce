@@ -2481,6 +2481,16 @@
       "storage": "السعة"
     }
   },
+  "reviewerProfile": {
+    "anonymous": "عميل",
+    "description": "جميع تقييمات المنتجات التي كتبها {name}.",
+    "empty": "لم يكتب هذا العميل أي تقييمات بعد.",
+    "loadingMore": "جارٍ تحميل المزيد...",
+    "noTitle": "مراجعة عميل",
+    "recently": "حديثاً",
+    "showMore": "عرض المزيد",
+    "title": "تقييمات {name}"
+  },
   "reviews": {
     "addHeadline": "أضف عنواناً للمراجعة",
     "addWrittenReview": "أضف تفاصيل المراجعة",
