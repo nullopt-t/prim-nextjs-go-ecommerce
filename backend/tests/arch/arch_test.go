@@ -221,8 +221,8 @@ func TestArch_ConsumerRepositoriesAreReadOnly(t *testing.T) {
 					continue
 				}
 
-				// ObjectRepository is an infrastructure exception for storage blob pairing per Rule 3
-				if name == "ObjectRepository" {
+				// ObjectRepository and VariantObjectRepository are infrastructure exceptions for storage blob pairing per Rule 3
+				if name == "ObjectRepository" || name == "VariantObjectRepository" {
 					continue
 				}
 
