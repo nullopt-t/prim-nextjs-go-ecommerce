@@ -174,7 +174,8 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 || exit 1"]
       interval: 10s
-      timeout: 5s
+      # The JVM-based check needs ~11s to run; a shorter timeout SIGKILLs it.
+      timeout: 30s
       retries: 5
       start_period: 15s
 

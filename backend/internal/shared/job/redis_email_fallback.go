@@ -218,8 +218,10 @@ func (w *RedisEmailFallbackWorker) claimPending(ctx context.Context) {
 			Count:    10,
 		}).Result()
 		if err != nil {
-			if ctx.Err() == nil {
-				w.logger.Error("failed to claim pending Redis fallback events", log.Meta{
+			// NOGROUP just means the run loop has not created the consumer
+			// group yet; there is nothing pending to claim until it does.
+			if ctx.Err() == nil && !strings.Contains(err.Error(), "NOGROUP") {
+				w.logger.Error("failed to claim pending Redis email fallback events", log.Meta{
 					"stream": RedisEmailFallbackStream,
 					"error":  err,
 				})
