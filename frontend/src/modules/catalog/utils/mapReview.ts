@@ -40,6 +40,7 @@ export function mapReview(review: Review, options: {
     userId: review.userId ?? null,
     productId: review.productId ?? null,
     productTitle: review.productTitle ?? null,
+    productImage: review.productImage ?? null,
     rating: Number(review.rating) || 0,
     date: review.createdAt
       ? new Date(review.createdAt).toLocaleDateString(locale, {

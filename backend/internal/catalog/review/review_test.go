@@ -25,6 +25,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -89,7 +90,7 @@ func (s *ReviewHTTPTestSuite) SetupSuite() {
 
 	s.txRunner = database.NewTxRunner(s.db, log.NewNoopLogger())
 	s.reviewRepo = review.NewReviewRepository()
-	s.service = review.NewService(s.txRunner, s.reviewRepo, user.NewPostgresRepository())
+	s.service = review.NewService(s.txRunner, s.reviewRepo, user.NewPostgresRepository(), storage.NoopProvider{})
 	s.handler = review.NewHandler(s.service)
 
 	// Start Redis Container
@@ -526,6 +527,18 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	`, productID, variantID)
 	s.Require().NoError(err)
 
+	// Attach a thumbnail so the listing resolves the product image URL.
+	objID := uuid.New()
+	_, err = s.db.ExecContext(context.Background(), `
+		INSERT INTO storage_objects (id, bucket, object_key, content_type, file_size, status)
+		VALUES ($1, 'test-bucket', 'test-key.jpg', 'image/jpeg', 12345, 'uploaded')
+	`, objID)
+	s.Require().NoError(err)
+	_, err = s.db.ExecContext(context.Background(), `
+		UPDATE products SET thumbnail_object_id = $2 WHERE id = $1
+	`, productID, objID)
+	s.Require().NoError(err)
+
 	// Three approved reviews: two 5-star and one 3-star.
 	ratings := []int16{5, 5, 3}
 	authorIDs := make([]uuid.UUID, 0, len(ratings))
@@ -581,6 +594,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	for _, rv := range allResp.Data {
 		s.Require().NotNil(rv.User)
 		s.Equal("Test User", rv.User.Name)
+		s.NotEmpty(rv.ProductTitle)
+		s.NotEmpty(rv.ProductImage)
 	}
 
 	// 3. The name is snapshotted on the review, so deleting the author's
@@ -601,6 +616,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	for _, rv := range againResp.Data {
 		s.Require().NotNil(rv.User)
 		s.Equal("Test User", rv.User.Name)
+		s.NotEmpty(rv.ProductTitle)
+		s.NotEmpty(rv.ProductImage)
 	}
 
 	// 4. The author filter lists only one author's reviews, each carrying the
@@ -617,6 +634,8 @@ func (s *ReviewHTTPTestSuite) TestHTTP_05_PublicListFiltersByRatingAndPages() {
 	for _, rv := range authorResp.Data {
 		s.Equal(authorIDs[0].String(), rv.UserID)
 		s.NotEmpty(rv.ProductTitle)
+		s.NotEmpty(rv.ProductImage)
+		s.Equal("http://localhost/test-bucket/test-key.jpg", rv.ProductImage)
 	}
 
 	// 5. An out-of-range rating is rejected.

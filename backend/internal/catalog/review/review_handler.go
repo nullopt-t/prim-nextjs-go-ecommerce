@@ -69,6 +69,8 @@ type ReviewResponse struct {
 	User *ReviewUserResponse `json:"user,omitempty"`
 	// Title of the reviewed product, resolved at read time
 	ProductTitle string `json:"productTitle,omitempty" example:"Aurora 27 4K Monitor"`
+	// Public URL of the reviewed product's thumbnail, resolved at read time
+	ProductImage string `json:"productImage,omitempty" example:"http://localhost:9000/catalog/products/abc.jpg"`
 	// Verified Order Item purchase UUID
 	OrderItemID string `json:"orderItemId" example:"91000000-0000-0000-0000-000000000001"`
 	// Star score (1-5)
@@ -116,6 +118,7 @@ func mapReviewToResponse(r *model.Review) ReviewResponse {
 		HelpfulCount: r.HelpfulCount,
 		UserVoted:    r.UserVoted,
 		ProductTitle: r.ProductTitle,
+		ProductImage: r.ProductImageURL,
 		CreatedAt:    r.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:    r.UpdatedAt.Format(time.RFC3339),
 	}

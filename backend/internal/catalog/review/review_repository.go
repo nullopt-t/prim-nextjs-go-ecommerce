@@ -515,9 +515,18 @@ func (r *ReviewRepository) List(
 			r.created_at,
 			r.updated_at,
 			r.user_name,
-			p.title%s
+			p.title,
+			so.bucket,
+			so.object_key%s
 		FROM reviews r
 		INNER JOIN products p ON p.id = r.product_id
+		LEFT JOIN storage_objects so ON so.id = COALESCE(
+			p.thumbnail_object_id,
+			(SELECT thumbnail_object_id FROM product_variants
+			 WHERE product_id = p.id AND deleted_at IS NULL AND thumbnail_object_id IS NOT NULL
+			 ORDER BY (id = p.default_variant_id) DESC
+			 LIMIT 1)
+		)
 		%s
 		%s%s
 		LIMIT $%d
@@ -549,6 +558,8 @@ func (r *ReviewRepository) List(
 			&rv.UpdatedAt,
 			&rv.AuthorName,
 			&rv.ProductTitle,
+			&rv.ProductImageBucket,
+			&rv.ProductImageKey,
 			&rv.UserVoted,
 		); err != nil {
 			return nil, nil, err

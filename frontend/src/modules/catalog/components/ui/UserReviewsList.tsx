@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import { mapReview } from "@/modules/catalog/utils/mapReview";
 import { Stars } from "@/shared/ui/stars";
+import { CatalogImage } from "@/shared/ui/catalogImage";
 import { Link } from "@/shared/i18n/navigation";
 import { REVIEWS_PAGE_SIZE } from "@/shared/lib/reviewQuery";
 import type { ProductReview, Review } from "../../types";
@@ -87,9 +88,18 @@ export function UserReviewsList({
             <Link
               href={`/products/${review.productId}`}
               dir="auto"
-              className="text-start text-sm font-semibold text-accent-brand underline-offset-4 transition-colors hover:underline"
+              className="flex items-center gap-3 rounded-lg"
             >
-              {review.productTitle}
+              <CatalogImage
+                src={review.productImage ?? undefined}
+                alt={review.productTitle}
+                width={56}
+                height={56}
+                className="size-14 shrink-0 rounded-lg object-cover"
+              />
+              <span className="text-start text-sm font-semibold text-accent-brand underline-offset-4 transition-colors hover:underline">
+                {review.productTitle}
+              </span>
             </Link>
           ) : null}
 

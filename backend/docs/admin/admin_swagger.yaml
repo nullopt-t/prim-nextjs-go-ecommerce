@@ -1362,6 +1362,11 @@ definitions:
         description: Reviewed Product UUID
         example: 60000000-0000-0000-0000-000000000001
         type: string
+      productImage:
+        description: Public URL of the reviewed product's thumbnail, resolved at read
+          time
+        example: http://localhost:9000/catalog/products/abc.jpg
+        type: string
       productTitle:
         description: Title of the reviewed product, resolved at read time
         example: Aurora 27 4K Monitor

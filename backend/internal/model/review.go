@@ -56,6 +56,13 @@ type Review struct {
 	// ProductTitle is the reviewed product's title, resolved live at listing
 	// time so profile pages can link each review to its product.
 	ProductTitle string
+	// ProductImageBucket and ProductImageKey locate the reviewed product's
+	// thumbnail in storage, joined at listing time for the reviewer profile.
+	ProductImageBucket *string
+	// ProductImageKey is the storage object key of the product thumbnail.
+	ProductImageKey *string
+	// ProductImageURL is the resolved public URL of the product thumbnail.
+	ProductImageURL string
 	// OrderItemID is the purchased line item UUID verifying buyer authenticity.
 	OrderItemID uuid.UUID
 	// Rating is the numerical score between 1 and 5 stars.
@@ -101,4 +108,3 @@ type ReviewFilter struct {
 	// VoterID marks the reviews this voter has already voted helpful.
 	VoterID *uuid.UUID
 }
-

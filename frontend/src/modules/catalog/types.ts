@@ -151,6 +151,8 @@ export interface Review {
   user?: { name?: string; avatar?: string } | null;
   /** Live title of the reviewed product, used by the reviewer profile page. */
   productTitle?: string;
+  /** Public URL of the reviewed product's thumbnail, used by the profile page. */
+  productImage?: string | null;
   rating: number;
   title?: string;
   body?: string;
@@ -243,6 +245,8 @@ export interface ProductReview {
   productId: string | null;
   /** Live title of the reviewed product on the reviewer profile page. */
   productTitle: string | null;
+  /** Public URL of the reviewed product's thumbnail on the reviewer profile page. */
+  productImage: string | null;
   rating: number;
   date: string;
   title: string;

@@ -10,6 +10,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/api/pagination"
 	"github.com/nullopt-t/prim-backend/pkg/database"
+	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
 // UserReader is the subset of user persistence the review domain needs to
@@ -19,15 +20,17 @@ type UserReader interface {
 }
 
 type ReviewService struct {
-	dbRunner   database.Runner
-	repo       *ReviewRepository
-	userReader UserReader
+	dbRunner        database.Runner
+	repo            *ReviewRepository
+	userReader      UserReader
+	storageProvider storage.StorageProvider
 }
 
 func NewService(
 	dbRunner database.Runner,
 	repo *ReviewRepository,
 	userReader UserReader,
+	storageProvider storage.StorageProvider,
 ) *ReviewService {
 	if dbRunner == nil {
 		panic("review: database runner is required")
@@ -38,10 +41,14 @@ func NewService(
 	if userReader == nil {
 		panic("review: user reader is required")
 	}
+	if storageProvider == nil {
+		panic("review: storage provider is required")
+	}
 	return &ReviewService{
-		dbRunner:   dbRunner,
-		repo:       repo,
-		userReader: userReader,
+		dbRunner:        dbRunner,
+		repo:            repo,
+		userReader:      userReader,
+		storageProvider: storageProvider,
 	}
 }
 
@@ -400,6 +407,12 @@ func (s *ReviewService) ListReviews(
 
 	if err != nil {
 		return nil, nil, s.handleError(err, "Failed to list reviews")
+	}
+
+	for i := range reviews {
+		if reviews[i].ProductImageBucket != nil && reviews[i].ProductImageKey != nil {
+			reviews[i].ProductImageURL = s.storageProvider.GetPublicURL(*reviews[i].ProductImageBucket, *reviews[i].ProductImageKey)
+		}
 	}
 
 	return reviews, page, nil

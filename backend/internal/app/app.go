@@ -255,7 +255,7 @@ func (app *App) setupRoutes(router *gin.Engine) {
 
 	// review
 	reviewRepo := review.NewReviewRepository()
-	reviewService := review.NewService(txRunner, reviewRepo, userRepo)
+	reviewService := review.NewService(txRunner, reviewRepo, userRepo, app.storageProvider)
 	reviewHandler := review.NewHandler(reviewService)
 	reviewRouter := review.NewRouter(reviewHandler, sessionStore)
 	reviewRouter.MapRoutes(v1)

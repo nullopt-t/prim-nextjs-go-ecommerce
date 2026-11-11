@@ -639,6 +639,7 @@ export function ProductDetails({
         userId: user?.id ? String(user.id) : null,
         productId: targetProductId ? String(targetProductId) : null,
         productTitle: null,
+        productImage: null,
         rating: newReviewData.rating,
         title: newReviewData.title,
         content: newReviewData.content,
