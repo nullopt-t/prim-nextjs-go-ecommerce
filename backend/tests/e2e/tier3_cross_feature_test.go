@@ -337,7 +337,7 @@ func TestTier3_Checkout_User_Address_OwnershipEnforcement(t *testing.T) {
 
 	userRepo.AddUser(&model.User{
 		ID:         validUser,
-		Identifier: "buyer@example.com",
+		Phone: "buyer@example.com",
 		Status:     model.StatusActive,
 		Role:       model.CustomerRole,
 	})
@@ -346,7 +346,6 @@ func TestTier3_Checkout_User_Address_OwnershipEnforcement(t *testing.T) {
 	addrRepo.AddAddress(&model.UserAddress{
 		ID:       stolenAddrID,
 		UserID:   legitUser,
-		FullName: "Other Customer",
 	})
 
 	err := runner.WithTx(context.Background(), func(ctx context.Context) error {

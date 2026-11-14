@@ -12,10 +12,10 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/database"
 )
 
-// userFilter defines internal query criteria for retrieving a single user by primary UUID or email identifier.
+// userFilter defines internal query criteria for retrieving a single user by primary UUID or phone identifier.
 type userFilter struct {
-	ID         *uuid.UUID
-	Identifier *string
+	ID    *uuid.UUID
+	Phone *string
 }
 
 // UserRepository provides PostgreSQL database persistence operations for the users table:
@@ -46,20 +46,17 @@ func (r *UserRepository) Create(
 
 	fullName := strings.TrimSpace(user.FullName)
 	if fullName == "" {
-		fullName = user.Identifier
-		if atIdx := strings.Index(user.Identifier, "@"); atIdx > 0 {
-			fullName = user.Identifier[:atIdx]
-		}
+		fullName = user.Phone
 	}
 	user.FullName = fullName
 
 	query := `
-		INSERT INTO users (id, email, full_name, phone, role, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, now(), now())
+		INSERT INTO users (id, full_name, phone, phone_verified, country_code, role, preference, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
 		RETURNING id, created_at, updated_at
 	`
 	var createdUserID uuid.UUID
-	err = tx.QueryRowContext(ctx, query, user.ID, user.Identifier, fullName, user.Phone, role).Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
+	err = tx.QueryRowContext(ctx, query, user.ID, fullName, user.Phone, user.PhoneVerified, user.CountryCode, role, "{}").Scan(&createdUserID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -74,12 +71,12 @@ func (r *UserRepository) GetByID(
 	return r.get(ctx, userFilter{ID: &id})
 }
 
-// GetByIdentifier retrieves an active (non-deleted) user record by their email address using case-insensitive comparison.
-func (r *UserRepository) GetByIdentifier(
+// GetByPhone retrieves an active (non-deleted) user record by their phone number using case-insensitive comparison.
+func (r *UserRepository) GetByPhone(
 	ctx context.Context,
-	identifier string,
+	phone string,
 ) (*model.User, error) {
-	return r.get(ctx, userFilter{Identifier: &identifier})
+	return r.get(ctx, userFilter{Phone: &phone})
 }
 
 // ExistsByID reports whether a non-deleted user with the given UUID exists.
@@ -104,7 +101,7 @@ func (r *UserRepository) ExistsByID(
 }
 
 // get executes a parameterized SELECT query against users with deleted_at IS NULL,
-// scanning account status, suspension/lockout windows, and timestamps into the model.User struct.
+// scanning account status, suspension windows, and timestamps into the model.User struct.
 func (r *UserRepository) get(
 	ctx context.Context,
 	filter userFilter,
@@ -115,7 +112,7 @@ func (r *UserRepository) get(
 	}
 
 	query := `
-		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, full_name, phone, phone_verified, country_code, role, status, suspended_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
@@ -128,9 +125,9 @@ func (r *UserRepository) get(
 		i++
 	}
 
-	if filter.Identifier != nil {
-		query += fmt.Sprintf(" AND lower(email) = lower($%d)", i)
-		args = append(args, *filter.Identifier)
+	if filter.Phone != nil {
+		query += fmt.Sprintf(" AND lower(phone) = lower($%d)", i)
+		args = append(args, *filter.Phone)
 	}
 
 	var u model.User
@@ -139,14 +136,13 @@ func (r *UserRepository) get(
 
 	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&u.ID,
-		&u.Identifier,
 		&u.FullName,
 		&u.Phone,
+		&u.PhoneVerified,
+		&u.CountryCode,
 		&roleStr,
-		&u.IsEmailVerified,
 		&statusStr,
 		&u.SuspendedUntil,
-		&u.LockedUntil,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.DeletedAt,
@@ -173,7 +169,7 @@ type UserListFilter struct {
 }
 
 // ListUsers dynamically builds and executes a parameterized SQL query to retrieve
-// a paginated list of non-deleted users matching role, status, or name/email substring searches.
+// a paginated list of non-deleted users matching role, status, or name/phone substring searches.
 func (r *UserRepository) ListUsers(
 	ctx context.Context,
 	filter UserListFilter,
@@ -184,7 +180,7 @@ func (r *UserRepository) ListUsers(
 	}
 
 	query := `
-		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, full_name, phone, phone_verified, country_code, role, status, suspended_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL
 	`
@@ -205,7 +201,7 @@ func (r *UserRepository) ListUsers(
 
 	if filter.Search != nil && *filter.Search != "" {
 		pattern := "%" + *filter.Search + "%"
-		query += fmt.Sprintf(" AND (lower(email) LIKE lower($%d) OR lower(full_name) LIKE lower($%d))", i, i)
+		query += fmt.Sprintf(" AND (lower(phone) LIKE lower($%d) OR lower(full_name) LIKE lower($%d))", i, i)
 		args = append(args, pattern)
 		i++
 	}
@@ -235,14 +231,13 @@ func (r *UserRepository) ListUsers(
 
 		if err := rows.Scan(
 			&u.ID,
-			&u.Identifier,
 			&u.FullName,
 			&u.Phone,
+			&u.PhoneVerified,
+			&u.CountryCode,
 			&roleStr,
-			&u.IsEmailVerified,
 			&statusStr,
 			&u.SuspendedUntil,
-			&u.LockedUntil,
 			&u.CreatedAt,
 			&u.UpdatedAt,
 			&u.DeletedAt,
@@ -292,7 +287,7 @@ func (r *UserRepository) CountUsers(
 
 	if filter.Search != nil && *filter.Search != "" {
 		pattern := "%" + *filter.Search + "%"
-		query += fmt.Sprintf(" AND (lower(email) LIKE lower($%d) OR lower(full_name) LIKE lower($%d))", i, i)
+		query += fmt.Sprintf(" AND (lower(phone) LIKE lower($%d) OR lower(full_name) LIKE lower($%d))", i, i)
 		args = append(args, pattern)
 	}
 
@@ -322,7 +317,7 @@ func (r *UserRepository) ListByRoles(
 	}
 
 	query := `
-		SELECT id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		SELECT id, full_name, phone, phone_verified, country_code, role, status, suspended_until, created_at, updated_at, deleted_at
 		FROM users
 		WHERE deleted_at IS NULL AND role::text = ANY($1)
 		ORDER BY created_at
@@ -342,14 +337,13 @@ func (r *UserRepository) ListByRoles(
 
 		if err := rows.Scan(
 			&u.ID,
-			&u.Identifier,
 			&u.FullName,
 			&u.Phone,
+			&u.PhoneVerified,
+			&u.CountryCode,
 			&roleStr,
-			&u.IsEmailVerified,
 			&statusStr,
 			&u.SuspendedUntil,
-			&u.LockedUntil,
 			&u.CreatedAt,
 			&u.UpdatedAt,
 			&u.DeletedAt,
@@ -411,7 +405,7 @@ func (r *UserRepository) UpdateStatus(
 
 	query := `
 		UPDATE users
-		SET status = $1, suspended_until = $2, updated_at = now()
+		SET status = $1::user_status, suspended_until = $2, updated_at = now()
 		WHERE id = $3 AND deleted_at IS NULL
 	`
 	tag, err := tx.ExecContext(ctx, query, string(status), suspendedUntil, userID)
@@ -486,7 +480,7 @@ func (r *UserRepository) UpdateProfile(
 		UPDATE users
 		SET %s
 		WHERE id = $1 AND deleted_at IS NULL
-		RETURNING id, email, full_name, phone, role, is_email_verified, status, suspended_until, locked_until, created_at, updated_at, deleted_at
+		RETURNING id, full_name, phone, phone_verified, country_code, role, status, suspended_until, created_at, updated_at, deleted_at
 	`, strings.Join(setClauses, ", "))
 
 	var u model.User
@@ -495,14 +489,13 @@ func (r *UserRepository) UpdateProfile(
 
 	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&u.ID,
-		&u.Identifier,
 		&u.FullName,
 		&u.Phone,
+		&u.PhoneVerified,
+		&u.CountryCode,
 		&roleStr,
-		&u.IsEmailVerified,
 		&statusStr,
 		&u.SuspendedUntil,
-		&u.LockedUntil,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 		&u.DeletedAt,

@@ -19,6 +19,7 @@ export function VerifyView() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState<string>("");
   const [mergeCart, setMergeCart] = useState(true);
+  const [profileRequired, setProfileRequired] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -48,7 +49,10 @@ export function VerifyView() {
     }
   };
 
-  const handleSubmit = async (_type: string, payload: { code: string }) => {
+  const handleSubmit = async (
+    _type: string,
+    payload: { code: string; fullName?: string },
+  ) => {
     const { isValid, error } = validateOtpCode(payload.code);
     if (!isValid && error) {
       notify.error(error);
@@ -60,8 +64,14 @@ export function VerifyView() {
       const res = await verifyChallenge({
         email: email || undefined,
         code: payload.code.trim(),
+        fullName: payload.fullName?.trim() || undefined,
         mergeCart,
       });
+      // New phone: ask for a name, then re-submit the same code with it.
+      if (res.profileRequired) {
+        setProfileRequired(true);
+        return;
+      }
       if (res.success) {
         notify.success(t("verify.welcomeBack"));
         // Clear auth temp storage
@@ -136,6 +146,7 @@ export function VerifyView() {
           userEmail={email}
           onResendOtp={handleResendOtp}
           onEditEmail={handleEditEmail}
+          profileRequired={profileRequired}
         />
       </div>
 

@@ -5,37 +5,30 @@ import (
 	"strings"
 
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	"github.com/nullopt-t/prim-backend/pkg/utils"
 )
-
-// egyptianMobilePattern matches Egyptian mobile numbers in national
-// (01xxxxxxxxx) or international (+20 / 0020) form. Operator prefixes are
-// 010, 011, 012 and 015. Spaces and dashes are stripped before matching.
-var egyptianMobilePattern = regexp.MustCompile(`^(?:\+20|0020|0)1[0125]\d{8}$`)
 
 // postalCodePattern matches Egyptian postal codes (five digits).
 var postalCodePattern = regexp.MustCompile(`^\d{5}$`)
 
-// toDigits strips the separators people type into phone inputs.
-func toDigits(raw string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(raw, " ", ""), "-", "")
-}
-
-// normalizePhone validates an optional Egyptian phone number. It returns
-// the stripped form to persist; an empty value is allowed (phone is
-// optional) and returned as the empty string.
+// normalizePhone validates an optional phone number and returns it in E.164
+// form. Local numbers are parsed as Egyptian, international ones use their
+// own country code. An empty value is allowed (phone is optional) and
+// returned as the empty string.
 func normalizePhone(raw *string) (*string, error) {
 	if raw == nil {
 		return nil, nil
 	}
-	stripped := toDigits(strings.TrimSpace(*raw))
-	if stripped == "" {
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
 		empty := ""
 		return &empty, nil
 	}
-	if !egyptianMobilePattern.MatchString(stripped) {
-		return nil, apierr.BadRequestError("Invalid Egyptian phone number").WithCode(apierr.CodeInvalidInput)
+	e164, err := utils.IsValidPhone(trimmed, "EG")
+	if err != nil {
+		return nil, apierr.BadRequestError("Invalid phone number").WithCode(apierr.CodeInvalidInput)
 	}
-	return &stripped, nil
+	return &e164, nil
 }
 
 // validatePostalCode rejects non-Egyptian postal codes when one is provided.

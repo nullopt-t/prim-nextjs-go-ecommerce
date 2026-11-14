@@ -72,7 +72,7 @@ func (r *AddressRepository) ListByUser(
 
 	query := `
 		SELECT
-			id, user_id, label, full_name, phone, line1, line2,
+			id, user_id, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
 		FROM addresses
@@ -91,9 +91,6 @@ func (r *AddressRepository) ListByUser(
 		err := rows.Scan(
 			&a.ID,
 			&a.UserID,
-			&a.Label,
-			&a.FullName,
-			&a.Phone,
 			&a.Line1,
 			&a.Line2,
 			&a.City,
@@ -129,7 +126,7 @@ func (r *AddressRepository) GetByIDAndUser(
 
 	query := `
 		SELECT
-			id, user_id, label, full_name, phone, line1, line2,
+			id, user_id, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
 		FROM addresses
@@ -139,9 +136,6 @@ func (r *AddressRepository) GetByIDAndUser(
 	err = executor.QueryRowContext(ctx, query, id, userID).Scan(
 		&a.ID,
 		&a.UserID,
-		&a.Label,
-		&a.FullName,
-		&a.Phone,
 		&a.Line1,
 		&a.Line2,
 		&a.City,
@@ -227,12 +221,12 @@ func (r *AddressRepository) Create(
 
 	query := `
 		INSERT INTO addresses (
-			id, user_id, label, full_name, phone, line1, line2,
+			id, user_id, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7,
-			$8, $9, $10, $11, $12,
+			$1, $2, $3, $4,
+			$5, $6, $7, $8, $9,
 			now(), now()
 		)
 		RETURNING created_at, updated_at
@@ -242,9 +236,6 @@ func (r *AddressRepository) Create(
 		query,
 		a.ID,
 		a.UserID,
-		a.Label,
-		a.FullName,
-		a.Phone,
 		a.Line1,
 		a.Line2,
 		a.City,
@@ -268,26 +259,20 @@ func (r *AddressRepository) Update(
 	query := `
 		UPDATE addresses
 		SET
-			label = $1,
-			full_name = $2,
-			phone = $3,
-			line1 = $4,
-			line2 = $5,
-			city = $6,
-			state = $7,
-			postal_code = $8,
-			country = $9,
-			is_default = $10,
+			line1 = $1,
+			line2 = $2,
+			city = $3,
+			state = $4,
+			postal_code = $5,
+			country = $6,
+			is_default = $7,
 			updated_at = now()
-		WHERE id = $11 AND user_id = $12 AND deleted_at IS NULL
+		WHERE id = $8 AND user_id = $9 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
 	err = tx.QueryRowContext(
 		ctx,
 		query,
-		a.Label,
-		a.FullName,
-		a.Phone,
 		a.Line1,
 		a.Line2,
 		a.City,
@@ -364,7 +349,7 @@ func (r *AddressRepository) findMostRecentActive(
 
 	query := `
 		SELECT
-			id, user_id, label, full_name, phone, line1, line2,
+			id, user_id, line1, line2,
 			city, state, postal_code, country, is_default,
 			created_at, updated_at
 		FROM addresses
@@ -380,9 +365,6 @@ func (r *AddressRepository) findMostRecentActive(
 	err = executor.QueryRowContext(ctx, query, args...).Scan(
 		&a.ID,
 		&a.UserID,
-		&a.Label,
-		&a.FullName,
-		&a.Phone,
 		&a.Line1,
 		&a.Line2,
 		&a.City,

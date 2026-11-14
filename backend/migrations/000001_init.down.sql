@@ -62,6 +62,7 @@ DROP TABLE IF EXISTS admin_settings CASCADE;
 -- Drop custom ENUM types if present
 DROP TYPE IF EXISTS storage_object_status CASCADE;
 DROP TYPE IF EXISTS publication_status CASCADE;
+DROP TYPE IF EXISTS user_status CASCADE;
 DROP TYPE IF EXISTS user_role CASCADE;
 DROP TYPE IF EXISTS order_status CASCADE;
 DROP TYPE IF EXISTS payment_status CASCADE;

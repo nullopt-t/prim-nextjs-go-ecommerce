@@ -312,7 +312,7 @@ export default function AddressesContent() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="font-semibold text-foreground text-xs sm:text-sm truncate">
-                          {addr.fullName}
+                          {addr.fullName || user?.name || ""}
                         </span>
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-secondary text-muted-foreground uppercase shrink-0">
                           {(() => {
@@ -345,15 +345,18 @@ export default function AddressesContent() {
                     </p>
 
                     {/* Phone with copy */}
-                    {addr.phone && (
+                    {(addr.phone || user?.phone) && (
                       <div className="mt-1">
                         <button
                           type="button"
-                          onClick={() => addr.phone && copyPhoneToClipboard(addr.id, addr.phone)}
+                          onClick={() => {
+                            const p = addr.phone || user?.phone;
+                            if (p) copyPhoneToClipboard(addr.id, p);
+                          }}
                           className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground cursor-pointer text-[11px] transition-colors"
                         >
                           <span className="font-mono tabular-nums [direction:ltr] [unicode-bidi:isolate]">
-                            {addr.phone}
+                            {addr.phone || user?.phone}
                           </span>
                           {copiedPhoneId === addr.id ? (
                             <Check className="size-3 text-emerald-500 shrink-0" />

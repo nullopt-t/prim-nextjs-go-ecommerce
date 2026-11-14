@@ -651,47 +651,47 @@ ON CONFLICT (id) DO NOTHING;
 -- =====================================================================
 -- 2. USERS (Admins, Support, Customers)
 -- =====================================================================
-INSERT INTO users (id, email, full_name, role, is_email_verified, status, created_at, updated_at) VALUES
-('10000000-0000-0000-0000-000000000001', 'admin@prim.com', 'Admin User', 'admin', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000002', 'john.doe@example.com', 'John Doe', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000003', 'jane.smith@example.com', 'Jane Smith', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000004', 'support@prim.com', 'Support Specialist', 'support', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000005', 'alex.turner@example.com', 'Alex Turner', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000006', 'sarah.connor@example.com', 'Sarah Connor', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000007', 'michael.scott@example.com', 'Michael Scott', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000008', 'elena.rostova@example.com', 'Elena Rostova', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000009', 'david.beck@example.com', 'David Beck', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000a', 'emily.watson@example.com', 'Emily Watson', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000b', 'carlos.mendez@example.com', 'Carlos Mendez', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000c', 'hannah.abbott@example.com', 'Hannah Abbott', 'customer', false, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000d', 'omar.hassan@example.com', 'Omar Hassan', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000e', 'lucia.fernandez@example.com', 'Lucia Fernandez', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-00000000000f', 'kenji.tanaka@example.com', 'Kenji Tanaka', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000010', 'nina.petrova@example.com', 'Nina Petrova', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000011', 'diego.silva@example.com', 'Diego Silva', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
-('10000000-0000-0000-0000-000000000012', 'amara.okoye@example.com', 'Amara Okoye', 'customer', true, 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days')
+INSERT INTO users (id, phone, full_name, role, phone_verified, country_code, status, created_at, updated_at) VALUES
+('10000000-0000-0000-0000-000000000001', '+201012340001', 'Admin User', 'admin', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000002', '+201012340002', 'John Doe', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000003', '+201012340003', 'Jane Smith', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000004', '+201012340004', 'Support Specialist', 'support', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000005', '+201012340005', 'Alex Turner', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000006', '+201012340006', 'Sarah Connor', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000007', '+201012340007', 'Michael Scott', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000008', '+201012340008', 'Elena Rostova', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000009', '+201012340009', 'David Beck', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000a', '+201012340010', 'Emily Watson', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000b', '+201012340011', 'Carlos Mendez', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000c', '+201012340012', 'Hannah Abbott', 'customer', false, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000d', '+201012340013', 'Omar Hassan', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000e', '+201012340014', 'Lucia Fernandez', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-00000000000f', '+201012340015', 'Kenji Tanaka', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000010', '+201012340016', 'Nina Petrova', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000011', '+201012340017', 'Diego Silva', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days'),
+('10000000-0000-0000-0000-000000000012', '+201012340018', 'Amara Okoye', 'customer', true, '+20', 'active', now() - INTERVAL '60 days', now() - INTERVAL '60 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================================
 -- 3. ADDRESSES
 -- =====================================================================
-INSERT INTO addresses (id, user_id, label, full_name, phone, line1, line2, city, state, postal_code, country, is_default, created_at, updated_at) VALUES
-('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Home', 'John Doe', '+1234567890', '123 Main St', 'Apt 4B', 'New York', 'NY', '10001', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000003', 'Work', 'Jane Smith', '+1987654321', '456 Market St', 'Suite 100', 'San Francisco', 'CA', '94103', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000005', 'Home', 'Alex Turner', '+14155551234', '789 Sunset Blvd', 'Apt 12', 'Los Angeles', 'CA', '90028', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000006', 'Home', 'Sarah Connor', '+15125556789', '101 Cyberdyne Way', NULL, 'Austin', 'TX', '78701', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000007', 'Office', 'Michael Scott', '+15705559876', '1725 Slough Ave', 'Suite 200', 'Scranton', 'PA', '18503', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000008', 'Home', 'Elena Rostova', '+442071838750', '221B Baker St', 'Flat 2', 'London', 'Greater London', 'NW1 6XE', 'GBR', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000009', 'Home', 'David Beck', '+4930123456', 'Friedrichstraße 43', NULL, 'Berlin', 'Berlin', '10117', 'DEU', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-00000000000a', 'Home', 'Emily Watson', '+12065554321', '500 Pine St', 'Floor 4', 'Seattle', 'WA', '98101', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-00000000000b', 'Apartment', 'Carlos Mendez', '+13055557890', '800 Brickell Ave', 'PH 3', 'Miami', 'FL', '33131', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-000000000002', 'Beach House', 'John Doe', '+1234567890', '50 Ocean Drive', NULL, 'Miami Beach', 'FL', '33139', 'USA', false, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-00000000000d', 'Home', 'Omar Hassan', '+201001234567', '15 Tahrir Street', 'Apt 6', 'Cairo', 'Cairo', '11511', 'EGY', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000c', '10000000-0000-0000-0000-00000000000e', 'Home', 'Lucia Fernandez', '+34600123456', 'Calle Gran Via 21', NULL, 'Madrid', 'Madrid', '28013', 'ESP', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000d', '10000000-0000-0000-0000-00000000000f', 'Home', 'Kenji Tanaka', '+819012345678', '2-1 Marunouchi', 'Tower B', 'Tokyo', 'Tokyo', '100-0005', 'JPN', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000e', '10000000-0000-0000-0000-000000000010', 'Home', 'Nina Petrova', '+74951234567', '12 Tverskaya Street', 'Apt 9', 'Moscow', 'Moscow', '125009', 'RUS', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-00000000000f', '10000000-0000-0000-0000-000000000011', 'Home', 'Diego Silva', '+5511987654321', 'Av. Paulista 1000', 'Apt 22', 'Sao Paulo', 'SP', '01310-100', 'BRA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
-('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000012', 'Home', 'Amara Okoye', '+2348012345678', '15 Awolowo Road', NULL, 'Lagos', 'Lagos', '101241', 'NGA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days')
+INSERT INTO addresses (id, user_id, line1, line2, city, state, postal_code, country, is_default, created_at, updated_at) VALUES
+('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '123 Main St', 'Apt 4B', 'New York', 'NY', '10001', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000003', '456 Market St', 'Suite 100', 'San Francisco', 'CA', '94103', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000005', '789 Sunset Blvd', 'Apt 12', 'Los Angeles', 'CA', '90028', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000006', '101 Cyberdyne Way', NULL, 'Austin', 'TX', '78701', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000007', '1725 Slough Ave', 'Suite 200', 'Scranton', 'PA', '18503', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000006', '10000000-0000-0000-0000-000000000008', '221B Baker St', 'Flat 2', 'London', 'Greater London', 'NW1 6XE', 'GBR', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000007', '10000000-0000-0000-0000-000000000009', 'Friedrichstraße 43', NULL, 'Berlin', 'Berlin', '10117', 'DEU', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000008', '10000000-0000-0000-0000-00000000000a', '500 Pine St', 'Floor 4', 'Seattle', 'WA', '98101', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000009', '10000000-0000-0000-0000-00000000000b', '800 Brickell Ave', 'PH 3', 'Miami', 'FL', '33131', 'USA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-000000000002', '50 Ocean Drive', NULL, 'Miami Beach', 'FL', '33139', 'USA', false, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000b', '10000000-0000-0000-0000-00000000000d', '15 Tahrir Street', 'Apt 6', 'Cairo', 'Cairo', '11511', 'EGY', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000c', '10000000-0000-0000-0000-00000000000e', 'Calle Gran Via 21', NULL, 'Madrid', 'Madrid', '28013', 'ESP', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000d', '10000000-0000-0000-0000-00000000000f', '2-1 Marunouchi', 'Tower B', 'Tokyo', 'Tokyo', '100-0005', 'JPN', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000e', '10000000-0000-0000-0000-000000000010', '12 Tverskaya Street', 'Apt 9', 'Moscow', 'Moscow', '125009', 'RUS', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-00000000000f', '10000000-0000-0000-0000-000000000011', 'Av. Paulista 1000', 'Apt 22', 'Sao Paulo', 'SP', '01310-100', 'BRA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days'),
+('20000000-0000-0000-0000-000000000010', '10000000-0000-0000-0000-000000000012', '15 Awolowo Road', NULL, 'Lagos', 'Lagos', '101241', 'NGA', true, now() - INTERVAL '50 days', now() - INTERVAL '50 days')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================================

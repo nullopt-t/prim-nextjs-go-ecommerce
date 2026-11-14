@@ -6,6 +6,7 @@ import type {
   Session,
   StartChallenge,
   User,
+  VerifyChallengeResult,
 } from "@/modules/auth/types";
 import type { PasskeyAssertion } from "@/modules/auth/lib/passkey";
 
@@ -58,7 +59,7 @@ export const authService = {
     api.post<ApiResponse<StartChallenge>, AuthChallengePayload>("/api/v1/auth/challenge/start", payload),
 
   verifyChallenge: (payload: AuthVerifyPayload) =>
-    api.post<ApiResponse<User>, AuthVerifyPayload>("/api/v1/auth/challenge/verify", payload),
+    api.post<ApiResponse<VerifyChallengeResult>, AuthVerifyPayload>("/api/v1/auth/challenge/verify", payload),
 
   resendChallenge: (payload: AuthChallengePayload) =>
     api.post<ApiResponse<StartChallenge>, AuthChallengePayload>("/api/v1/auth/challenge/resend", payload),

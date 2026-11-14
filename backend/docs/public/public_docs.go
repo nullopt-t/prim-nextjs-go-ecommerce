@@ -218,6 +218,24 @@ const docTemplatepublic = `{
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "Profile completion required",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/VerifyChallengeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
                     "204": {
                         "description": "No Content"
                     },
@@ -6161,25 +6179,16 @@ const docTemplatepublic = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "fullName": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
                 "isDefault": {
                     "type": "boolean"
                 },
-                "label": {
-                    "type": "string"
-                },
                 "line1": {
                     "type": "string"
                 },
                 "line2": {
-                    "type": "string"
-                },
-                "phone": {
                     "type": "string"
                 },
                 "postalCode": {
@@ -6686,22 +6695,13 @@ const docTemplatepublic = `{
                 "country": {
                     "type": "string"
                 },
-                "fullName": {
-                    "type": "string"
-                },
                 "isDefault": {
                     "type": "boolean"
-                },
-                "label": {
-                    "type": "string"
                 },
                 "line1": {
                     "type": "string"
                 },
                 "line2": {
-                    "type": "string"
-                },
-                "phone": {
                     "type": "string"
                 },
                 "postalCode": {
@@ -7015,6 +7015,9 @@ const docTemplatepublic = `{
         "MeResponse": {
             "type": "object",
             "properties": {
+                "countryCode": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
@@ -7025,6 +7028,7 @@ const docTemplatepublic = `{
                     "type": "string"
                 },
                 "identifier": {
+                    "description": "identifier keeps the existing client contract; it now carries the phone.",
                     "type": "string"
                 },
                 "name": {
@@ -9330,22 +9334,13 @@ const docTemplatepublic = `{
                 "country": {
                     "type": "string"
                 },
-                "fullName": {
-                    "type": "string"
-                },
                 "isDefault": {
                     "type": "boolean"
-                },
-                "label": {
-                    "type": "string"
                 },
                 "line1": {
                     "type": "string"
                 },
                 "line2": {
-                    "type": "string"
-                },
-                "phone": {
                     "type": "string"
                 },
                 "postalCode": {
@@ -9440,10 +9435,14 @@ const docTemplatepublic = `{
         "UserResponse": {
             "type": "object",
             "properties": {
+                "countryCode": {
+                    "type": "string"
+                },
                 "createdAt": {
                     "type": "string"
                 },
                 "email": {
+                    "description": "shortcut: email/isEmailVerified keep the admin UI contract alive during the\nphone migration; both now mirror the phone fields. Drop once the admin\nclient reads phone/phoneVerified.",
                     "type": "string"
                 },
                 "fullName": {
@@ -9455,11 +9454,11 @@ const docTemplatepublic = `{
                 "isEmailVerified": {
                     "type": "boolean"
                 },
-                "lockedUntil": {
-                    "type": "string"
-                },
                 "phone": {
                     "type": "string"
+                },
+                "phoneVerified": {
+                    "type": "boolean"
                 },
                 "role": {
                     "type": "string"
@@ -9761,7 +9760,18 @@ const docTemplatepublic = `{
                 "email": {
                     "type": "string"
                 },
+                "fullName": {
+                    "type": "string"
+                },
                 "merge_cart": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "VerifyChallengeResponse": {
+            "type": "object",
+            "properties": {
+                "profileRequired": {
                     "type": "boolean"
                 }
             }

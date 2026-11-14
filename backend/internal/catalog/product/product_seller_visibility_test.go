@@ -104,8 +104,8 @@ func (s *ProductSellerVisibilitySuite) seedProduct(slug string, sellerID *uuid.U
 func (s *ProductSellerVisibilitySuite) seedSeller(status model.SellerStatus) uuid.UUID {
 	userID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, 'Seller User', 'seller', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, 'Seller User', 'seller', true, 'active', '+20')
 	`, userID, "seller_"+userID.String()+"@example.com")
 	s.Require().NoError(err)
 

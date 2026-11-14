@@ -29,8 +29,6 @@ type AccountStatus string
 const (
 	// StatusActive indicates the account is in good standing and can authenticate.
 	StatusActive AccountStatus = "active"
-	// StatusInactive indicates the account has not been activated or verified.
-	StatusInactive AccountStatus = "inactive"
 	// StatusSuspended indicates the account is temporarily blocked from access.
 	StatusSuspended AccountStatus = "suspended"
 	// StatusDeleted indicates the account has been soft-deleted or closed.
@@ -42,19 +40,17 @@ type User struct {
 	// ID is the unique database UUID for the user account.
 	ID uuid.UUID
 
-	// Identifier is the primary authentication handle (e.g. email address or phone).
-	Identifier string
+	// Phone is the primary authentication handle (phone number).
+	Phone string
 	// FullName is the user's display name.
 	FullName string
-	// Phone is the optional contact phone number.
-	Phone *string
 	// Role is the administrative role tier, defaulting to CustomerRole.
 	Role UserRole
-	// IsEmailVerified indicates whether the user confirmed their email address.
-	IsEmailVerified bool
+	// PhoneVerified indicates whether the user confirmed their phone number.
+	PhoneVerified bool
+	// CountryCode is the user's country calling code (e.g. +20).
+	CountryCode string
 
-	// EmailVerifiedAt is the timestamp when the user confirmed email ownership.
-	EmailVerifiedAt *time.Time
 	// PhoneVerifiedAt is the timestamp when the user confirmed phone ownership.
 	PhoneVerifiedAt *time.Time
 
@@ -69,11 +65,11 @@ type User struct {
 	// SuspendedUntil is the expiration timestamp for temporary suspensions (nil if indefinite).
 	SuspendedUntil *time.Time
 
-	// LockedUntil is the expiration timestamp for temporary rate-limit / brute-force security lockouts.
-	LockedUntil *time.Time
-
 	// DeletedAt is the optional timestamp when the account was soft-deleted.
 	DeletedAt *time.Time
+
+	// Preference stores arbitrary user preferences as key-value pairs.
+	Preference map[string]any
 
 	// CreatedAt is the timestamp when the account registered.
 	CreatedAt time.Time
@@ -81,16 +77,12 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-// IsActive returns true if the user's account status is active and neither locked nor suspended.
+// IsActive returns true if the user's account status is active and not suspended.
 func (u *User) IsActive() bool {
 	if u.Status != StatusActive {
 		return false
 	}
-	now := time.Now()
-	if u.LockedUntil != nil && now.Before(*u.LockedUntil) {
-		return false
-	}
-	if u.SuspendedUntil != nil && now.Before(*u.SuspendedUntil) {
+	if u.SuspendedUntil != nil && time.Now().Before(*u.SuspendedUntil) {
 		return false
 	}
 	return true
@@ -104,9 +96,9 @@ func (u *User) IsSuspended() bool {
 // String returns a safe debug summary of the User record (excluding sensitive timestamps).
 func (u *User) String() string {
 	return fmt.Sprintf(
-		"user{id=%s, identifier=%s, status=%s}",
+		"user{id=%s, phone=%s, status=%s}",
 		u.ID,
-		u.Identifier,
+		u.Phone,
 		u.Status,
 	)
 }

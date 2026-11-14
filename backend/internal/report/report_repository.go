@@ -242,9 +242,9 @@ func (r *Repository) exportPayments(ctx context.Context, qe database.QueryExecut
 }
 
 func (r *Repository) exportCustomers(ctx context.Context, qe database.QueryExecutor, f ReportFilter) ([]string, [][]string, error) {
-	header := []string{"created_at", "user_id", "email", "full_name", "role", "status"}
+	header := []string{"created_at", "user_id", "phone", "full_name", "role", "status"}
 	query := `
-		SELECT u.created_at, u.id, u.email, COALESCE(u.full_name, ''), u.role, u.status
+		SELECT u.created_at, u.id, u.phone, COALESCE(u.full_name, ''), u.role, u.status
 		FROM users u
 		WHERE u.deleted_at IS NULL
 		  AND ($1::timestamptz IS NULL OR u.created_at >= $1)
@@ -262,13 +262,13 @@ func (r *Repository) exportCustomers(ctx context.Context, qe database.QueryExecu
 	for rows.Next() {
 		var (
 			createdAt       time.Time
-			id, email, name string
+			id, phone, name string
 			role, status    string
 		)
-		if err := rows.Scan(&createdAt, &id, &email, &name, &role, &status); err != nil {
+		if err := rows.Scan(&createdAt, &id, &phone, &name, &role, &status); err != nil {
 			return nil, nil, fmt.Errorf("scan customer export: %w", err)
 		}
-		out = append(out, []string{createdAt.Format(time.RFC3339), id, email, name, role, status})
+		out = append(out, []string{createdAt.Format(time.RFC3339), id, phone, name, role, status})
 	}
 	return header, out, rows.Err()
 }

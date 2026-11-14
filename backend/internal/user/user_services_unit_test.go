@@ -280,9 +280,8 @@ func newAddressService() (*user.AddressService, *fakeAddressRepo) {
 	return user.NewAddressService(fakeRunner{}, repo, log.NewNoopLogger()), repo
 }
 
-func addressInput(name string) *user.CreateAddressInput {
+func addressInput() *user.CreateAddressInput {
 	return &user.CreateAddressInput{
-		FullName: "  " + name + " ",
 		Line1:    " 12 Test Street ",
 		City:     " Cairo ",
 		Country:  " EG ",
@@ -301,15 +300,14 @@ func TestAddressService_Unit_FirstAddressDefaultAndTrim(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	first, err := svc.CreateAddress(ctx, userID, addressInput("Alice"))
+	first, err := svc.CreateAddress(ctx, userID, addressInput())
 	require.NoError(t, err)
 	assert.True(t, first.IsDefault)
-	assert.Equal(t, "Alice", first.FullName)
 	assert.Equal(t, "12 Test Street", first.Line1)
 	assert.Equal(t, "Cairo", first.City)
 	assert.Equal(t, "EG", first.Country)
 
-	second, err := svc.CreateAddress(ctx, userID, addressInput("Bob"))
+	second, err := svc.CreateAddress(ctx, userID, addressInput())
 	require.NoError(t, err)
 	assert.False(t, second.IsDefault)
 }
@@ -319,14 +317,14 @@ func TestAddressService_Unit_OwnershipIsolation(t *testing.T) {
 	ctx := context.Background()
 	owner, intruder := uuid.New(), uuid.New()
 
-	addr, err := svc.CreateAddress(ctx, owner, addressInput("Owner"))
+	addr, err := svc.CreateAddress(ctx, owner, addressInput())
 	require.NoError(t, err)
 
 	_, err = svc.GetAddress(ctx, addr.ID, intruder)
 	requireStatus(t, err, 404)
 
 	_, err = svc.UpdateAddress(ctx, addr.ID, intruder, &user.UpdateAddressInput{
-		FullName: "Hacked", Line1: "x", City: "y", Country: "z",
+		Line1: "x", City: "y", Country: "z",
 	})
 	requireStatus(t, err, 404)
 
@@ -338,7 +336,6 @@ func TestAddressService_Unit_OwnershipIsolation(t *testing.T) {
 
 	reloaded, err := svc.GetAddress(ctx, addr.ID, owner)
 	require.NoError(t, err)
-	assert.Equal(t, "Owner", reloaded.FullName)
 	assert.True(t, reloaded.IsDefault)
 }
 
@@ -347,9 +344,9 @@ func TestAddressService_Unit_DefaultTransitions(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	first, err := svc.CreateAddress(ctx, userID, addressInput("First"))
+	first, err := svc.CreateAddress(ctx, userID, addressInput())
 	require.NoError(t, err)
-	second, err := svc.CreateAddress(ctx, userID, addressInput("Second"))
+	second, err := svc.CreateAddress(ctx, userID, addressInput())
 	require.NoError(t, err)
 
 	_, err = svc.SetDefaultAddress(ctx, second.ID, userID)
@@ -364,7 +361,7 @@ func TestAddressService_Unit_DefaultTransitions(t *testing.T) {
 
 	// Demoting the default promotes the other address.
 	_, err = svc.UpdateAddress(ctx, second.ID, userID, &user.UpdateAddressInput{
-		FullName: second.FullName, Line1: second.Line1, City: second.City, Country: second.Country,
+		Line1: second.Line1, City: second.City, Country: second.Country,
 		IsDefault: false,
 	})
 	require.NoError(t, err)
@@ -394,11 +391,11 @@ func TestAddressService_Unit_CannotUnsetOnlyDefault(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
-	only, err := svc.CreateAddress(ctx, userID, addressInput("Only"))
+	only, err := svc.CreateAddress(ctx, userID, addressInput())
 	require.NoError(t, err)
 
 	_, err = svc.UpdateAddress(ctx, only.ID, userID, &user.UpdateAddressInput{
-		FullName: only.FullName, Line1: only.Line1, City: only.City, Country: only.Country,
+		Line1: only.Line1, City: only.City, Country: only.Country,
 		IsDefault: false,
 	})
 	requireStatus(t, err, 400)
@@ -410,10 +407,9 @@ func TestAddressService_Unit_Validation(t *testing.T) {
 	userID := uuid.New()
 
 	cases := []*user.CreateAddressInput{
-		{FullName: "  ", Line1: "line", City: "city", Country: "EG"},
-		{FullName: "Alice", Line1: " ", City: "city", Country: "EG"},
-		{FullName: "Alice", Line1: "line", City: "\t", Country: "EG"},
-		{FullName: "Alice", Line1: "line", City: "city", Country: ""},
+		{Line1: " ", City: "city", Country: "EG"},
+		{Line1: "line", City: "\t", Country: "EG"},
+		{Line1: "line", City: "city", Country: ""},
 	}
 	for i, in := range cases {
 		_, err := svc.CreateAddress(ctx, userID, in)
@@ -422,27 +418,6 @@ func TestAddressService_Unit_Validation(t *testing.T) {
 	}
 }
 
-func TestAddressService_Unit_InvalidPhoneRejected(t *testing.T) {
-	svc, _ := newAddressService()
-	ctx := context.Background()
-	userID := uuid.New()
-
-	badPhones := []string{"abc", "+441234567890", "011234", "012345678", "+2012345678901"}
-	for _, phone := range badPhones {
-		in := addressInput("Alice")
-		in.Phone = &phone
-		_, err := svc.CreateAddress(ctx, userID, in)
-		requireStatus(t, err, 400)
-	}
-
-	goodPhones := []string{"01012345678", "+201012345678", "0020 111 234 5678", "01123456789"}
-	for _, phone := range goodPhones {
-		in := addressInput("Alice")
-		in.Phone = &phone
-		_, err := svc.CreateAddress(ctx, userID, in)
-		require.NoError(t, err)
-	}
-}
 
 func TestAddressService_Unit_InvalidPostalCodeRejected(t *testing.T) {
 	svc, _ := newAddressService()
@@ -450,34 +425,19 @@ func TestAddressService_Unit_InvalidPostalCodeRejected(t *testing.T) {
 	userID := uuid.New()
 
 	for _, postal := range []string{"123", "123456", "12A45"} {
-		in := addressInput("Alice")
+		in := addressInput()
 		in.PostalCode = &postal
 		_, err := svc.CreateAddress(ctx, userID, in)
 		requireStatus(t, err, 400)
 	}
 
-	in := addressInput("Alice")
+	in := addressInput()
 	valid := "11222"
 	in.PostalCode = &valid
 	_, err := svc.CreateAddress(ctx, userID, in)
 	require.NoError(t, err)
 }
 
-func TestAddressService_Unit_UpdateRejectsInvalidPhone(t *testing.T) {
-	svc, _ := newAddressService()
-	ctx := context.Background()
-	userID := uuid.New()
-
-	created, err := svc.CreateAddress(ctx, userID, addressInput("Alice"))
-	require.NoError(t, err)
-
-	bad := "not-a-phone"
-	_, err = svc.UpdateAddress(ctx, created.ID, userID, &user.UpdateAddressInput{
-		FullName: "Alice", Line1: "line", City: "Cairo", Country: "EG", Phone: &bad,
-		IsDefault: true,
-	})
-	requireStatus(t, err, 400)
-}
 
 func TestNotificationService_Unit_LifecycleAndIsolation(t *testing.T) {
 	repo := newFakeNotificationRepo()

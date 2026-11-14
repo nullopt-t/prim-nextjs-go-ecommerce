@@ -9,6 +9,7 @@ interface FormButtonProps {
   handle: (type: string, payload: unknown) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  label?: string;
 }
 
 export default function FormButton({
@@ -17,14 +18,16 @@ export default function FormButton({
   handle,
   isLoading = false,
   disabled = false,
+  label,
 }: FormButtonProps) {
   const t = useTranslations("auth");
   const buttonTxt =
-    type === "login"
+    label ??
+    (type === "login"
       ? t("sign.signButton")
       : type === "verify"
       ? t("verify.verifyButton")
-      : "";
+      : "");
 
   return (
     <button

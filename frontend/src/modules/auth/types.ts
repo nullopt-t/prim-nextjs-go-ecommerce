@@ -42,8 +42,13 @@ export interface AuthChallengePayload {
 export interface AuthVerifyPayload {
   email?: string;
   code: string;
+  fullName?: string;
   merge_cart?: boolean;
   mergeCart?: boolean;
+}
+
+export interface VerifyChallengeResult {
+  profileRequired?: boolean;
 }
 
 export type AuthFormType = "login" | "verify" | "register";

@@ -87,16 +87,15 @@ func (s *UserDomainSuite) TearDownSuite() {
 func (s *UserDomainSuite) seedUser() uuid.UUID {
 	id := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, $3, 'customer', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, $3, 'customer', true, 'active', '+20')
 	`, id, "user_domain_"+id.String()+"@example.com", "User Domain")
 	s.Require().NoError(err)
 	return id
 }
 
-func (s *UserDomainSuite) newAddressInput(name string) *user.CreateAddressInput {
+func (s *UserDomainSuite) newAddressInput() *user.CreateAddressInput {
 	return &user.CreateAddressInput{
-		FullName: name,
 		Line1:    " 12 Test Street ",
 		City:     " Cairo ",
 		Country:  " EG ",
@@ -113,15 +112,14 @@ func statusOf(t *testing.T, err error) int {
 func (s *UserDomainSuite) TestAddress_FirstAddressBecomesDefaultAndValuesAreTrimmed() {
 	userID := s.seedUser()
 
-	created, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput(" Alice "))
+	created, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 	s.True(created.IsDefault)
-	s.Equal("Alice", created.FullName)
 	s.Equal("12 Test Street", created.Line1)
 	s.Equal("Cairo", created.City)
 	s.Equal("EG", created.Country)
 
-	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Bob"))
+	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 	s.False(second.IsDefault, "only the first address is auto-promoted")
 }
@@ -130,13 +128,13 @@ func (s *UserDomainSuite) TestAddress_OwnershipIsolation() {
 	owner := s.seedUser()
 	intruder := s.seedUser()
 
-	addr, err := s.addresses.CreateAddress(context.Background(), owner, s.newAddressInput("Owner"))
+	addr, err := s.addresses.CreateAddress(context.Background(), owner, s.newAddressInput())
 	s.Require().NoError(err)
 
 	_, err = s.addresses.GetAddress(context.Background(), addr.ID, intruder)
 	s.Equal(404, statusOf(s.T(), err))
 
-	in := &user.UpdateAddressInput{FullName: "Hacked", Line1: "x", City: "y", Country: "z"}
+	in := &user.UpdateAddressInput{Line1: "x", City: "y", Country: "z"}
 	_, err = s.addresses.UpdateAddress(context.Background(), addr.ID, intruder, in)
 	s.Equal(404, statusOf(s.T(), err))
 
@@ -149,16 +147,15 @@ func (s *UserDomainSuite) TestAddress_OwnershipIsolation() {
 	// The owner's row is untouched.
 	reloaded, err := s.addresses.GetAddress(context.Background(), addr.ID, owner)
 	s.Require().NoError(err)
-	s.Equal("Owner", reloaded.FullName)
 	s.True(reloaded.IsDefault)
 }
 
 func (s *UserDomainSuite) TestAddress_SetDefaultClearsPrevious() {
 	userID := s.seedUser()
 
-	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("First"))
+	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
-	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Second"))
+	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 	s.False(second.IsDefault)
 
@@ -184,13 +181,12 @@ func (s *UserDomainSuite) TestAddress_SetDefaultClearsPrevious() {
 func (s *UserDomainSuite) TestAddress_UnsettingDefaultPromotesAnother() {
 	userID := s.seedUser()
 
-	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("First"))
+	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
-	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Second"))
+	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 
 	_, err = s.addresses.UpdateAddress(context.Background(), first.ID, userID, &user.UpdateAddressInput{
-		FullName:  first.FullName,
 		Line1:     first.Line1,
 		City:      first.City,
 		Country:   first.Country,
@@ -209,11 +205,10 @@ func (s *UserDomainSuite) TestAddress_UnsettingDefaultPromotesAnother() {
 
 func (s *UserDomainSuite) TestAddress_CannotUnsetOnlyDefault() {
 	userID := s.seedUser()
-	only, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Only"))
+	only, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 
 	_, err = s.addresses.UpdateAddress(context.Background(), only.ID, userID, &user.UpdateAddressInput{
-		FullName:  only.FullName,
 		Line1:     only.Line1,
 		City:      only.City,
 		Country:   only.Country,
@@ -225,9 +220,9 @@ func (s *UserDomainSuite) TestAddress_CannotUnsetOnlyDefault() {
 func (s *UserDomainSuite) TestAddress_DeletingDefaultPromotesAnotherAndLastLeavesNone() {
 	userID := s.seedUser()
 
-	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("First"))
+	first, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
-	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Second"))
+	second, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 	s.Require().NoError(err)
 
 	s.Require().NoError(s.addresses.DeleteAddress(context.Background(), first.ID, userID))
@@ -249,27 +244,21 @@ func (s *UserDomainSuite) TestAddress_ValidationRejectsWhitespaceFields() {
 		input *user.CreateAddressInput
 	}{
 		{
-			name: "blank full name",
-			input: &user.CreateAddressInput{
-				FullName: "  ", Line1: "line", City: "city", Country: "EG",
-			},
-		},
-		{
 			name: "blank line1",
 			input: &user.CreateAddressInput{
-				FullName: "Alice", Line1: " ", City: "city", Country: "EG",
+				Line1: " ", City: "city", Country: "EG",
 			},
 		},
 		{
 			name: "blank city",
 			input: &user.CreateAddressInput{
-				FullName: "Alice", Line1: "line", City: "\t", Country: "EG",
+				Line1: "line", City: "\t", Country: "EG",
 			},
 		},
 		{
 			name: "blank country",
 			input: &user.CreateAddressInput{
-				FullName: "Alice", Line1: "line", City: "city", Country: "",
+				Line1: "line", City: "city", Country: "",
 			},
 		},
 	}
@@ -293,7 +282,7 @@ func (s *UserDomainSuite) TestAddress_ConcurrentFirstCreationsProduceOneDefault(
 		go func() {
 			defer wg.Done()
 			<-start
-			addr, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput("Concurrent"))
+			addr, err := s.addresses.CreateAddress(context.Background(), userID, s.newAddressInput())
 			if err != nil {
 				results <- nil
 				return

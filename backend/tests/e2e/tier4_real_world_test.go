@@ -39,7 +39,7 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	name := "Alice Shopper"
 	userRepo.AddUser(&model.User{
 		ID:         userID,
-		Identifier: "alice@example.com",
+		Phone: "alice@example.com",
 		FullName:   name,
 		Status:     model.StatusActive,
 		Role:       model.CustomerRole,
@@ -49,7 +49,6 @@ func TestTier4_RealWorld_CompleteCashOnDeliveryCheckout(t *testing.T) {
 	addrRepo.AddAddress(&model.UserAddress{
 		ID:         addrID,
 		UserID:     userID,
-		FullName:   "Alice Shopper",
 		Line1:      "22 Nile Corniche",
 		City:       "Cairo",
 		Country:    "EG",

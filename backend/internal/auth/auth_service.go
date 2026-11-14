@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,10 +20,12 @@ import (
 type UserService interface {
 	CreateUser(
 		ctx context.Context,
-		identifier string,
+		phone,
+		fullName,
+		countryCode string,
 	) (*model.User, error)
 
-	GetUserByIdentifier(
+	GetUserByPhone(
 		ctx context.Context,
 		identifier string,
 	) (*model.User, error)
@@ -49,6 +52,9 @@ type Notifier interface {
 type SessionAuthResult struct {
 	SessionID string
 	UserID    uuid.UUID
+	// ProfileRequired is true when the phone is not registered yet and the
+	// caller must supply a display name before the account is created.
+	ProfileRequired bool
 }
 
 // AuthService encapsulates domain business logic for passwordless authentication flows,
@@ -110,12 +116,12 @@ func (s *AuthService) StartChallenge(
 	identifier string,
 ) (*model.Challenge, error) {
 	// Canonicalize the identifier so every entry point keys the same Redis challenge
-	identifier = utils.NormalizeEmail(identifier)
+	identifier = strings.TrimSpace(strings.ToLower(identifier))
 
 	challenge, err := s.challengeService.Create(
 		ctx,
 		identifier,
-		"email",
+		"sms",
 	)
 	if err != nil {
 		return nil, err
@@ -131,7 +137,7 @@ func (s *AuthService) ResendChallenge(
 	identifier string,
 ) error {
 	// Canonicalize the identifier to match the challenge key used at creation
-	identifier = utils.NormalizeEmail(identifier)
+	identifier = strings.TrimSpace(strings.ToLower(identifier))
 
 	// Fetch active challenge from Redis
 	challenge, err := s.challengeService.Get(
@@ -161,12 +167,13 @@ func (s *AuthService) ResendChallenge(
 func (s *AuthService) VerifyChallenge(
 	ctx context.Context,
 	identifier,
-	code string,
+	code,
+	fullName,
 	userAgent string,
 	ipAddress string,
 ) (*SessionAuthResult, error) {
 	// Canonicalize the identifier to match the challenge key used at creation
-	identifier = utils.NormalizeEmail(identifier)
+	identifier = strings.TrimSpace(strings.ToLower(identifier))
 
 	// Retrieve active challenge from Redis
 	challenge, err := s.challengeService.Get(
@@ -197,7 +204,7 @@ func (s *AuthService) VerifyChallenge(
 	}
 
 	// Resolve existing user account or provision a new customer account (Just-In-Time signup)
-	user, err := s.userService.GetUserByIdentifier(
+	user, err := s.userService.GetUserByPhone(
 		ctx,
 		challenge.Identifier,
 	)
@@ -208,17 +215,26 @@ func (s *AuthService) VerifyChallenge(
 			return nil, err
 		}
 
+		// New account: ask the client for a name before creating it. The
+		// challenge stays active so the client can re-submit the same code.
+		fullName = strings.TrimSpace(fullName)
+		if fullName == "" {
+			return &SessionAuthResult{ProfileRequired: true}, nil
+		}
+
 		user, err = s.userService.CreateUser(
 			ctx,
 			challenge.Identifier,
+			fullName,
+			utils.CountryCallingCode(challenge.Identifier),
 		)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Enforce lifecycle access controls: inactive and soft-deleted accounts are forbidden
-	if user.Status == model.StatusDeleted || user.Status == model.StatusInactive {
+	// Enforce lifecycle access controls: soft-deleted accounts are forbidden
+	if user.Status == model.StatusDeleted {
 		return nil, apierr.New(http.StatusForbidden, "Account is inactive").WithCode(apierr.CodeForbidden)
 	}
 
@@ -227,11 +243,6 @@ func (s *AuthService) VerifyChallenge(
 		if user.SuspendedUntil == nil || time.Now().Before(*user.SuspendedUntil) {
 			return nil, apierr.New(http.StatusForbidden, "Account is suspended").WithCode(apierr.CodeForbidden)
 		}
-	}
-
-	// Enforce temporary security lock window (e.g. from failed security events)
-	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
-		return nil, apierr.New(http.StatusForbidden, "Account is temporarily locked").WithCode(apierr.CodeForbidden)
 	}
 
 	// Atomically mark the challenge as verified in Redis via Lua script to prevent OTP reuse

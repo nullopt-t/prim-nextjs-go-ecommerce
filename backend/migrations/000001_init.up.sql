@@ -56,6 +56,9 @@ BEGIN
     IF to_regtype('fulfillment_status') IS NULL THEN
         CREATE TYPE fulfillment_status AS ENUM ('pending', 'shipped', 'delivered');
     END IF;
+    IF to_regtype('user_status') IS NULL THEN
+        CREATE TYPE user_status AS ENUM ('active', 'suspended', 'deleted');
+    END IF;
 END
 $$;
 
@@ -85,23 +88,23 @@ CREATE TABLE IF NOT EXISTS storage_objects (
 
 CREATE TABLE IF NOT EXISTS users (
     id                   uuid NOT NULL,
-    email                text NOT NULL,
     full_name            text NOT NULL,
-    phone                text NULL,
+    phone                text NOT NULL,
+    phone_verified        boolean NOT NULL DEFAULT false,
+    country_code          text NOT NULL,
     role                 user_role NOT NULL DEFAULT 'customer',
-    is_email_verified    boolean NOT NULL DEFAULT false,
-    status               text NOT NULL DEFAULT 'active',
+    status               user_status NOT NULL DEFAULT 'active',
+    preference           jsonb NOT NULL DEFAULT '{}'::jsonb,
     suspended_until      timestamptz NULL,
-    locked_until         timestamptz NULL,
     created_at           timestamptz NOT NULL DEFAULT now(),
     updated_at           timestamptz NOT NULL DEFAULT now(),
     deleted_at           timestamptz NULL,
     PRIMARY KEY (id)
 );
 
--- Fix: Allow re-registering with the same email if the old account was soft-deleted
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
-    ON users (lower(email))
+-- Fix: Allow re-registering with the same phone if the old account was soft-deleted
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_lower
+    ON users (lower(phone))
     WHERE deleted_at IS NULL;
 
 -- Enforce exactly one active superadmin in the system
@@ -112,9 +115,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_single_superadmin
 CREATE TABLE IF NOT EXISTS addresses (
     id             uuid NOT NULL,
     user_id        uuid NOT NULL,
-    label          text NULL,
-    full_name      text NOT NULL,
-    phone          text NULL,
     line1          text NOT NULL,
     line2          text NULL,
     city           text NOT NULL,

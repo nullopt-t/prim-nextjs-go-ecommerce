@@ -123,6 +123,12 @@ func TestIsValidPhone(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestCountryCallingCode(t *testing.T) {
+	assert.Equal(t, "+20", utils.CountryCallingCode("+201012340001"))
+	assert.Equal(t, "+1", utils.CountryCallingCode("+12025550123"))
+	assert.Equal(t, "", utils.CountryCallingCode("not-a-number"))
+}
+
 func TestEmailHandling(t *testing.T) {
 	// With display name
 	normalized, err := utils.IsValidEmail("John Doe <john@example.com>")

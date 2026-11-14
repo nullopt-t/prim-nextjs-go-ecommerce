@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
-	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
@@ -174,11 +173,15 @@ func (n *KafkaNotifier) NotifyOTP(
 		return err
 	}
 
-	// SMS is not wired to a delivery consumer; reject explicitly instead of
-	// publishing an email-templated OTP to a topic no SMS worker consumes.
+	// shortcut: no SMS provider is wired yet; log the code so phone sign-in
+	// still works in development/staging. Replace with a real sender before
+	// production traffic.
 	if channel == "sms" {
-		return apierr.BadRequestError("SMS OTP delivery is not supported").
-			WithCode(apierr.CodeInvalidInput)
+		n.logger.Info("sms OTP delivery is not wired; logging code", log.Meta{
+			"recipient": identifier,
+			"otp":       otp,
+		})
+		return nil
 	}
 
 	event := &job.NotificationEvent{

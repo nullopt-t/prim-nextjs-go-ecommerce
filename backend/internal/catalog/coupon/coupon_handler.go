@@ -75,8 +75,8 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 		Status:        string(c.Status),
 		UsageCount:    c.UsageCount,
 		// TODO: we should have expiredAt
-		CreatedAt:     c.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:     c.UpdatedAt.Format(time.RFC3339),
+		CreatedAt: c.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: c.UpdatedAt.Format(time.RFC3339),
 	}
 	if c.StartsAt != nil {
 		s := c.StartsAt.Format(time.RFC3339)
@@ -268,7 +268,7 @@ type CouponRedemptionResponse struct {
 	ID             string  `json:"id" example:"c1000000-0000-0000-0000-000000000001"`
 	UserID         *string `json:"userId,omitempty" example:"10000000-0000-0000-0000-000000000003"`
 	UserName       *string `json:"userName,omitempty" example:"Jane Doe"`
-	UserEmail      *string `json:"userEmail,omitempty" example:"jane@example.com"`
+	UserPhone      *string `json:"userPhone,omitempty" example:"01012340001"`
 	OrderID        string  `json:"orderId" example:"90000000-0000-0000-0000-000000000002"`
 	DiscountAmount int64   `json:"discountAmount" example:"13000"`
 	Currency       string  `json:"currency" example:"EGP"`
@@ -283,7 +283,7 @@ func toRedemptionResponse(e *RedemptionEntry) CouponRedemptionResponse {
 		Currency:       e.Currency,
 		CreatedAt:      e.CreatedAt.Format(time.RFC3339),
 		UserName:       e.UserName,
-		UserEmail:      e.UserEmail,
+		UserPhone:      e.UserPhone,
 	}
 	if e.UserID != nil {
 		v := e.UserID.String()

@@ -23,9 +23,9 @@ type UsersResponse struct {
 	Users []UserResponse `json:"users"`
 }
 
-// UserByEmailRequest represents the request payload when querying or referencing a user by their primary email.
-type UserByEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
+// UserByPhoneRequest represents the request payload when querying or referencing a user by their phone number.
+type UserByPhoneRequest struct {
+	Phone string `json:"phone" binding:"required"`
 }
 
 // UserURIParam captures and validates UUID route parameters from path bindings.
@@ -52,17 +52,21 @@ type UpdateProfileRequest struct {
 }
 
 // UserResponse represents the public administrative view of a user account entity,
-// including administrative roles, email verification status, account status, and timestamps.
+// including administrative roles, phone verification status, account status, and timestamps.
 type UserResponse struct {
-	ID              uuid.UUID  `json:"id"`
+	ID uuid.UUID `json:"id"`
+	// shortcut: email/isEmailVerified keep the admin UI contract alive during the
+	// phone migration; both now mirror the phone fields. Drop once the admin
+	// client reads phone/phoneVerified.
 	Email           string     `json:"email"`
-	FullName        *string    `json:"fullName,omitempty"`
-	Phone           *string    `json:"phone,omitempty"`
-	Role            string     `json:"role"`
 	IsEmailVerified bool       `json:"isEmailVerified"`
+	Phone           string     `json:"phone"`
+	PhoneVerified   bool       `json:"phoneVerified"`
+	CountryCode     string     `json:"countryCode"`
+	FullName        *string    `json:"fullName,omitempty"`
+	Role            string     `json:"role"`
 	Status          string     `json:"status"`
 	SuspendedUntil  *time.Time `json:"suspendedUntil,omitempty"`
-	LockedUntil     *time.Time `json:"lockedUntil,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 }
@@ -76,14 +80,15 @@ func ToUserResponse(user model.User) UserResponse {
 	}
 	return UserResponse{
 		ID:              user.ID,
-		Email:           user.Identifier,
-		FullName:        &user.FullName,
+		Email:           user.Phone,
+		IsEmailVerified: user.PhoneVerified,
 		Phone:           user.Phone,
+		PhoneVerified:   user.PhoneVerified,
+		CountryCode:     user.CountryCode,
+		FullName:        &user.FullName,
 		Role:            roleStr,
-		IsEmailVerified: user.IsEmailVerified,
 		Status:          string(user.Status),
 		SuspendedUntil:  user.SuspendedUntil,
-		LockedUntil:     user.LockedUntil,
 		CreatedAt:       user.CreatedAt,
 		UpdatedAt:       user.UpdatedAt,
 	}

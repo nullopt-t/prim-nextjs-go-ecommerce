@@ -7,7 +7,7 @@ export interface Address {
   userId: string;
   label?: string;
   type?: string;
-  fullName: string;
+  fullName?: string;
   name?: string;
   phone?: string;
   line1: string;
@@ -24,7 +24,7 @@ export interface Address {
 
 export interface CreateAddressPayload {
   label?: string;
-  fullName: string;
+  fullName?: string;
   phone?: string;
   line1: string;
   line2?: string;

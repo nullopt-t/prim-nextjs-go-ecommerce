@@ -18,7 +18,7 @@ import (
 
 func (s *AuthTestSuite) TestStartChallenge_HappyPath() {
 	payload := auth.StartChallengeRequest{
-		Email: "test@example.com",
+		Email: "+201000000001",
 	}
 	body, _ := json.Marshal(payload)
 
@@ -37,7 +37,7 @@ func (s *AuthTestSuite) TestStartChallenge_HappyPath() {
 	s.Require().NoError(err)
 
 	data := resp["data"].(map[string]interface{})
-	s.Require().Equal("test@example.com", data["email"])
+	s.Require().Equal("+201000000001", data["email"])
 	s.Require().Contains(data, "expiresAt")
 }
 
@@ -61,7 +61,7 @@ func (s *AuthTestSuite) TestHTTPRateLimiting() {
 	// but the same IP to trigger the HTTP rate limit.
 	for i := 1; i <= 6; i++ {
 		payload := auth.StartChallengeRequest{
-			Email: fmt.Sprintf("ratelimit%d@example.com", i),
+			Email: fmt.Sprintf("0100001%04d", i),
 		}
 		body, _ := json.Marshal(payload)
 
@@ -83,7 +83,7 @@ func (s *AuthTestSuite) TestHTTPRateLimiting() {
 
 func (s *AuthTestSuite) TestStartChallenge_MaxResends() {
 	payload := auth.StartChallengeRequest{
-		Email: "maxresends@example.com",
+		Email: "+201000000002",
 	}
 	body, _ := json.Marshal(payload)
 
@@ -114,10 +114,10 @@ func (s *AuthTestSuite) TestStartChallenge_MaxResends() {
 }
 
 func (s *AuthTestSuite) TestFullAuthFlow_HappyPath() {
-	email := "flow@example.com"
+	phone := "+201000000003"
 
 	// 1. Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -130,8 +130,9 @@ func (s *AuthTestSuite) TestFullAuthFlow_HappyPath() {
 
 	// 2. Verify Challenge
 	payloadVerify := auth.VerifyChallengeRequest{
-		Email: email,
-		Code:  otp,
+		Email:    phone,
+		Code:     otp,
+		FullName: "Happy Path",
 	}
 	bodyVerify, _ := json.Marshal(payloadVerify)
 	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
@@ -148,10 +149,10 @@ func (s *AuthTestSuite) TestFullAuthFlow_HappyPath() {
 }
 
 func (s *AuthTestSuite) TestVerifyChallenge_InvalidOTP() {
-	email := "wrongotp@example.com"
+	phone := "+201000000004"
 
 	// Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -161,7 +162,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_InvalidOTP() {
 
 	// Verify with bad OTP
 	payloadVerify := auth.VerifyChallengeRequest{
-		Email: email,
+		Email: phone,
 		Code:  "000000", // Intentional bad OTP
 	}
 	bodyVerify, _ := json.Marshal(payloadVerify)
@@ -173,11 +174,60 @@ func (s *AuthTestSuite) TestVerifyChallenge_InvalidOTP() {
 	s.Require().Equal(http.StatusUnauthorized, wVerify.Code)
 }
 
+func (s *AuthTestSuite) TestVerifyChallenge_NewUserRequiresProfile() {
+	phone := "+201000000021"
+
+	payloadStart := auth.StartChallengeRequest{Email: phone}
+	bodyStart, _ := json.Marshal(payloadStart)
+	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
+	reqStart.Header.Set("Content-Type", "application/json")
+	wStart := httptest.NewRecorder()
+	s.router.ServeHTTP(wStart, reqStart)
+	s.Require().Equal(http.StatusOK, wStart.Code)
+
+	otp := s.notifier.LastOTP
+
+	// First verify without a name: no account is created yet.
+	payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp}
+	bodyVerify, _ := json.Marshal(payloadVerify)
+	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
+	reqVerify.Header.Set("Content-Type", "application/json")
+	wVerify := httptest.NewRecorder()
+	s.router.ServeHTTP(wVerify, reqVerify)
+	s.Require().Equal(http.StatusOK, wVerify.Code)
+
+	var resp map[string]interface{}
+	s.Require().NoError(json.Unmarshal(wVerify.Body.Bytes(), &resp))
+	data, ok := resp["data"].(map[string]interface{})
+	s.Require().True(ok)
+	s.Require().Equal(true, data["profileRequired"])
+
+	var count int
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
+		`SELECT count(*) FROM users WHERE phone = $1`, phone).Scan(&count))
+	s.Require().Zero(count, "account must not exist before the profile is submitted")
+
+	// Second verify with the name creates the account and the session.
+	payloadVerify.FullName = "New Person"
+	bodyVerify, _ = json.Marshal(payloadVerify)
+	reqVerify, _ = http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
+	reqVerify.Header.Set("Content-Type", "application/json")
+	wVerify = httptest.NewRecorder()
+	s.router.ServeHTTP(wVerify, reqVerify)
+	s.Require().Equal(http.StatusNoContent, wVerify.Code)
+
+	var fullName, countryCode string
+	s.Require().NoError(s.db.QueryRowContext(context.Background(),
+		`SELECT full_name, country_code FROM users WHERE phone = $1`, phone).Scan(&fullName, &countryCode))
+	s.Require().Equal("New Person", fullName)
+	s.Require().Equal("+20", countryCode)
+}
+
 func (s *AuthTestSuite) TestVerifyChallenge_MaxAttempts() {
-	email := "maxattempts@example.com"
+	phone := "+201000000005"
 
 	// Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -187,7 +237,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_MaxAttempts() {
 
 	// 5 failed verification attempts
 	for i := 1; i <= 6; i++ {
-		payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: "000000"}
+		payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: "000000"}
 		bodyVerify, _ := json.Marshal(payloadVerify)
 		reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 		reqVerify.Header.Set("Content-Type", "application/json")
@@ -203,10 +253,10 @@ func (s *AuthTestSuite) TestVerifyChallenge_MaxAttempts() {
 }
 
 func (s *AuthTestSuite) TestVerifyChallenge_Concurrent() {
-	email := "concurrent@example.com"
+	phone := "+201000000006"
 
 	// Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -224,7 +274,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_Concurrent() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: otp}
+			payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp, FullName: "Concurrent User"}
 			bodyVerify, _ := json.Marshal(payloadVerify)
 			reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 			reqVerify.Header.Set("Content-Type", "application/json")
@@ -242,17 +292,17 @@ func (s *AuthTestSuite) TestVerifyChallenge_Concurrent() {
 }
 
 func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Suspended() {
-	email := "suspended@example.com"
+	phone := "+201000000007"
 
 	userID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, status, suspended_until, created_at, updated_at)
-		VALUES ($1, $2, 'Suspended User', 'suspended', now() + interval '1 day', now(), now())`,
-		userID, email)
+		INSERT INTO users (id, phone, full_name, status, suspended_until, created_at, updated_at, country_code)
+		VALUES ($1, $2, 'Suspended User', 'suspended', now() + interval '1 day', now(), now(), '+20')`,
+		userID, phone)
 	s.Require().NoError(err)
 
 	// Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -263,7 +313,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Suspended() {
 	otp := s.notifier.LastOTP
 
 	// Verify Challenge
-	payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: otp}
+	payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp}
 	bodyVerify, _ := json.Marshal(payloadVerify)
 	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 	reqVerify.Header.Set("Content-Type", "application/json")
@@ -276,17 +326,17 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Suspended() {
 	s.Require().Equal("Account is suspended", resp["message"])
 }
 
-func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Inactive() {
-	email := "inactive@example.com"
+func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Deleted() {
+	phone := "+201000000008"
 
 	userID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, status, created_at, updated_at)
-		VALUES ($1, $2, 'Inactive User', 'inactive', now(), now())`,
-		userID, email)
+		INSERT INTO users (id, phone, full_name, status, created_at, updated_at, country_code)
+		VALUES ($1, $2, 'Deleted User', 'deleted', now(), now(), '+20')`,
+		userID, phone)
 	s.Require().NoError(err)
 
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -295,7 +345,7 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Inactive() {
 
 	otp := s.notifier.LastOTP
 
-	payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: otp}
+	payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp}
 	bodyVerify, _ := json.Marshal(payloadVerify)
 	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 	reqVerify.Header.Set("Content-Type", "application/json")
@@ -305,17 +355,17 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Inactive() {
 	s.Require().Equal(http.StatusForbidden, wVerify.Code)
 }
 
-func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
-	email := "locked@example.com"
+func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Active() {
+	phone := "+201000000009"
 
 	userID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, status, locked_until, created_at, updated_at)
-		VALUES ($1, $2, 'Locked User', 'active', now() + interval '1 hour', now(), now())`,
-		userID, email)
+		INSERT INTO users (id, phone, full_name, status, created_at, updated_at, country_code)
+		VALUES ($1, $2, 'Active User', 'active', now(), now(), '+20')`,
+		userID, phone)
 	s.Require().NoError(err)
 
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -324,15 +374,12 @@ func (s *AuthTestSuite) TestVerifyChallenge_UserStatus_Locked() {
 
 	otp := s.notifier.LastOTP
 
-	payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: otp}
+	payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp}
 	bodyVerify, _ := json.Marshal(payloadVerify)
 	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 	reqVerify.Header.Set("Content-Type", "application/json")
 	wVerify := httptest.NewRecorder()
 	s.router.ServeHTTP(wVerify, reqVerify)
 
-	s.Require().Equal(http.StatusForbidden, wVerify.Code)
-	var resp map[string]interface{}
-	s.Require().NoError(json.Unmarshal(wVerify.Body.Bytes(), &resp))
-	s.Require().Equal("Account is temporarily locked", resp["message"])
+	s.Require().Equal(http.StatusNoContent, wVerify.Code)
 }

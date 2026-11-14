@@ -10,9 +10,6 @@ import (
 type UserAddress struct {
 	ID         uuid.UUID  `db:"id" json:"id"`
 	UserID     uuid.UUID  `db:"user_id" json:"userId"`
-	Label      *string    `db:"label" json:"label,omitempty"`
-	FullName   string     `db:"full_name" json:"fullName"`
-	Phone      *string    `db:"phone" json:"phone,omitempty"`
 	Line1      string     `db:"line1" json:"line1"`
 	Line2      *string    `db:"line2" json:"line2,omitempty"`
 	City       string     `db:"city" json:"city"`

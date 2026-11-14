@@ -559,8 +559,8 @@ func (s *SellerServiceSuite) SetupSuite() {
 	db := s.db
 	s.sellerUID = uuid.New()
 	_, err = db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'seller@example.com', 'Seller User', 'seller', 'active', false, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'seller@example.com', 'Seller User', 'seller', 'active', false, now(), now(), '+20')
 	`, s.sellerUID)
 	require.NoError(err)
 
@@ -660,8 +660,8 @@ func (s *SellerServiceSuite) seedSettledEarningsFor(sellerID uuid.UUID, earning 
 func (s *SellerServiceSuite) TestRegisterSellerCreatesPendingProfile() {
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'second@example.com', 'Second User', 'seller', 'active', false, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'second@example.com', 'Second User', 'seller', 'active', false, now(), now(), '+20')
 	`, uid)
 	s.Require().NoError(err)
 
@@ -688,8 +688,8 @@ func (s *SellerServiceSuite) TestRegisterSellerIsOnePerUser() {
 func (s *SellerServiceSuite) TestRegisterSellerSlugCollision() {
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'third@example.com', 'Third User', 'seller', 'active', false, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'third@example.com', 'Third User', 'seller', 'active', false, now(), now(), '+20')
 	`, uid)
 	s.Require().NoError(err)
 
@@ -809,8 +809,8 @@ func (s *SellerServiceSuite) TestAdminTransitionPayoutConcurrentConflict() {
 func (s *SellerServiceSuite) TestCustomerCanRegisterThroughHTTPRoutes() {
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'router-merchant@example.com', 'Router Merchant', 'customer', 'active', true, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'router-merchant@example.com', 'Router Merchant', 'customer', 'active', true, now(), now(), '+20')
 	`, uid)
 	s.Require().NoError(err)
 
@@ -859,8 +859,8 @@ func (s *SellerServiceSuite) TestCustomerCanRegisterThroughHTTPRoutes() {
 func (s *SellerServiceSuite) TestCustomerRoleCanRegisterAndReadProfile() {
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'customer-merchant@example.com', 'Customer Merchant', 'customer', 'active', true, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'customer-merchant@example.com', 'Customer Merchant', 'customer', 'active', true, now(), now(), '+20')
 	`, uid)
 	s.Require().NoError(err)
 
@@ -972,8 +972,8 @@ func (s *SellerServiceSuite) TestSlugConflictMapsToFieldError() {
 
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, $2, 'Slug Competitor', 'customer', 'active', true, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, $2, 'Slug Competitor', 'customer', 'active', true, now(), now(), '+20')
 	`, uid, "slug-competitor-"+uid.String()[:8]+"@example.com")
 	s.Require().NoError(err)
 
@@ -1066,8 +1066,8 @@ func (s *SellerServiceSuite) createSeller(status model.SellerStatus) (uuid.UUID,
 	uid := uuid.New()
 	email := "merchant-" + uid.String()[:8] + "@example.com"
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, $2, 'Lifecycle Merchant', 'customer', 'active', true, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, $2, 'Lifecycle Merchant', 'customer', 'active', true, now(), now(), '+20')
 	`, uid, email)
 	s.Require().NoError(err)
 
@@ -1303,8 +1303,8 @@ func (s *SellerServiceSuite) TestDashboardReportsMoneyAndCatalog() {
 	// A dedicated seller keeps the counters independent of other tests.
 	uid := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
-		INSERT INTO users (id, email, full_name, role, status, is_email_verified, created_at, updated_at)
-		VALUES ($1, 'dash@example.com', 'Dash Seller', 'seller', 'active', false, now(), now())
+		INSERT INTO users (id, phone, full_name, role, status, phone_verified, created_at, updated_at, country_code)
+		VALUES ($1, 'dash@example.com', 'Dash Seller', 'seller', 'active', false, now(), now(), '+20')
 	`, uid)
 	s.Require().NoError(err)
 

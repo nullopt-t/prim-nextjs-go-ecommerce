@@ -1,4 +1,10 @@
 // ISO 3166-1 alpha-2 country codes
+import {
+  getCountries,
+  getCountryCallingCode,
+  type CountryCode,
+} from "libphonenumber-js";
+
 export const COUNTRY_CODES = [
   "EG", // Egypt (Primary)
   "SA", // Saudi Arabia
@@ -47,6 +53,30 @@ export interface CountryOption {
   code: string;
   name: string;
   nativeName: string;
+}
+
+export interface PhoneCountryOption {
+  code: CountryCode;
+  name: string;
+  dialCode: string;
+}
+
+// All countries supported for phone sign-in, localized and sorted by name.
+export function getPhoneCountries(locale: string = "en"): PhoneCountryOption[] {
+  let displayNames: Intl.DisplayNames | null = null;
+  try {
+    displayNames = new Intl.DisplayNames([locale], { type: "region" });
+  } catch {
+    // Fallback if Intl.DisplayNames is not supported
+  }
+
+  return getCountries()
+    .map((code) => ({
+      code,
+      name: displayNames?.of(code) || code,
+      dialCode: `+${getCountryCallingCode(code)}`,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, locale));
 }
 
 export function getLocalizedCountries(locale: string = "en"): CountryOption[] {

@@ -31,9 +31,6 @@ func NewAddressHandler(service *AddressService) *AddressHandler {
 type AddressResponse struct {
 	ID         string  `json:"id"`
 	UserID     string  `json:"userId"`
-	Label      *string `json:"label,omitempty"`
-	FullName   string  `json:"fullName"`
-	Phone      *string `json:"phone,omitempty"`
 	Line1      string  `json:"line1"`
 	Line2      *string `json:"line2,omitempty"`
 	City       string  `json:"city"`
@@ -51,9 +48,6 @@ func mapAddressResponse(a *model.UserAddress) AddressResponse {
 	return AddressResponse{
 		ID:         a.ID.String(),
 		UserID:     a.UserID.String(),
-		Label:      a.Label,
-		FullName:   a.FullName,
-		Phone:      a.Phone,
 		Line1:      a.Line1,
 		Line2:      a.Line2,
 		City:       a.City,

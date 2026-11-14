@@ -418,8 +418,8 @@ func (s *CheckoutTestSuite) seedUser() (uuid.UUID, string) {
 	userID := uuid.New()
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, $3, 'customer', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, $3, 'customer', true, 'active', '+20')
 	`, userID, "checkout_"+userID.String()+"@example.com", "Checkout Customer")
 	s.Require().NoError(err)
 
@@ -440,9 +440,9 @@ func (s *CheckoutTestSuite) seedUser() (uuid.UUID, string) {
 func (s *CheckoutTestSuite) seedAddress(userID uuid.UUID) uuid.UUID {
 	addressID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO addresses (id, user_id, full_name, line1, city, state, postal_code, country, is_default)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-	`, addressID, userID, "Checkout Customer", "12 Test Street", "Cairo", "Cairo", "11511", "EG")
+		INSERT INTO addresses (id, user_id, line1, city, state, postal_code, country, is_default)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+	`, addressID, userID, "12 Test Street", "Cairo", "Cairo", "11511", "EG")
 	s.Require().NoError(err)
 	return addressID
 }
@@ -1483,8 +1483,8 @@ func (s *CheckoutTestSuite) seedSellerProfile(status string) uuid.UUID {
 	ctx := context.Background()
 	sellerUserID := uuid.New()
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, $3, 'seller', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, $3, 'seller', true, 'active', '+20')
 	`, sellerUserID, "seller_"+uuid.NewString()+"@example.com", "Seller Seller")
 	s.Require().NoError(err)
 

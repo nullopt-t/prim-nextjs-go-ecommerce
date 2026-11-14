@@ -6,21 +6,18 @@ import { useAuthContext } from "@/modules/auth/model/authContext";
 import { userService } from "@/modules/account/api/userService";
 import { notify, apiErrorMessage } from "@/shared/lib/notify";
 import { useTranslations } from "next-intl";
-import { isValidEgyptianPhone, normalizeEgyptianPhone } from "@/modules/account/model/addressSchema";
 
 export default function PersonalInfoForm() {
   const { user, refreshUser } = useAuthContext();
   const t = useTranslations("settings.personalInfo");
 
   const [name, setName] = useState(user?.name || "");
-  const [phone, setPhone] = useState(user?.phone || "");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
       setName(user.name || "");
-      setPhone(user.phone || "");
     }
   }, [user]);
 
@@ -33,17 +30,10 @@ export default function PersonalInfoForm() {
       notify.error(msg);
       return;
     }
-    if (phone.trim() && !isValidEgyptianPhone(phone)) {
-      const msg = t("invalidPhone");
-      setFormError(msg);
-      notify.error(msg);
-      return;
-    }
     setIsSaving(true);
     try {
       await userService.updateProfile({
         fullName: name.trim(),
-        phone: phone.trim() ? normalizeEgyptianPhone(phone) : undefined,
       });
       await refreshUser();
       setFormError(null);
@@ -55,6 +45,8 @@ export default function PersonalInfoForm() {
       setIsSaving(false);
     }
   };
+
+  const phoneDisplay = user?.phone || user?.email || "";
 
   return (
     <div className="flex flex-col gap-8 w-full">
@@ -74,24 +66,6 @@ export default function PersonalInfoForm() {
           />
         </div>
 
-        {/* Email */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-xs font-medium text-foreground">
-            {t("email")}
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={user?.email || ""}
-            readOnly
-            disabled
-            className="h-10 w-full rounded-xl border border-border bg-secondary/30 px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none transition"
-          />
-          <p className="text-[11px] text-muted-foreground">
-            {t("emailNotice")}
-          </p>
-        </div>
-
         {/* Phone */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="phone" className="text-xs font-medium text-foreground">
@@ -100,11 +74,15 @@ export default function PersonalInfoForm() {
           <input
             id="phone"
             type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder={t("notSet")}
-            className="h-10 w-full rounded-xl border border-border bg-background px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent-brand transition"
+            value={phoneDisplay}
+            readOnly
+            disabled
+            dir="ltr"
+            className="h-10 w-full rounded-xl border border-border bg-secondary/30 px-3.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground disabled:opacity-75 disabled:cursor-not-allowed focus:outline-none transition"
           />
+          <p className="text-[11px] text-muted-foreground">
+            {t("phoneNotice")}
+          </p>
         </div>
 
         {/* Submit button */}

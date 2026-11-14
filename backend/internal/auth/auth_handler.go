@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,14 +20,16 @@ import (
 // It exposes identity, administrative role tier, account status, and registration timestamp
 // without leaking sensitive credential material or internal metadata.
 type MeResponse struct {
-	ID         uuid.UUID `json:"id,omitempty"`
-	Identifier string    `json:"identifier,omitempty"`
-	FullName   string    `json:"fullName,omitempty"`
-	Name       string    `json:"name,omitempty"`
-	Phone      *string   `json:"phone,omitempty"`
-	Role       string    `json:"role,omitempty"`
-	Status     string    `json:"status,omitempty"`
-	CreatedAt  time.Time `json:"createdAt,omitzero"`
+	ID uuid.UUID `json:"id,omitempty"`
+	// identifier keeps the existing client contract; it now carries the phone.
+	Identifier  string    `json:"identifier,omitempty"`
+	FullName    string    `json:"fullName,omitempty"`
+	Name        string    `json:"name,omitempty"`
+	Phone       string    `json:"phone,omitempty"`
+	CountryCode string    `json:"countryCode,omitempty"`
+	Role        string    `json:"role,omitempty"`
+	Status      string    `json:"status,omitempty"`
+	CreatedAt   time.Time `json:"createdAt,omitzero"`
 }
 
 // Handler orchestrates HTTP transport layer operations for authentication,
@@ -80,8 +83,15 @@ func NewAuthHandler(
 }
 
 // StartChallengeRequest represents the inbound JSON body required to initiate an OTP challenge.
+// The field keeps the legacy "email" JSON key; it now carries a phone number.
 type StartChallengeRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email" binding:"required"`
+}
+
+// validateIdentifier validates a phone number and returns it in E.164 form,
+// which is how phones are stored and used as the challenge key.
+func validateIdentifier(raw string) (string, error) {
+	return utils.IsValidPhone(strings.TrimSpace(raw), "EG")
 }
 
 // StartChallengeResponse represents the JSON response providing the client with challenge metadata,
@@ -94,15 +104,22 @@ type StartChallengeResponse struct {
 
 // ResendChallengeRequest represents the inbound JSON body to trigger a new OTP dispatch.
 type ResendChallengeRequest struct {
-	Email string `json:"email" binding:"required,email"`
+	Email string `json:"email" binding:"required"`
 }
 
 // VerifyChallengeRequest represents the inbound payload to validate an OTP challenge code.
 // Optionally contains a flag indicating whether the client requests merging guest cart items.
 type VerifyChallengeRequest struct {
-	Email     string `json:"email" binding:"required,email"`
+	Email     string `json:"email" binding:"required"`
 	Code      string `json:"code" binding:"required,len=6,numeric"`
+	FullName  string `json:"fullName,omitempty"`
 	MergeCart *bool  `json:"merge_cart,omitempty"`
+}
+
+// VerifyChallengeResponse is returned instead of a session when the phone is
+// new and the client must submit a display name to finish creating the account.
+type VerifyChallengeResponse struct {
+	ProfileRequired bool `json:"profileRequired"`
 }
 
 // StartChallenge godoc
@@ -126,10 +143,10 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 		return
 	}
 
-	// Canonicalize and strictly validate the email address format
-	email, err := utils.IsValidEmail(req.Email)
+	// Canonicalize and strictly validate the phone number format
+	phone, err := validateIdentifier(req.Email)
 	if err != nil {
-		_ = c.Error(apierr.BadRequestError("invalid email"))
+		_ = c.Error(apierr.BadRequestError("invalid phone number"))
 		return
 	}
 
@@ -137,7 +154,7 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	ctx := c.Request.Context()
 	challenge, err := h.authService.StartChallenge(
 		ctx,
-		email,
+		phone,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -147,7 +164,7 @@ func (h *Handler) StartChallenge(c *gin.Context) {
 	// Return successful challenge response containing the expiration date and duration in milliseconds
 	c.JSON(http.StatusOK, api.DataResponse{
 		Data: StartChallengeResponse{
-			Email:     email,
+			Email:     phone,
 			ExpiresAt: challenge.ExpiresAt.UTC().Format(time.RFC3339),
 			Duration:  h.challengeTTL.Milliseconds(),
 		},
@@ -178,6 +195,7 @@ func (h *Handler) clearAuthCookies(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		VerifyChallengeRequest	true	"Challenge Verification Request"
+//	@Success		200		{object}	api.DataResponse{data=VerifyChallengeResponse}	"Profile completion required"
 //	@Success		204		"No Content"
 //	@Failure		400		{object}	api.BadReqResponse
 //	@Failure		401		{object}	api.UnauthorizedResponse
@@ -192,11 +210,11 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 		return
 	}
 
-	// Canonicalize and strictly validate the email address so /verify uses the
+	// Canonicalize and strictly validate the phone number so /verify uses the
 	// same identifier as /start (otherwise challenge lookups miss on case/tags)
-	email, err := utils.IsValidEmail(req.Email)
+	phone, err := validateIdentifier(req.Email)
 	if err != nil {
-		_ = c.Error(apierr.BadRequestError("invalid email"))
+		_ = c.Error(apierr.BadRequestError("invalid phone number"))
 		return
 	}
 
@@ -208,13 +226,22 @@ func (h *Handler) VerifyChallenge(c *gin.Context) {
 	// Verify the OTP challenge code and transition the user account state
 	authResult, err := h.authService.VerifyChallenge(
 		ctx,
-		email,
+		phone,
 		req.Code,
+		req.FullName,
 		userAgent,
 		ipAddress,
 	)
 	if err != nil {
 		_ = c.Error(err)
+		return
+	}
+
+	// The phone is not registered yet: ask for a name before creating the account.
+	if authResult != nil && authResult.ProfileRequired {
+		c.JSON(http.StatusOK, api.DataResponse{
+			Data: VerifyChallengeResponse{ProfileRequired: true},
+		})
 		return
 	}
 
@@ -281,11 +308,11 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 		return
 	}
 
-	// Canonicalize and strictly validate the email address so /resend uses the
+	// Canonicalize and strictly validate the phone number so /resend uses the
 	// same identifier as /start
-	email, err := utils.IsValidEmail(req.Email)
+	phone, err := validateIdentifier(req.Email)
 	if err != nil {
-		_ = c.Error(apierr.BadRequestError("invalid email"))
+		_ = c.Error(apierr.BadRequestError("invalid phone number"))
 		return
 	}
 
@@ -293,7 +320,7 @@ func (h *Handler) ResendChallenge(c *gin.Context) {
 	ctx := c.Request.Context()
 	err = h.authService.ResendChallenge(
 		ctx,
-		email,
+		phone,
 	)
 	if err != nil {
 		_ = c.Error(err)
@@ -339,14 +366,15 @@ func (h *Handler) GetMe(c *gin.Context) {
 		http.StatusOK,
 		api.DataResponse{
 			Data: MeResponse{
-				ID:         user.ID,
-				Identifier: user.Identifier,
-				FullName:   user.FullName,
-				Name:       user.FullName,
-				Phone:      user.Phone,
-				Status:     string(user.Status),
-				Role:       roleStr,
-				CreatedAt:  user.CreatedAt,
+				ID:          user.ID,
+				Identifier:  user.Phone,
+				FullName:    user.FullName,
+				Name:        user.FullName,
+				Phone:       user.Phone,
+				CountryCode: user.CountryCode,
+				Status:      string(user.Status),
+				Role:        roleStr,
+				CreatedAt:   user.CreatedAt,
 			},
 		},
 	)

@@ -381,7 +381,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		//    payment) or released (on cancellation/expiry) deterministically.
 		orderIn := &order.CreateOrderInput{
 			CustomerID:      &in.CustomerID,
-			CustomerEmail:   buyer.email,
+			CustomerEmail:   buyer.contact,
 			ShippingAddress: buildShippingAddress(shippingAddr),
 			CouponID:        coupon.id,
 			CouponCode:      coupon.code,
@@ -448,7 +448,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 // buyerContact is the customer identity checkout needs to own an order.
 type buyerContact struct {
-	email       string
+	contact     string
 	displayName string
 }
 
@@ -465,9 +465,12 @@ func (s *CheckoutService) resolveBuyer(ctx context.Context, userID uuid.UUID) (*
 
 	name := strings.TrimSpace(buyer.FullName)
 	if name == "" {
-		name = buyer.Identifier
+		name = buyer.Phone
 	}
-	return &buyerContact{email: buyer.Identifier, displayName: name}, nil
+	// shortcut: orders still store a customer_email snapshot and email templates read it.
+	// The phone is the only identifier left on users, so it fills that column until
+	// orders move to phone/SMS notifications.
+	return &buyerContact{contact: buyer.Phone, displayName: name}, nil
 }
 
 // lockAndLoadCart acquires the row lock and the cart in one place. Locking

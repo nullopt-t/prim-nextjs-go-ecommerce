@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Mail, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import {
+	parsePhoneNumberFromString,
+	type CountryCode,
+} from "libphonenumber-js";
 import FormTitle from "@/modules/auth/components/ui/formTitle";
 import FormSubtitle from "@/modules/auth/components/ui/formSubtitle";
+import { getPhoneCountries } from "@/shared/lib/countries";
 import {
 	Form,
 	FormControl,
@@ -19,32 +24,40 @@ import {
 } from "@/shared/ui/form/form";
 
 interface LoginEmailFormProps {
-	onSubmit: (email: string) => Promise<void> | void;
+	onSubmit: (phone: string) => Promise<void> | void;
 	isLoading?: boolean;
 }
 
 export function LoginEmailForm({ onSubmit, isLoading = false }: LoginEmailFormProps) {
 	const t = useTranslations("auth");
+	const locale = useLocale();
+	const [country, setCountry] = useState<CountryCode>("EG");
+
+	const countries = useMemo(() => getPhoneCountries(locale), [locale]);
 
 	const schema = useMemo(
 		() =>
 			z.object({
-				email: z
+				phone: z
 					.string()
 					.trim()
-					.min(1, t("sign.emailRequired"))
-					.pipe(z.email(t("sign.emailInvalid"))),
+					.min(1, t("sign.emailRequired")),
 			}),
 		[t],
 	);
 
 	const form = useForm<z.infer<typeof schema>>({
 		resolver: zodResolver(schema),
-		defaultValues: { email: "" },
+		defaultValues: { phone: "" },
 	});
 
 	const handleSubmit = form.handleSubmit(async (values) => {
-		await onSubmit(values.email);
+		const parsed = parsePhoneNumberFromString(values.phone, country);
+		if (!parsed?.isValid()) {
+			form.setError("phone", { message: t("sign.emailInvalid") });
+			return;
+		}
+		await onSubmit(parsed.number);
 	});
 
 	return (
@@ -58,22 +71,36 @@ export function LoginEmailForm({ onSubmit, isLoading = false }: LoginEmailFormPr
 				<form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
 					<FormField
 						control={form.control}
-						name="email"
+						name="phone"
 						render={({ field }) => (
 							<FormItem>
 								<FormLabel>{t("sign.emailLabel")}</FormLabel>
 								<FormControl>
-									<div className="relative flex items-center">
-										<Mail className="pointer-events-none absolute start-3 size-4 text-muted-foreground" />
+									<div className="flex items-center rounded-xl border border-border bg-background transition focus-within:border-accent-brand focus-within:ring-1 focus-within:ring-accent-brand aria-invalid:border-destructive">
+										<select
+											aria-label={t("sign.countryCodeLabel")}
+											value={country}
+											onChange={(e) => setCountry(e.target.value as CountryCode)}
+											disabled={isLoading}
+											dir="ltr"
+											className="h-10 shrink-0 cursor-pointer bg-transparent ps-3 pe-1 text-xs sm:text-sm font-medium text-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+										>
+											{countries.map((c) => (
+												<option key={c.code} value={c.code}>
+													{`${c.dialCode} ${c.code}`}
+												</option>
+											))}
+										</select>
+										<span className="h-5 w-px shrink-0 bg-border" aria-hidden="true" />
 										<FormInput
 											{...field}
-											type="email"
-											autoComplete="email"
-											inputMode="email"
+											type="tel"
+											autoComplete="tel-national"
+											inputMode="tel"
 											dir="ltr"
 											placeholder={t("sign.emailPlaceholder")}
 											disabled={isLoading}
-											className="h-11 ps-9.5"
+											className="h-10 rounded-none border-0 bg-transparent ps-2.5 focus:border-0 focus:ring-0"
 										/>
 									</div>
 								</FormControl>

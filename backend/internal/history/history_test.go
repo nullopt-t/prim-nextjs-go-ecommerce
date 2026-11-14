@@ -116,8 +116,8 @@ func (s *HistoryTestSuite) SetupSuite() {
 
 	s.userID = uuid.New()
 	_, err = db.ExecContext(ctx, `
-		INSERT INTO users (id, email, full_name, role)
-		VALUES ($1, $2, $3, 'customer')
+		INSERT INTO users (id, phone, full_name, role, country_code)
+		VALUES ($1, $2, $3, 'customer', '+20')
 	`, s.userID, "history@example.com", "History Customer")
 	require.NoError(s.T(), err)
 
@@ -306,8 +306,8 @@ func (s *HistoryTestSuite) TestListHidesInactiveSellerProducts() {
 	ctx := context.Background()
 	sellerUserID := uuid.New()
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO users (id, email, full_name, role)
-		VALUES ($1, $2, $3, 'customer')
+		INSERT INTO users (id, phone, full_name, role, country_code)
+		VALUES ($1, $2, $3, 'customer', '+20')
 	`, sellerUserID, "inactive-seller@example.com", "Inactive Seller")
 	s.Require().NoError(err)
 
@@ -448,8 +448,8 @@ func (s *HistoryTestSuite) TestCascadeDeletesCleanViews() {
 
 	cascadeUserID := uuid.New()
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO users (id, email, full_name, role)
-		VALUES ($1, $2, $3, 'customer')
+		INSERT INTO users (id, phone, full_name, role, country_code)
+		VALUES ($1, $2, $3, 'customer', '+20')
 	`, cascadeUserID, "cascade-user@example.com", "Cascade User")
 	s.Require().NoError(err)
 	_, err = s.db.ExecContext(ctx, `

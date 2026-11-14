@@ -32,7 +32,7 @@ type RedemptionEntry struct {
 	ID             int64
 	UserID         *uuid.UUID
 	UserName       *string
-	UserEmail      *string
+	UserPhone      *string
 	OrderID        uuid.UUID
 	DiscountAmount int64
 	Currency       string
@@ -414,7 +414,7 @@ func (r *CouponRepository) RecordRedemption(ctx context.Context, red *model.Coup
 }
 
 // ListRedemptions returns every redemption of a coupon, newest first, joined
-// with the redeeming user's name and email for the admin usage log.
+// with the redeeming user's name and phone for the admin usage log.
 func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UUID, limit int, cursor *pagination.Keyset) ([]*RedemptionEntry, *pagination.CursorPage, error) {
 	executor, err := database.Executor(ctx)
 	if err != nil {
@@ -426,7 +426,7 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UU
 			r.id,
 			r.user_id,
 			u.full_name,
-			u.email,
+			u.phone,
 			r.order_id,
 			r.discount_amount,
 			r.currency,
@@ -458,11 +458,11 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UU
 		var (
 			e         RedemptionEntry
 			userName  sql.NullString
-			userEmail sql.NullString
+			userPhone sql.NullString
 		)
 
 		if err := rows.Scan(
-			&e.ID, &e.UserID, &userName, &userEmail, &e.OrderID, &e.DiscountAmount, &e.Currency, &e.CreatedAt,
+			&e.ID, &e.UserID, &userName, &userPhone, &e.OrderID, &e.DiscountAmount, &e.Currency, &e.CreatedAt,
 		); err != nil {
 			return nil, nil, fmt.Errorf("scan coupon redemption: %w", err)
 		}
@@ -471,9 +471,9 @@ func (r *CouponRepository) ListRedemptions(ctx context.Context, couponID uuid.UU
 			v := userName.String
 			e.UserName = &v
 		}
-		if userEmail.Valid {
-			v := userEmail.String
-			e.UserEmail = &v
+		if userPhone.Valid {
+			v := userPhone.String
+			e.UserPhone = &v
 		}
 
 		list = append(list, &e)

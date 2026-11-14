@@ -103,3 +103,13 @@ func NormalizeEmail(email string) string {
 
 	return local + "@" + domain
 }
+
+// CountryCallingCode returns the dialling code (e.g. "+20") for an E.164 phone number.
+// It returns an empty string when the number cannot be parsed.
+func CountryCallingCode(e164 string) string {
+	num, err := phonenumbers.Parse(strings.TrimSpace(e164), "")
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf("+%d", num.GetCountryCode())
+}

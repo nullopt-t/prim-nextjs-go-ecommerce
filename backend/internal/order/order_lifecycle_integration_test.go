@@ -117,8 +117,8 @@ func (s *OrderLifecycleSuite) TearDownSuite() {
 func (s *OrderLifecycleSuite) seedUser() uuid.UUID {
 	id := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, $3, 'customer', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, $3, 'customer', true, 'active', '+20')
 	`, id, "order_lifecycle_"+id.String()+"@example.com", "Lifecycle Customer")
 	s.Require().NoError(err)
 	return id

@@ -20,7 +20,7 @@ interface AuthContextType {
   loading: boolean;
   startChallenge: (payload: { email: string }) => Promise<{ success: boolean; error?: string }>;
   resendChallenge: (payload: { email: string }) => Promise<{ success: boolean; error?: string }>;
-  verifyChallenge: (payload: { email?: string; code: string; mergeCart?: boolean }) => Promise<{ success: boolean; error?: string }>;
+  verifyChallenge: (payload: { email?: string; code: string; fullName?: string; mergeCart?: boolean }) => Promise<{ success: boolean; error?: string; profileRequired?: boolean }>;
   logout: () => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<User | null>;
 }
@@ -91,13 +91,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const verifyChallenge = async (payload: { email?: string; code: string; mergeCart?: boolean }) => {
+  const verifyChallenge = async (payload: { email?: string; code: string; fullName?: string; mergeCart?: boolean }) => {
     try {
-      await authService.verifyChallenge({
+      const res = await authService.verifyChallenge({
         email: payload.email,
         code: payload.code,
+        ...(payload.fullName !== undefined ? { fullName: payload.fullName } : {}),
         ...(payload.mergeCart !== undefined ? { merge_cart: payload.mergeCart } : {}),
       });
+      // A new phone needs a name before the account is created; the challenge
+      // stays valid so the client re-submits the same code with a name.
+      if (res?.data?.profileRequired) {
+        return { success: true, profileRequired: true };
+      }
       // The backend returns 204 No Content on verify, so the session must be
       // re-read before success can be claimed.
       let loaded = await fetchUser();

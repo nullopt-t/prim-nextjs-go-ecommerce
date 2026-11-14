@@ -522,8 +522,8 @@ func (s *CartHTTPTestSuite) TestHTTP_RemoveItemAndClearCart() {
 func (s *CartHTTPTestSuite) createAuthenticatedUser() (uuid.UUID, string) {
 	userID := uuid.New()
 	_, err := s.db.ExecContext(context.Background(), `
-		INSERT INTO users (id, email, full_name, role, is_email_verified, status)
-		VALUES ($1, $2, $3, 'customer', true, 'active')
+		INSERT INTO users (id, phone, full_name, role, phone_verified, status, country_code)
+		VALUES ($1, $2, $3, 'customer', true, 'active', '+20')
 	`, userID, "user_"+userID.String()+"@example.com", "Test User")
 	s.Require().NoError(err)
 

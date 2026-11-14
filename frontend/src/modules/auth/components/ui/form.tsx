@@ -12,11 +12,12 @@ import { RotateCw } from "lucide-react";
 
 interface FormProps {
   formType: AuthFormType;
-  handleSubmit: (type: string, payload: { email: string; code: string }) => Promise<void> | void;
+  handleSubmit: (type: string, payload: { email: string; code: string; fullName: string }) => Promise<void> | void;
   isLoading?: boolean;
   userEmail?: string;
   onResendOtp?: () => Promise<void> | void;
   onEditEmail?: () => void;
+  profileRequired?: boolean;
 }
 
 export default function Form({
@@ -26,12 +27,14 @@ export default function Form({
   userEmail,
   onResendOtp,
   onEditEmail,
+  profileRequired = false,
 }: FormProps) {
   const t = useTranslations("auth");
 
   const [inputs, setInputs] = useState({
     email: userEmail || "",
     code: "",
+    fullName: "",
   });
 
   const [resendCooldown, setResendCooldown] = useState(30);
@@ -61,6 +64,10 @@ export default function Form({
     setInputs((prev) => ({ ...prev, code: codeValue }));
   };
 
+  const handleFullName = (fullNameValue: string) => {
+    setInputs((prev) => ({ ...prev, fullName: fullNameValue }));
+  };
+
   const handleResend = async () => {
     if (!canResend || isResending || !onResendOtp) return;
     try {
@@ -77,11 +84,17 @@ export default function Form({
     <div className="w-full flex flex-col gap-5">
       <div className="flex flex-col gap-1">
         <FormTitle type={formType} />
-        <FormSubtitle
-          type={formType}
-          email={formType === "verify" ? userEmail || inputs.email : undefined}
-          onEditEmail={onEditEmail}
-        />
+        {profileRequired ? (
+          <p className="text-sm text-muted-foreground leading-normal">
+            {t("verify.profileSubtitle")}
+          </p>
+        ) : (
+          <FormSubtitle
+            type={formType}
+            email={formType === "verify" ? userEmail || inputs.email : undefined}
+            onEditEmail={onEditEmail}
+          />
+        )}
       </div>
 
       <form
@@ -109,8 +122,27 @@ export default function Form({
           </div>
         )}
 
+        {/* Name input for a new account */}
+        {formType === "verify" && profileRequired && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-foreground">
+              {t("verify.nameLabel")}
+            </label>
+            <input
+              className="w-full h-11 px-3.5 rounded-md border border-border bg-background text-foreground text-sm placeholder:text-muted-foreground/60 outline-none transition-colors focus:border-accent-brand focus:ring-1 focus:ring-accent-brand disabled:opacity-50 disabled:cursor-not-allowed"
+              type="text"
+              value={inputs.fullName}
+              disabled={isLoading}
+              onChange={(e) => handleFullName(e.target.value)}
+              placeholder={t("verify.namePlaceholder")}
+              autoComplete="name"
+              autoFocus
+            />
+          </div>
+        )}
+
         {/* OTP input for verify */}
-        {formType === "verify" && (
+        {formType === "verify" && !profileRequired && (
           <div className="flex flex-col gap-2.5">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-foreground">
@@ -149,9 +181,12 @@ export default function Form({
             payload={inputs}
             handle={handleSubmit as (type: string, payload: unknown) => void}
             isLoading={isLoading}
+            label={profileRequired ? t("verify.createAccount") : undefined}
             disabled={
               formType === "verify"
-                ? inputs.code.trim().length !== 6
+                ? profileRequired
+                  ? !inputs.fullName.trim()
+                  : inputs.code.trim().length !== 6
                 : !inputs.email.trim()
             }
           />

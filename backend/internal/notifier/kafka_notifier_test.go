@@ -72,6 +72,19 @@ func TestEmailPublishUsesKafkaWhenAvailable(t *testing.T) {
 	assert.Equal(t, "user@example.com", event.Recipient)
 }
 
+func TestNotifyOTPSMSLogsInsteadOfPublishing(t *testing.T) {
+	publisher := &fakePublisher{}
+	emailFallback := &fakeFallbackQueue{}
+	inAppFallback := &fakeFallbackQueue{}
+	n := NewKafkaNotifier(publisher, testLogger{}, emailFallback, inAppFallback)
+
+	err := n.NotifyOTP(context.Background(), "sms", "01012340001", "123456")
+	require.NoError(t, err)
+	assert.Zero(t, publisher.calls)
+	assert.Empty(t, emailFallback.events)
+	assert.Empty(t, inAppFallback.events)
+}
+
 func TestEmailPublishFallsBackToRedisWhenKafkaFails(t *testing.T) {
 	publisher := &fakePublisher{err: errors.New("kafka unavailable")}
 	emailFallback := &fakeFallbackQueue{}

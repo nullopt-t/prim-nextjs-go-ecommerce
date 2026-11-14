@@ -107,7 +107,7 @@ func TestTier1_F1_F12_DirectUserRepositoryOnTx(t *testing.T) {
 	name := "Decoupled Tester"
 	userRepo.AddUser(&model.User{
 		ID:         userID,
-		Identifier: "test@example.com",
+		Phone: "test@example.com",
 		FullName:   name,
 		Role:       model.CustomerRole,
 		Status:     model.StatusActive,
@@ -121,7 +121,7 @@ func TestTier1_F1_F12_DirectUserRepositoryOnTx(t *testing.T) {
 		return err
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "test@example.com", found.Identifier)
+	assert.Equal(t, "test@example.com", found.Phone)
 }
 
 func TestTier1_F1_F12_DirectAddressRepositoryOnTx(t *testing.T) {
@@ -134,7 +134,6 @@ func TestTier1_F1_F12_DirectAddressRepositoryOnTx(t *testing.T) {
 	addrRepo.AddAddress(&model.UserAddress{
 		ID:         addrID,
 		UserID:     userID,
-		FullName:   "Decoupled Buyer",
 		PostalCode: &postal,
 	})
 
@@ -146,7 +145,7 @@ func TestTier1_F1_F12_DirectAddressRepositoryOnTx(t *testing.T) {
 		return err
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "Decoupled Buyer", addr.FullName)
+	_ = addr
 }
 
 // =============================================================================
@@ -461,7 +460,7 @@ func TestTier1_F8_Checkout_ValidatesUserViaConsumerRepo(t *testing.T) {
 	userID := uuid.New()
 	userRepo.AddUser(&model.User{
 		ID:         userID,
-		Identifier: "customer@example.com",
+		Phone: "customer@example.com",
 		Status:     model.StatusActive,
 		Role:       model.CustomerRole,
 	})

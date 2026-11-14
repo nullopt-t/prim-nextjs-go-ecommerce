@@ -36,19 +36,13 @@ definitions:
         type: string
       createdAt:
         type: string
-      fullName:
-        type: string
       id:
         type: string
       isDefault:
         type: boolean
-      label:
-        type: string
       line1:
         type: string
       line2:
-        type: string
-      phone:
         type: string
       postalCode:
         type: string
@@ -418,17 +412,11 @@ definitions:
         type: string
       country:
         type: string
-      fullName:
-        type: string
       isDefault:
         type: boolean
-      label:
-        type: string
       line1:
         type: string
       line2:
-        type: string
-      phone:
         type: string
       postalCode:
         type: string
@@ -661,6 +649,8 @@ definitions:
     type: object
   MeResponse:
     properties:
+      countryCode:
+        type: string
       createdAt:
         type: string
       fullName:
@@ -668,6 +658,8 @@ definitions:
       id:
         type: string
       identifier:
+        description: identifier keeps the existing client contract; it now carries
+          the phone.
         type: string
       name:
         type: string
@@ -2360,17 +2352,11 @@ definitions:
         type: string
       country:
         type: string
-      fullName:
-        type: string
       isDefault:
         type: boolean
-      label:
-        type: string
       line1:
         type: string
       line2:
-        type: string
-      phone:
         type: string
       postalCode:
         type: string
@@ -2440,9 +2426,15 @@ definitions:
     type: object
   UserResponse:
     properties:
+      countryCode:
+        type: string
       createdAt:
         type: string
       email:
+        description: |-
+          shortcut: email/isEmailVerified keep the admin UI contract alive during the
+          phone migration; both now mirror the phone fields. Drop once the admin
+          client reads phone/phoneVerified.
         type: string
       fullName:
         type: string
@@ -2450,10 +2442,10 @@ definitions:
         type: string
       isEmailVerified:
         type: boolean
-      lockedUntil:
-        type: string
       phone:
         type: string
+      phoneVerified:
+        type: boolean
       role:
         type: string
       status:
@@ -2671,11 +2663,18 @@ definitions:
         type: string
       email:
         type: string
+      fullName:
+        type: string
       merge_cart:
         type: boolean
     required:
     - code
     - email
+    type: object
+  VerifyChallengeResponse:
+    properties:
+      profileRequired:
+        type: boolean
     type: object
   ViewedProductItem:
     properties:
@@ -2963,6 +2962,15 @@ paths:
       produces:
       - application/json
       responses:
+        "200":
+          description: Profile completion required
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/VerifyChallengeResponse'
+              type: object
         "204":
           description: No Content
         "400":

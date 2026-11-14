@@ -13,9 +13,9 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 )
 
-func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {
+func (s *AuthTestSuite) authenticateAndGetCookies(phone string) []*http.Cookie {
 	// Start Challenge
-	payloadStart := auth.StartChallengeRequest{Email: email}
+	payloadStart := auth.StartChallengeRequest{Email: phone}
 	bodyStart, _ := json.Marshal(payloadStart)
 	reqStart, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/start", bytes.NewBuffer(bodyStart))
 	reqStart.Header.Set("Content-Type", "application/json")
@@ -26,7 +26,7 @@ func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {
 	otp := s.notifier.LastOTP
 
 	// Verify Challenge
-	payloadVerify := auth.VerifyChallengeRequest{Email: email, Code: otp}
+	payloadVerify := auth.VerifyChallengeRequest{Email: phone, Code: otp, FullName: "Test User"}
 	bodyVerify, _ := json.Marshal(payloadVerify)
 	reqVerify, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/challenge/verify", bytes.NewBuffer(bodyVerify))
 	reqVerify.Header.Set("Content-Type", "application/json")
@@ -38,7 +38,7 @@ func (s *AuthTestSuite) authenticateAndGetCookies(email string) []*http.Cookie {
 }
 
 func (s *AuthTestSuite) TestSession_AuthenticatedRequest() {
-	cookies := s.authenticateAndGetCookies("authme@example.com")
+	cookies := s.authenticateAndGetCookies("+201000000011")
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
 	for _, c := range cookies {
@@ -67,7 +67,7 @@ func (s *AuthTestSuite) TestSession_MissingSession() {
 }
 
 func (s *AuthTestSuite) TestSession_Logout() {
-	cookies := s.authenticateAndGetCookies("logout@example.com")
+	cookies := s.authenticateAndGetCookies("+201000000012")
 
 	var sessionID string
 	for _, c := range cookies {
@@ -111,7 +111,7 @@ func (s *AuthTestSuite) TestSession_Logout() {
 }
 
 func (s *AuthTestSuite) TestSession_Logout_SubsequentMe() {
-	cookies := s.authenticateAndGetCookies("logout2@example.com")
+	cookies := s.authenticateAndGetCookies("+201000000013")
 
 	// Logout
 	reqLogout, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
@@ -135,7 +135,7 @@ func (s *AuthTestSuite) TestSession_Logout_SubsequentMe() {
 }
 
 func (s *AuthTestSuite) TestSession_AutoRefresh() {
-	cookies := s.authenticateAndGetCookies("refresh_test@example.com")
+	cookies := s.authenticateAndGetCookies("+201000000014")
 	var sessionID string
 	for _, c := range cookies {
 		if c.Name == middleware.SessionCookieName {

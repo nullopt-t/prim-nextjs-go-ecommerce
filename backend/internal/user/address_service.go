@@ -14,9 +14,6 @@ import (
 
 // CreateAddressInput represents inbound payload parameters required to create a new address record.
 type CreateAddressInput struct {
-	Label      *string `json:"label"`
-	FullName   string  `json:"fullName"`
-	Phone      *string `json:"phone"`
 	Line1      string  `json:"line1"`
 	Line2      *string `json:"line2"`
 	City       string  `json:"city"`
@@ -28,9 +25,6 @@ type CreateAddressInput struct {
 
 // UpdateAddressInput represents inbound payload parameters required to update an existing address record.
 type UpdateAddressInput struct {
-	Label      *string `json:"label"`
-	FullName   string  `json:"fullName"`
-	Phone      *string `json:"phone"`
 	Line1      string  `json:"line1"`
 	Line2      *string `json:"line2"`
 	City       string  `json:"city"`
@@ -155,9 +149,6 @@ func (s *AddressService) getAddress(ctx context.Context, id, userID uuid.UUID) (
 // If the user marked it as default, existing default addresses are atomically cleared.
 func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in *CreateAddressInput) (*model.UserAddress, error) {
 	// Validate required address fields are non-empty after trimming whitespace
-	if strings.TrimSpace(in.FullName) == "" {
-		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
-	}
 	if strings.TrimSpace(in.Line1) == "" {
 		return nil, apierr.BadRequestError("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
 	}
@@ -168,20 +159,13 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
-	phone, err := normalizePhone(in.Phone)
-	if err != nil {
-		return nil, err
-	}
-	if err = validatePostalCode(in.PostalCode); err != nil {
+	if err := validatePostalCode(in.PostalCode); err != nil {
 		return nil, err
 	}
 
 	address := &model.UserAddress{
 		ID:         uuid.New(),
 		UserID:     userID,
-		Label:      in.Label,
-		FullName:   strings.TrimSpace(in.FullName),
-		Phone:      phone,
 		Line1:      strings.TrimSpace(in.Line1),
 		Line2:      in.Line2,
 		City:       strings.TrimSpace(in.City),
@@ -230,9 +214,6 @@ func (s *AddressService) CreateAddress(ctx context.Context, userID uuid.UUID, in
 // UpdateAddress updates attributes of an existing address within an atomic database transaction.
 func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID, in *UpdateAddressInput) (*model.UserAddress, error) {
 	// Validate required fields
-	if strings.TrimSpace(in.FullName) == "" {
-		return nil, apierr.BadRequestError("Full name is required").WithCode(apierr.CodeInvalidInput)
-	}
 	if strings.TrimSpace(in.Line1) == "" {
 		return nil, apierr.BadRequestError("Address line 1 is required").WithCode(apierr.CodeInvalidInput)
 	}
@@ -243,24 +224,17 @@ func (s *AddressService) UpdateAddress(ctx context.Context, id, userID uuid.UUID
 		return nil, apierr.BadRequestError("Country is required").WithCode(apierr.CodeInvalidInput)
 	}
 
-	phone, err := normalizePhone(in.Phone)
-	if err != nil {
-		return nil, err
-	}
-	if err = validatePostalCode(in.PostalCode); err != nil {
+	if err := validatePostalCode(in.PostalCode); err != nil {
 		return nil, err
 	}
 
 	var updated *model.UserAddress
-	err = s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
+	err := s.dbRunner.WithTx(ctx, func(ctx context.Context) error {
 		current, err := s.repo.GetByIDAndUser(ctx, id, userID)
 		if err != nil {
 			return err
 		}
 
-		current.Label = in.Label
-		current.FullName = strings.TrimSpace(in.FullName)
-		current.Phone = phone
 		current.Line1 = strings.TrimSpace(in.Line1)
 		current.Line2 = in.Line2
 		current.City = strings.TrimSpace(in.City)

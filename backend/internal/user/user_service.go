@@ -108,21 +108,20 @@ func (s *UserService) handleError(err error, fallbackMsg string) error {
 	}
 }
 
-// CreateUser provisions a new user record in PostgreSQL for the specified email identifier.
+// CreateUser provisions a new user record in PostgreSQL for the specified phone number.
 // Enforces unique constraint handling by mapping database conflict errors to HTTP 409 Conflict.
 func (s *UserService) CreateUser(
 	ctx context.Context,
-	identifier string,
+	phone,
+	fullName,
+	countryCode string,
 ) (*model.User, error) {
-	fullName := identifier
-	if atIdx := strings.Index(identifier, "@"); atIdx > 0 {
-		fullName = identifier[:atIdx]
-	}
-
 	u := &model.User{
-		ID:         uuid.New(),
-		Identifier: identifier,
-		FullName:   fullName,
+		ID:            uuid.New(),
+		Phone:         phone,
+		FullName:      fullName,
+		CountryCode:   countryCode,
+		PhoneVerified: true,
 	}
 
 	err := s.dbExecutor.WithTx(ctx, func(ctx context.Context) error {
@@ -195,16 +194,16 @@ func (s *UserService) getUserByID(
 	return u, nil
 }
 
-// GetUserByIdentifier retrieves a single active user by their email address.
+// GetUserByPhone retrieves a single active user by their phone number.
 // Returns a 404 Not Found error if no matching record exists.
-func (s *UserService) GetUserByIdentifier(
+func (s *UserService) GetUserByPhone(
 	ctx context.Context,
-	identifier string,
+	phone string,
 ) (*model.User, error) {
 	var user *model.User
 	err := s.dbExecutor.WithExecutor(ctx, func(ctx context.Context) error {
 		var repoErr error
-		user, repoErr = s.repo.GetByIdentifier(ctx, identifier)
+		user, repoErr = s.repo.GetByPhone(ctx, phone)
 		return repoErr
 	})
 	if err != nil {
@@ -452,7 +451,6 @@ func (s *UserService) UpdateAccountStatus(
 	// Validate status value
 	validStatuses := map[model.AccountStatus]bool{
 		model.StatusActive:    true,
-		model.StatusInactive:  true,
 		model.StatusSuspended: true,
 		model.StatusDeleted:   true,
 	}
@@ -545,8 +543,10 @@ var staffRoles = []model.UserRole{
 
 // StaffSession is the administrative view of an active staff login device.
 type StaffSession struct {
-	ID         string    `json:"id"`
-	UserID     uuid.UUID `json:"userId"`
+	ID     string    `json:"id"`
+	UserID uuid.UUID `json:"userId"`
+	// shortcut: keeps the "email" key the admin sessions UI reads; it now
+	// carries the phone number, the only identifier users have left.
 	Email      string    `json:"email"`
 	FullName   *string   `json:"fullName,omitempty"`
 	Role       string    `json:"role"`
@@ -603,7 +603,7 @@ func (s *UserService) ListStaffSessions(
 			sessions = append(sessions, StaffSession{
 				ID:         sess.ID,
 				UserID:     sess.UserID,
-				Email:      u.Identifier,
+				Email:      u.Phone,
 				FullName:   &u.FullName,
 				Role:       string(u.Role),
 				UserAgent:  sess.UserAgent,
@@ -696,6 +696,10 @@ func (s *UserService) UpdateProfile(
 	phone, err := normalizePhone(phone)
 	if err != nil {
 		return nil, err
+	}
+	// Phone is the login identifier and the column is NOT NULL.
+	if phone != nil && strings.TrimSpace(*phone) == "" {
+		return nil, apierr.BadRequestError("Phone cannot be blank").WithCode(apierr.CodeInvalidInput)
 	}
 
 	var updatedUser *model.User

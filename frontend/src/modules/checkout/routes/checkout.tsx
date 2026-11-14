@@ -843,7 +843,7 @@ export function Checkout() {
 																	)
 																)}
 															</div>
-															<p className="text-xs font-semibold text-foreground mb-1">{addr.fullName || addr.name}</p>
+															<p className="text-xs font-semibold text-foreground mb-1">{addr.fullName || addr.name || user?.name}</p>
 															<p className="text-xs text-muted-foreground leading-relaxed">
 																{addr.line1 || addr.street}
 																{addr.line2 ? `, ${addr.line2}` : ""}
