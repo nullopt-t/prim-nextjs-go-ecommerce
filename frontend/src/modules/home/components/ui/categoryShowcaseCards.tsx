@@ -27,76 +27,46 @@ function CategoryShowcaseCard({ category, products }: CategoryShowcaseCardProps)
   const categoryLinkTarget = category.slug || category.id;
 
   return (
-    <div className="bg-card border border-border hover:border-accent-brand/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-2xs hover:shadow-sm transition-all">
+    <Link
+      href={`/products?category=${encodeURIComponent(categoryLinkTarget)}`}
+      className="group/card bg-card border border-border hover:border-accent-brand/50 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between shadow-2xs hover:shadow-sm transition-all text-start"
+    >
       <div>
-        <h3 className="text-base sm:text-lg font-bold text-foreground mb-3 line-clamp-1 text-start">
+        <h3 className="text-base sm:text-lg font-bold text-foreground mb-3 line-clamp-1 text-start group-hover/card:text-accent-brand transition-colors">
           {category.name}
         </h3>
 
-        {top4.length >= 4 ? (
-          <div className="grid grid-cols-2 gap-2.5 mb-3">
-            {top4.map((p) => {
-              const productTarget = p.slug || p.id;
-              const productTitle = typeof p.product === "object"
-                ? (locale === "ar" ? p.product?.ar || p.product?.en : p.product?.en || p.product?.ar) || p.title
-                : (p.title || "—");
-
-              return (
-                <Link
-                  key={productTarget}
-                  href={`/products/${productTarget}`}
-                  className="group flex flex-col text-start"
-                  title={productTitle}
-                >
-                  <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
-                    <img
-                      src={normalizeMediaUrl(p.img || p.thumbnail)}
-                      alt={productTitle}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : top4.length > 0 ? (
-          (() => {
-            const productTarget = top4[0].slug || top4[0].id;
-            const productTitle = typeof top4[0].product === "object"
-              ? (locale === "ar" ? top4[0].product?.ar || top4[0].product?.en : top4[0].product?.en || top4[0].product?.ar) || top4[0].title
-              : (top4[0].title || "—");
+        <div className="grid grid-cols-2 gap-2.5 mb-3">
+          {top4.map((p) => {
+            const productTarget = p.slug || p.id;
+            const productTitle = typeof p.product === "object"
+              ? (locale === "ar" ? p.product?.ar || p.product?.en : p.product?.en || p.product?.ar) || p.title
+              : (p.title || "—");
 
             return (
-              <Link
-                href={`/products/${productTarget}`}
-                className="group block mb-3 text-start"
+              <div
+                key={productTarget}
+                className="flex flex-col text-start"
                 title={productTitle}
               >
-                <div className="relative aspect-4/3 w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 group-hover:border-accent-brand/60 transition-colors">
+                <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-secondary/50 border border-border/40 transition-colors">
                   <img
-                    src={normalizeMediaUrl(top4[0].img || top4[0].thumbnail)}
+                    src={normalizeMediaUrl(p.img || p.thumbnail)}
                     alt={productTitle}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover object-center group-hover/card:scale-105 transition-transform duration-300"
                   />
                 </div>
-              </Link>
+              </div>
             );
-          })()
-        ) : (
-          <div className="aspect-square bg-secondary/40 rounded-xl mb-3 flex items-center justify-center text-xs text-muted-foreground">
-            {t("exploreCategory")}
-          </div>
-        )}
+          })}
+        </div>
       </div>
 
-      <Link
-        href={`/products?category=${encodeURIComponent(categoryLinkTarget)}`}
-        className="text-xs font-semibold text-accent-brand hover:underline hover:underline-offset-4 inline-flex items-center gap-1.5 mt-1 transition-colors"
-      >
+      <div className="text-xs font-semibold text-accent-brand inline-flex items-center gap-1.5 mt-1 transition-colors">
         <span>{t("seeAll")}</span>
-        <ArrowRight className="size-3.5 rtl:rotate-180" />
-      </Link>
-    </div>
+        <ArrowRight className="size-3.5 rtl:rotate-180 group-hover/card:translate-x-1 rtl:group-hover/card:-translate-x-1 transition-transform" />
+      </div>
+    </Link>
   );
 }
 
@@ -104,29 +74,38 @@ export default function CategoryShowcaseCards({
   categories = [],
   products = [],
   loading = false,
+  showAll = false,
 }: {
   categories?: Category[];
   products?: ProductDetailsEntity[];
   loading?: boolean;
+  showAll?: boolean;
 }) {
   const locale = useLocale();
 
   const categoryGroups = useMemo(() => {
-    if (!categories || categories.length === 0 || !products || products.length === 0) {
+    if (!categories || categories.length === 0) {
       return [];
     }
 
     // Group products by category ID
-    return categories
+    const groups = categories
       .map((cat: any) => {
         const catName = localizedName(cat.name, locale);
         const enName = localizedName(cat.name, "en", "");
-        const catProducts = products.filter(
+        const catSlug = (cat.slug || "").toLowerCase();
+        const catProducts = (products || []).filter(
           (p: any) =>
             p.categoryId === cat.id ||
+            (p.categorySlug && p.categorySlug.toLowerCase() === catSlug) ||
             (typeof p.category === "string"
-              ? p.category.toLowerCase() === catName.toLowerCase() || p.category.toLowerCase() === enName.toLowerCase()
-              : p.category?.name && (String(p.category.name).toLowerCase() === catName.toLowerCase() || String(p.category.name).toLowerCase() === enName.toLowerCase()))
+              ? p.category.toLowerCase() === catName.toLowerCase() ||
+                p.category.toLowerCase() === enName.toLowerCase() ||
+                (catSlug && p.category.toLowerCase() === catSlug)
+              : p.category?.name && (
+                  String(p.category.name).toLowerCase() === catName.toLowerCase() ||
+                  String(p.category.name).toLowerCase() === enName.toLowerCase()
+                ))
         );
         return {
           id: cat.id,
@@ -134,10 +113,16 @@ export default function CategoryShowcaseCards({
           slug: cat.slug,
           products: catProducts,
         };
-      })
-      .filter((group: any) => group.products.length > 0)
-      .slice(0, 6);
-  }, [categories, products, locale]);
+      });
+
+    const validGroups = groups.filter((group: any) => group.products.length >= 2);
+
+    if (showAll) {
+      return validGroups;
+    }
+
+    return validGroups.slice(0, 6);
+  }, [categories, products, locale, showAll]);
 
   if (loading && categoryGroups.length === 0) {
     return (

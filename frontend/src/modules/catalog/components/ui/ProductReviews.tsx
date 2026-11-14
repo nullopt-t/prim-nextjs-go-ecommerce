@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, AlertCircle, CircleUser } from "lucide-react";
+import { Star, AlertCircle, CircleUser, ThumbsUp } from "lucide-react";
 import { Stars } from "@/shared/ui/stars";
 import { useTranslations } from "next-intl";
 import { ProductReview } from "../../types";
@@ -403,19 +403,30 @@ export function ProductReviews({
                       </p>
 
                       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border/70 pt-3">
-                        {isAuthenticated && (
+                        {isAuthenticated ? (
                           <button
                             type="button"
                             onClick={() => onVoteHelpful(review.id)}
                             aria-pressed={Boolean(review.userVoted)}
-                            className={`cursor-pointer text-xs font-medium underline-offset-4 transition-colors hover:underline ${
+                            aria-label={t("helpful")}
+                            title={t("helpful")}
+                            className={`inline-flex cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors hover:bg-secondary ${
                               review.userVoted
                                 ? "text-accent-brand"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                           >
-                            {t("helpful")}
+                            <ThumbsUp
+                              className={`size-4 ${review.userVoted ? "fill-current" : ""}`}
+                              aria-hidden="true"
+                            />
                           </button>
+                        ) : (
+                          Number(review.helpful) > 0 && (
+                            <span className="inline-flex items-center justify-center p-1.5 text-muted-foreground" aria-hidden="true">
+                              <ThumbsUp className="size-4" />
+                            </span>
+                          )
                         )}
                         {Number(review.helpful) > 0 && (
                           <span className="text-[11px] text-muted-foreground">

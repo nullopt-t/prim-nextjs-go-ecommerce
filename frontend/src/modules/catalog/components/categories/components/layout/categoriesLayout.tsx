@@ -1,9 +1,16 @@
 "use client";
 
-import SectionGrid from "@/modules/home/components/ui/sectionGrid";
+import CategoryShowcaseCards from "@/modules/home/components/ui/categoryShowcaseCards";
 import { useTranslations } from "next-intl";
+import type { Category, ProductDetailsEntity } from "@/modules/catalog/types";
 
-export default function CategoriesLayout({ categories }: { categories?: import("@/modules/catalog/types").Category[] }) {
+export default function CategoriesLayout({
+  categories,
+  products,
+}: {
+  categories?: Category[];
+  products?: ProductDetailsEntity[];
+}) {
   const t = useTranslations("shop");
 
   return (
@@ -17,7 +24,7 @@ export default function CategoriesLayout({ categories }: { categories?: import("
         </p>
       </div>
 
-      <SectionGrid categories={categories} />
+      <CategoryShowcaseCards categories={categories} products={products} showAll />
     </div>
   );
 }

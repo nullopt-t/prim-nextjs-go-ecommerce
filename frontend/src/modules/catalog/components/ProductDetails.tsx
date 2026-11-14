@@ -244,8 +244,9 @@ export function ProductDetails({
   useEffect(() => {
     let isMounted = true;
     if (!targetProductId) return;
-    if (initialReviews !== undefined) {
-      // Reviews were pre-fetched server-side (possibly empty) - skip client fetch
+    // Server-rendered reviews are fetched anonymously, so their vote state is
+    // only authoritative for guests. Refetch for signed-in users.
+    if (initialReviews !== undefined && !user?.id) {
       return;
     }
 

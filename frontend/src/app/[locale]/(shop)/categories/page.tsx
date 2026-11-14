@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { Categories } from "@/modules/catalog/components/categories";
-import { getCategories } from "@/shared/lib/server/catalog";
+import { getCategories, getProducts } from "@/shared/lib/server/catalog";
 export async function generateMetadata(): Promise<Metadata> {
 	const t = await getTranslations("meta.shop.categories");
 	return { title: t("title"), description: t("description") };
@@ -19,7 +19,10 @@ export default async function CategoriesPage({
 	params: Promise<{ locale: string }>;
 }) {
 	const { locale } = await params;
-	const categories = await getCategories();
+	const [categories, products] = await Promise.all([
+		getCategories(),
+		getProducts({ pageSize: 500 }),
+	]);
 
 	const jsonLd = {
 		"@context": "https://schema.org",
@@ -35,7 +38,7 @@ export default async function CategoriesPage({
 	return (
 		<>
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-			<Categories categories={categories} />
+			<Categories categories={categories} products={products} />
 		</>
 	);
 }
