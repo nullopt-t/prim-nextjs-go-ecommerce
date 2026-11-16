@@ -65,4 +65,3 @@ func (q *redisJobQueue) Dequeue(ctx context.Context) (*JobMessage, error) {
 	}
 	return nil, nil
 }
-

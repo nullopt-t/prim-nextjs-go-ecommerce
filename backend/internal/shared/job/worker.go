@@ -104,4 +104,3 @@ func (w *Worker) Start(ctx context.Context) {
 		w.logger.Info("message processed successfully", log.Meta{"id": msg.ID})
 	}
 }
-

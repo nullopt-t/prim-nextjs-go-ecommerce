@@ -60,4 +60,3 @@ func (r *Renderer) Render(name string, data any) (string, error) {
 
 	return buf.String(), nil
 }
-

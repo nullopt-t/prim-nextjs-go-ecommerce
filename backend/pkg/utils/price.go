@@ -96,4 +96,3 @@ func ExtractPriceForCurrency(cents int64, currency string) float64 {
 	divisor := currencyDivisor(currency)
 	return float64(cents) / divisor
 }
-

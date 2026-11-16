@@ -13,11 +13,11 @@ import (
 // UserSubject represents the core authenticated subject identity extracted from tokens or sessions.
 type UserSubject struct {
 	// UserID is the unique identifier of the user in the database.
-	UserID          uuid.UUID      `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 	// UserRole indicates whether the user is an admin, customer, or other role.
-	UserRole        model.UserRole `json:"user_role"`
+	UserRole model.UserRole `json:"user_role"`
 	// IsEmailVerified flags whether the user's primary email address has completed OTP verification.
-	IsEmailVerified bool           `json:"is_email_verified"`
+	IsEmailVerified bool `json:"is_email_verified"`
 }
 
 // Validate verifies that UserID is non-nil and UserRole is a valid recognized role.
@@ -32,4 +32,3 @@ func (s UserSubject) Validate() error {
 		return fmt.Errorf("invalid user role: %q", s.UserRole)
 	}
 }
-

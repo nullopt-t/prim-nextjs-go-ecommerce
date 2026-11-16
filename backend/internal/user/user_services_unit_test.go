@@ -282,9 +282,9 @@ func newAddressService() (*user.AddressService, *fakeAddressRepo) {
 
 func addressInput() *user.CreateAddressInput {
 	return &user.CreateAddressInput{
-		Line1:    " 12 Test Street ",
-		City:     " Cairo ",
-		Country:  " EG ",
+		Line1:   " 12 Test Street ",
+		City:    " Cairo ",
+		Country: " EG ",
 	}
 }
 
@@ -418,7 +418,6 @@ func TestAddressService_Unit_Validation(t *testing.T) {
 	}
 }
 
-
 func TestAddressService_Unit_InvalidPostalCodeRejected(t *testing.T) {
 	svc, _ := newAddressService()
 	ctx := context.Background()
@@ -437,7 +436,6 @@ func TestAddressService_Unit_InvalidPostalCodeRejected(t *testing.T) {
 	_, err := svc.CreateAddress(ctx, userID, in)
 	require.NoError(t, err)
 }
-
 
 func TestNotificationService_Unit_LifecycleAndIsolation(t *testing.T) {
 	repo := newFakeNotificationRepo()

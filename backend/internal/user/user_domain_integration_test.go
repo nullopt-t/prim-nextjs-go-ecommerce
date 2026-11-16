@@ -96,9 +96,9 @@ func (s *UserDomainSuite) seedUser() uuid.UUID {
 
 func (s *UserDomainSuite) newAddressInput() *user.CreateAddressInput {
 	return &user.CreateAddressInput{
-		Line1:    " 12 Test Street ",
-		City:     " Cairo ",
-		Country:  " EG ",
+		Line1:   " 12 Test Street ",
+		City:    " Cairo ",
+		Country: " EG ",
 	}
 }
 

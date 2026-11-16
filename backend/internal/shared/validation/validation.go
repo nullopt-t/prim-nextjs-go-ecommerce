@@ -70,4 +70,3 @@ func IsValidPassword(password string) error {
 
 	return nil
 }
-

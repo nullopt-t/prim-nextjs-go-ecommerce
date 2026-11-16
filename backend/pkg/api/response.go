@@ -6,13 +6,13 @@ package api
 // detailing which field, constraint rule, and human-readable reason failed.
 type FieldError struct {
 	// Field is the name of the request property that failed validation (e.g., "quantity", "email").
-	Field      string `json:"field,omitempty" example:"quantity"`
+	Field string `json:"field,omitempty" example:"quantity"`
 
 	// Constraint is the validation tag or rule that was violated (e.g., "min", "required", "email").
 	Constraint string `json:"constraint,omitempty" example:"min"`
 
 	// Message is the user-friendly explanation of why the value is invalid.
-	Message    string `json:"message,omitempty" example:"quantity must be at least 1"`
+	Message string `json:"message,omitempty" example:"quantity must be at least 1"`
 }
 
 // MessageResponse is a simple acknowledgment envelope containing an informational status message.
@@ -24,7 +24,7 @@ type MessageResponse struct {
 // UnauthorizedResponse represents a 401 Unauthorized API error envelope.
 type UnauthorizedResponse struct {
 	// Code is the machine-readable error token ("UNAUTHORIZED").
-	Code    string `json:"code,omitempty" example:"UNAUTHORIZED"`
+	Code string `json:"code,omitempty" example:"UNAUTHORIZED"`
 
 	// Message describes the authentication failure.
 	Message string `json:"message" example:"Authentication token is missing or invalid"`
@@ -36,10 +36,10 @@ type SuccessResponse struct {
 	Message string `json:"message,omitempty"`
 
 	// Data contains the primary response payload (e.g. a resource DTO).
-	Data    any    `json:"data"`
+	Data any `json:"data"`
 
 	// Meta holds optional contextual information (e.g. processing timestamps or request IDs).
-	Meta    any    `json:"meta,omitempty"`
+	Meta any `json:"meta,omitempty"`
 }
 
 // PaginatedResponse is the envelope for collections returning both data and pagination metadata.
@@ -60,10 +60,10 @@ type DataResponse struct {
 // BadReqResponse represents a 400 Bad Request envelope with field validation details.
 type BadReqResponse struct {
 	// Code is the machine-readable error token ("VALIDATION_FAILED").
-	Code    string       `json:"code,omitempty" example:"VALIDATION_FAILED"`
+	Code string `json:"code,omitempty" example:"VALIDATION_FAILED"`
 
 	// Message describes the validation failure summary.
-	Message string       `json:"message,omitempty" example:"Invalid request input or malformed payload"`
+	Message string `json:"message,omitempty" example:"Invalid request input or malformed payload"`
 
 	// Details contains individual field-level validation errors.
 	Details []FieldError `json:"details,omitempty"`
@@ -72,10 +72,10 @@ type BadReqResponse struct {
 // ErrorResponse represents a generic error envelope for 500 Internal Server Errors.
 type ErrorResponse struct {
 	// Code is the machine-readable error token ("INTERNAL_ERROR").
-	Code    string       `json:"code,omitempty" example:"INTERNAL_ERROR"`
+	Code string `json:"code,omitempty" example:"INTERNAL_ERROR"`
 
 	// Message describes the error condition.
-	Message string       `json:"message,omitempty" example:"An unexpected internal server error occurred"`
+	Message string `json:"message,omitempty" example:"An unexpected internal server error occurred"`
 
 	// Details contains optional validation details if applicable.
 	Details []FieldError `json:"details,omitempty"`

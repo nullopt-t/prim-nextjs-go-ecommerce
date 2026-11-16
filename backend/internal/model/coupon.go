@@ -44,9 +44,9 @@ type Coupon struct {
 	Status        CouponStatus       `json:"status"`
 	// SellerID scopes the coupon to one merchant's products. Nil means a
 	// platform-wide coupon managed by the admin.
-	SellerID      *uuid.UUID         `json:"sellerId,omitempty"`
-	CreatedAt     time.Time          `json:"createdAt"`
-	UpdatedAt     time.Time          `json:"updatedAt"`
+	SellerID  *uuid.UUID `json:"sellerId,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 
 	// UsageCount is the number of times the coupon has been redeemed. It is not a
 	// stored column: it is populated by list queries for admin display.

@@ -67,13 +67,13 @@ const (
 // NotificationEvent represents the canonical message payload sent through Kafka.
 type NotificationEvent struct {
 	EventID    uuid.UUID       `json:"eventId"`
-	Type       string          `json:"type"`          // "email" or "in_app"
-	Category   string          `json:"category"`      // "auth", "order", "system"
+	Type       string          `json:"type"`     // "email" or "in_app"
+	Category   string          `json:"category"` // "auth", "order", "system"
 	UserID     *uuid.UUID      `json:"userId,omitempty"`
-	Recipient  string          `json:"recipient"`     // Email address or User UUID string
-	Locale     string          `json:"locale"`        // "ar" or "en"
-	Template   string          `json:"template"`      // e.g. "email_otp", "welcome", "reset_password", "order_confirmed"
-	Data       json.RawMessage `json:"data"`          // dynamic parameters
+	Recipient  string          `json:"recipient"` // Email address or User UUID string
+	Locale     string          `json:"locale"`    // "ar" or "en"
+	Template   string          `json:"template"`  // e.g. "email_otp", "welcome", "reset_password", "order_confirmed"
+	Data       json.RawMessage `json:"data"`      // dynamic parameters
 	Timestamp  time.Time       `json:"timestamp"`
 	RetryCount int             `json:"retryCount"`
 	LastError  string          `json:"lastError,omitempty"`

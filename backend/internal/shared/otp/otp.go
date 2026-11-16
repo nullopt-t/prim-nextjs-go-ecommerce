@@ -50,4 +50,3 @@ func (c OTPChannel) IsValid() bool {
 		return false
 	}
 }
-

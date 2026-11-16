@@ -32,10 +32,10 @@ func NewConsumer(cfg Config, topic string) *Consumer {
 		Brokers:        cfg.Brokers,
 		GroupID:        cfg.GroupID,
 		Topic:          topic,
-		MinBytes:       1,                      // 1 byte for instant processing
-		MaxBytes:       10e6,                   // 10MB
+		MinBytes:       1,    // 1 byte for instant processing
+		MaxBytes:       10e6, // 10MB
 		MaxWait:        500 * time.Millisecond,
-		CommitInterval: 0,                      // 0 = manual commits for at-least-once delivery
+		CommitInterval: 0, // 0 = manual commits for at-least-once delivery
 		StartOffset:    startOffset,
 	})
 

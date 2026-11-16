@@ -43,4 +43,3 @@ func (d *MessageDispatcher) Dispatch(ctx context.Context, key string, msg *JobMe
 
 	return handler(ctx, msg)
 }
-

@@ -65,4 +65,3 @@ func Slugify(s string, fallback ...string) string {
 
 	return slug
 }
-

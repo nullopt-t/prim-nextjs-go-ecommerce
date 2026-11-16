@@ -123,7 +123,7 @@ func (s *Service) FulfillOwnOrder(ctx context.Context, userID, orderID uuid.UUID
 		}
 		if !order.CanTransitionOrderStatus(current.Status, in.Status) {
 			return apierr.BadRequestError(
-				"Cannot transition order status from '"+string(current.Status)+"' to '"+string(in.Status)+"'",
+				"Cannot transition order status from '" + string(current.Status) + "' to '" + string(in.Status) + "'",
 			).WithCode(errcode.CodeInvalidOrderStatus)
 		}
 		if in.Status == model.OrderStatusShipped && trackingNumber == "" {

@@ -4,10 +4,10 @@ package pagination
 // PagedResult is a generic response wrapper encapsulating a slice of items alongside its pagination metadata.
 type PagedResult[T any] struct {
 	// Items contains the page slice of typed entity pointers.
-	Items []*T  `json:"items"`
+	Items []*T `json:"items"`
 
 	// Page contains page numbers, item counts, and boundary navigation flags.
-	Page  *Page `json:"page"`
+	Page *Page `json:"page"`
 
 	// Cursor is populated instead of Page when the caller requested keyset pagination.
 	Cursor *CursorPage `json:"cursor,omitempty"`
@@ -55,10 +55,10 @@ func NewCursorPagedResult[T any](items []*T, cursor *CursorPage) *PagedResult[T]
 // PagedValueResult is a generic response wrapper for value slices ([]T) alongside its pagination metadata.
 type PagedValueResult[T any] struct {
 	// Items contains the page slice of typed entity values.
-	Items []T   `json:"items"`
+	Items []T `json:"items"`
 
 	// Page contains page numbers, item counts, and boundary navigation flags.
-	Page  *Page `json:"page"`
+	Page *Page `json:"page"`
 }
 
 // NewPagedValueResult constructs a PagedValueResult container from the provided value slice and page metadata.
