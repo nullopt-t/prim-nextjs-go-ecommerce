@@ -5,7 +5,6 @@ import NewArrivalsShelf from "@/modules/home/components/ui/newArrivalsShelf";
 import CategoryShelves from "@/modules/home/components/ui/categoryShelves";
 import OnSaleShelf from "@/modules/home/components/ui/onSaleShelf";
 import BrandStrip from "@/modules/home/components/ui/brandStrip";
-import Testimonials from "@/modules/home/components/ui/testimonials";
 import { CatalogFeedLoader } from "@/modules/catalog/components/CatalogFeedLoader";
 
 export default function HomeLayout({
@@ -37,7 +36,6 @@ export default function HomeLayout({
 
       {/* Brands + social proof */}
       <BrandStrip products={products} categories={categories} />
-      <Testimonials />
     </div>
   );
 }

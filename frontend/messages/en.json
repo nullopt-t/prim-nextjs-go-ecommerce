@@ -1646,6 +1646,7 @@
       "codDesc": "Pay with cash directly to the courier upon delivery. Please ensure exact change is available at your address.",
       "codTitle": "Cash on Delivery",
       "creditCard": "Credit Card",
+      "stripeCardDesc": "Stripe (Visa, Mastercard, Amex)",
       "cvc": "Security Code (CVC) *",
       "cvcPlaceholder": "123",
       "digital": "Digital Pay",
@@ -1659,7 +1660,21 @@
       "namePlaceholder": "Mohamed Mahmoud",
       "noPaymentMethods": "No payment method is currently available. Please contact the store to complete this order.",
       "savedCard": "Saved Card",
-      "security": "No card details are collected on this page."
+      "security": "Payments are securely processed via Stripe. No card details are stored on our servers.",
+      "modalTitle": "Complete Card Payment",
+      "modalSubtitle": "Order #{orderId} • Total: {amount}",
+      "payNow": "Pay {amount}",
+      "processingPayment": "Processing payment...",
+      "paymentFailed": "Payment failed. Please check your card details and try again.",
+      "simulateTestPayment": "Simulate Payment Success (Dev Mode)",
+      "devModeNotice": "Dev Mock Mode: Simulated payment intent active.",
+      "stripeLoadError": "Failed to load payment provider. Please check your internet connection.",
+      "gatewayUnavailable": "Card payment is currently unavailable. Please choose another payment method or contact support.",
+      "resumePayment": "Complete Card Payment",
+      "pendingNotice": "Order #{orderId} is awaiting payment. Complete payment to finalize your order.",
+      "dismissPending": "Dismiss",
+      "confirmFailed": "Your payment was authorized but we could not finalize the order. Please retry — you will not be charged again.",
+      "retryConfirm": "Retry confirmation"
     },
     "review": {
       "heading": "Review your order",
@@ -1683,6 +1698,10 @@
       "title": "Thank You for Your Order!",
       "today": "Today",
       "totalPaid": "Total Paid:",
+      "orderTotal": "Order Total:",
+      "pendingBadge": "Order Placed — Payment Pending",
+      "pendingTitle": "We're Confirming Your Payment",
+      "pendingDesc": "Your order is placed. We'll update it as soon as your bank or payment provider confirms the payment.",
       "trackOrders": "Track in My Orders",
       "trackingNumber": "Tracking Number:"
     },
@@ -1720,6 +1739,7 @@
       "invalidCoupon": "Invalid coupon code",
       "orderConfirmed": "Order confirmed successfully!",
       "orderFailed": "Failed to place order",
+      "cardInitFailed": "Failed to initiate card payment session. Please try again or select another payment method.",
       "paymentUnavailable": "This payment method is not available. Please contact the store.",
       "selectAddress": "Please select a delivery address"
     }
@@ -1767,6 +1787,8 @@
       "minPrice": "Min",
       "price": "Price",
       "ratings": "Ratings",
+      "showLess": "Show less",
+      "showMore": "Show more",
       "sort": "Sort by",
       "sortDefault": "Default",
       "sortPriceAsc": "Price: Low to High",
@@ -1926,17 +1948,6 @@
       "productCount": "{count} products",
       "all": "All Brands",
       "viewAll": "View all brands"
-    },
-    "testimonials": {
-      "title": "Customer Stories",
-      "subtitle": "Real reviews from verified buyers",
-      "verifiedBuyer": "Verified Buyer",
-      "item1Name": "Mona K.",
-      "item1Quote": "Ordering was fast and the product arrived exactly as described. Will shop again.",
-      "item2Name": "Omar A.",
-      "item2Quote": "Great prices and easy checkout. The delivery tracking kept me updated the whole way.",
-      "item3Name": "Sara M.",
-      "item3Quote": "Customer support helped me with the size exchange in minutes. Highly recommended."
     }
   },
   "meta": {
