@@ -67,6 +67,36 @@ type SMTPConfig struct {
 	FromName string `yaml:"from_name" env:"SMTP_FROM_NAME" env-default:"Prim"`
 }
 
+// SMSConfig configures outbound SMS delivery via Twilio or logging driver.
+type SMSConfig struct {
+	// Provider selects the SMS delivery provider ("twilio" or "log"). Defaults to "log".
+	Provider string `yaml:"provider" env:"SMS_PROVIDER" env-default:"log"`
+
+	// TwilioAccountSID is the Twilio Account SID.
+	TwilioAccountSID string `yaml:"twilio_account_sid" env:"TWILIO_ACCOUNT_SID" env-default:""`
+
+	// TwilioAuthToken is the Twilio Auth Token.
+	TwilioAuthToken string `yaml:"twilio_auth_token" env:"TWILIO_AUTH_TOKEN" env-default:""`
+
+	// TwilioFromPhone is the Twilio sender phone number (E.164 format, e.g. +1234567890).
+	TwilioFromPhone string `yaml:"twilio_from_phone" env:"TWILIO_FROM_PHONE" env-default:""`
+}
+
+// PaymentConfig configures online payment gateway providers (Stripe).
+type PaymentConfig struct {
+	// Provider is the primary payment provider name (e.g. "stripe").
+	Provider string `yaml:"provider" env:"PAYMENT_PROVIDER" env-default:"stripe"`
+
+	// StripeSecretKey is the secret API key for Stripe operations (starts with sk_).
+	StripeSecretKey string `yaml:"stripe_secret_key" env:"STRIPE_SECRET_KEY" env-default:""`
+
+	// StripePublishableKey is the browser-facing publishable key (starts with pk_).
+	StripePublishableKey string `yaml:"stripe_publishable_key" env:"STRIPE_PUBLISHABLE_KEY" env-default:""`
+
+	// StripeWebhookSecret is the endpoint signing secret for webhook verification (starts with whsec_).
+	StripeWebhookSecret string `yaml:"stripe_webhook_secret" env:"STRIPE_WEBHOOK_SECRET" env-default:""`
+}
+
 // Secrets contains sensitive cryptographic keys used by the authentication flow.
 // Default fallback values are strictly prohibited in production environments.
 type Secrets struct {
@@ -98,6 +128,12 @@ type MinioConfig struct {
 
 	// Bucket is the default S3 bucket name.
 	Bucket string `yaml:"bucket" env:"MINIO_BUCKET" env-default:""`
+
+	// Region specifies the target S3 bucket region (defaults to us-east-1).
+	Region string `yaml:"region" env:"MINIO_REGION" env-default:"us-east-1"`
+
+	// UseSSL explicitly toggles HTTPS for S3 operations. If unset, auto-detected from endpoint.
+	UseSSL *bool `yaml:"use_ssl" env:"MINIO_USE_SSL"`
 }
 
 // AuthConfig defines token lifespans and session retention durations.
@@ -164,6 +200,12 @@ type Config struct {
 
 	// SMTPCfg holds outbound mail transport configuration.
 	SMTPCfg SMTPConfig `yaml:"smtp"`
+
+	// SMSCfg holds outbound SMS transport configuration.
+	SMSCfg SMSConfig `yaml:"sms"`
+
+	// PaymentCfg holds payment provider and webhook credentials.
+	PaymentCfg PaymentConfig `yaml:"payment"`
 
 	// KeysCfg holds cryptographic keys used by the authentication flow.
 	KeysCfg Secrets `yaml:"secrets"`

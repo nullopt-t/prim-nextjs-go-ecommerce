@@ -11,7 +11,13 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/job"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/sms"
 )
+
+// SMSSender abstracts SMS dispatch for transactional notifications (e.g. OTP).
+type SMSSender interface {
+	Send(ctx context.Context, to string, message string) error
+}
 
 // SendInAppInput contains all parameters needed to trigger a localized in-app alert.
 type SendInAppInput struct {
@@ -59,7 +65,20 @@ type KafkaNotifier struct {
 	producer      EventPublisher
 	emailFallback EmailFallbackQueue
 	inAppFallback InAppFallbackQueue
+	smsSender     SMSSender
 	logger        log.Logger
+}
+
+// KafkaNotifierOption allows customizing optional dependencies on KafkaNotifier.
+type KafkaNotifierOption func(*KafkaNotifier)
+
+// WithSMSSender overrides the default SMS sender on KafkaNotifier.
+func WithSMSSender(sender SMSSender) KafkaNotifierOption {
+	return func(n *KafkaNotifier) {
+		if sender != nil {
+			n.smsSender = sender
+		}
+	}
 }
 
 // NewKafkaNotifier returns a ready-to-use KafkaNotifier with fail-fast constructor invariants.
@@ -68,6 +87,7 @@ func NewKafkaNotifier(
 	logger log.Logger,
 	emailFallback EmailFallbackQueue,
 	inAppFallback InAppFallbackQueue,
+	opts ...KafkaNotifierOption,
 ) *KafkaNotifier {
 	if producer == nil {
 		panic("notifier: producer is required")
@@ -81,12 +101,17 @@ func NewKafkaNotifier(
 	if inAppFallback == nil {
 		panic("notifier: in-app fallback is required")
 	}
-	return &KafkaNotifier{
+	n := &KafkaNotifier{
 		producer:      producer,
 		emailFallback: emailFallback,
 		inAppFallback: inAppFallback,
+		smsSender:     sms.NewLogSender(logger),
 		logger:        logger,
 	}
+	for _, opt := range opts {
+		opt(n)
+	}
+	return n
 }
 
 // publishEmail publishes an email event to Kafka and falls back to Redis if
@@ -173,14 +198,18 @@ func (n *KafkaNotifier) NotifyOTP(
 		return err
 	}
 
-	// shortcut: no SMS provider is wired yet; log the code so phone sign-in
-	// still works in development/staging. Replace with a real sender before
-	// production traffic.
 	if channel == "sms" {
-		n.logger.Info("sms OTP delivery is not wired; logging code", log.Meta{
-			"recipient": identifier,
-			"otp":       otp,
-		})
+		msg := fmt.Sprintf("Your Prim verification code is: %s", otp)
+		if locale == "ar" {
+			msg = fmt.Sprintf("رمز التحقق الخاص بك في بْرِيم هو: %s", otp)
+		}
+		if err := n.smsSender.Send(ctx, identifier, msg); err != nil {
+			n.logger.Error("failed to deliver sms otp", log.Meta{
+				"recipient": identifier,
+				"error":     err.Error(),
+			})
+			return err
+		}
 		return nil
 	}
 

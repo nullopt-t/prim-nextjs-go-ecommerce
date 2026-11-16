@@ -22,6 +22,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/log"
 	"github.com/nullopt-t/prim-backend/pkg/mail"
 	"github.com/nullopt-t/prim-backend/pkg/redisclient"
+	"github.com/nullopt-t/prim-backend/pkg/sms"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
@@ -86,7 +87,19 @@ func main() {
 
 	emailFallback := job.NewRedisEmailFallbackQueue(redisClient)
 	inAppFallback := job.NewRedisInAppFallbackQueue(redisClient)
-	orderNotifier := notifier.NewKafkaNotifier(dlqProducer, logger, emailFallback, inAppFallback)
+	smsSender := sms.NewSender(sms.Config{
+		Provider:         cfg.SMSCfg.Provider,
+		TwilioAccountSID: cfg.SMSCfg.TwilioAccountSID,
+		TwilioAuthToken:  cfg.SMSCfg.TwilioAuthToken,
+		TwilioFromPhone:  cfg.SMSCfg.TwilioFromPhone,
+	}, logger)
+	orderNotifier := notifier.NewKafkaNotifier(
+		dlqProducer,
+		logger,
+		emailFallback,
+		inAppFallback,
+		notifier.WithSMSSender(smsSender),
+	)
 	orderService := order.NewService(
 		txRunner,
 		orderRepo,

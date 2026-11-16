@@ -85,6 +85,31 @@ func TestNotifyOTPSMSLogsInsteadOfPublishing(t *testing.T) {
 	assert.Empty(t, inAppFallback.events)
 }
 
+type fakeSMSSender struct {
+	to      string
+	message string
+	err     error
+}
+
+func (f *fakeSMSSender) Send(ctx context.Context, to string, message string) error {
+	f.to = to
+	f.message = message
+	return f.err
+}
+
+func TestNotifyOTPSMSWithCustomSender(t *testing.T) {
+	publisher := &fakePublisher{}
+	emailFallback := &fakeFallbackQueue{}
+	inAppFallback := &fakeFallbackQueue{}
+	smsSender := &fakeSMSSender{}
+	n := NewKafkaNotifier(publisher, testLogger{}, emailFallback, inAppFallback, WithSMSSender(smsSender))
+
+	err := n.NotifyOTP(context.Background(), "sms", "+201012340001", "654321")
+	require.NoError(t, err)
+	assert.Equal(t, "+201012340001", smsSender.to)
+	assert.Contains(t, smsSender.message, "654321")
+}
+
 func TestEmailPublishFallsBackToRedisWhenKafkaFails(t *testing.T) {
 	publisher := &fakePublisher{err: errors.New("kafka unavailable")}
 	emailFallback := &fakeFallbackQueue{}

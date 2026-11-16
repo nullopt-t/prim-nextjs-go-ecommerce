@@ -37,7 +37,9 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/payment"
 	"github.com/nullopt-t/prim-backend/pkg/redisclient"
+	"github.com/nullopt-t/prim-backend/pkg/sms"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 
 	"github.com/gin-gonic/gin"
@@ -121,7 +123,19 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	app.kafkaProducer = brokerkafka.NewProducer(kafkaCfg)
 	emailFallback := job.NewRedisEmailFallbackQueue(app.redisClient)
 	inAppFallback := job.NewRedisInAppFallbackQueue(app.redisClient)
-	notifier := notifier.NewKafkaNotifier(app.kafkaProducer, app.logger, emailFallback, inAppFallback)
+	smsSender := sms.NewSender(sms.Config{
+		Provider:         app.config.SMSCfg.Provider,
+		TwilioAccountSID: app.config.SMSCfg.TwilioAccountSID,
+		TwilioAuthToken:  app.config.SMSCfg.TwilioAuthToken,
+		TwilioFromPhone:  app.config.SMSCfg.TwilioFromPhone,
+	}, app.logger)
+	notifier := notifier.NewKafkaNotifier(
+		app.kafkaProducer,
+		app.logger,
+		emailFallback,
+		inAppFallback,
+		notifier.WithSMSSender(smsSender),
+	)
 
 	rateLimiter := security.NewRateLimiter(
 		app.redisClient,
@@ -411,6 +425,10 @@ func (app *App) setupRoutes(router *gin.Engine) {
 		notifier,
 		adminBroadcaster,
 		app.logger,
+		checkout.WithPaymentGateway(payment.NewStripeGateway(
+			app.config.PaymentCfg.StripeWebhookSecret,
+			payment.WithStripeAPIKey(app.config.PaymentCfg.StripeSecretKey),
+		)),
 	)
 	checkoutHandler := checkout.NewHandler(checkoutService)
 	checkoutRouter := checkout.NewRouter(checkoutHandler, sessionStore)
@@ -524,11 +542,20 @@ func (app *App) Run() error {
 	}
 	pingCancel()
 
+	var storageOpts []storage.StorageOption
+	if app.config.MinioCfg.Region != "" {
+		storageOpts = append(storageOpts, storage.WithRegion(app.config.MinioCfg.Region))
+	}
+	if app.config.MinioCfg.UseSSL != nil {
+		storageOpts = append(storageOpts, storage.WithSSL(*app.config.MinioCfg.UseSSL))
+	}
+
 	storageProv, err := storage.NewMinioStorageProvider(
 		app.config.MinioCfg.Endpoint,
 		app.config.MinioCfg.AccessKey,
 		app.config.MinioCfg.SecretKey,
 		app.config.MinioCfg.PublicURL,
+		storageOpts...,
 	)
 	if err != nil {
 		app.logger.Error(

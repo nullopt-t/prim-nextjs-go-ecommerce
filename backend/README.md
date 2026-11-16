@@ -137,12 +137,17 @@ cause stored XSS when served from the public bucket.
 ## Migrations
 
 The schema and seed data live in `migrations/` and are applied with `golang-migrate`.
-There are exactly two migration versions:
+There is a single DDL migration version:
 
 | Version | Purpose |
 | --- | --- |
 | `000001_init` | The full schema: types, tables, indexes, constraints. |
-| `000002_seed` | Demo/development data for the storefront. |
+
+Development and demo seed data lives separately in `backend/seed/seed.sql` and is populated with:
+
+```bash
+make seed            # load catalog and demo data into local PostgreSQL
+```
 
 ```bash
 make migrate-up      # apply pending migrations
