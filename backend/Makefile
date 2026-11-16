@@ -8,7 +8,7 @@ ADMIN_TAGS := $(shell grep -rhoE '@Tags[[:space:]]+Admin [A-Za-z ]+' --include='
 # The same tags negated: swag excludes every tag prefixed with '!'.
 PUBLIC_EXCLUDE_TAGS := $(shell printf '%s' '$(ADMIN_TAGS)' | sed 's/^/!/; s/,/,!/g')
 
-.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force swagger
+.PHONY: up up-d down clean logs logs-api logs-worker migrate-up migrate-down migrate-drop migrate-reset migrate-force seed swagger
 
 swagger:
 	@test -n "$(ADMIN_TAGS)" || { echo "swagger: no 'Admin *' tags found, refusing to generate specs" >&2; exit 1; }
@@ -63,3 +63,7 @@ migrate-reset:
 
 migrate-force:
 	$(COMPOSE) run --rm migrate force $(version)
+
+seed:
+	@test -f seed/seed.sql || { echo "Seed file seed/seed.sql not found" >&2; exit 1; }
+	$(COMPOSE) exec -T postgres psql -U prim -d prim -f /seed/seed.sql

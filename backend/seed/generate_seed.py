@@ -564,24 +564,24 @@ for cat_name, brand_name, title, slug, desc, highlights, var_list in catalog_def
             obj_idx += 1
 
 users = [
-    (hex_id(0x10000000, 1), 'admin@prim.com', 'Admin User', 'admin', True, 'active'),
-    (hex_id(0x10000000, 2), 'john.doe@example.com', 'John Doe', 'customer', True, 'active'),
-    (hex_id(0x10000000, 3), 'jane.smith@example.com', 'Jane Smith', 'customer', True, 'active'),
-    (hex_id(0x10000000, 4), 'support@prim.com', 'Support Specialist', 'support', True, 'active'),
-    (hex_id(0x10000000, 5), 'alex.turner@example.com', 'Alex Turner', 'customer', True, 'active'),
-    (hex_id(0x10000000, 6), 'sarah.connor@example.com', 'Sarah Connor', 'customer', True, 'active'),
-    (hex_id(0x10000000, 7), 'michael.scott@example.com', 'Michael Scott', 'customer', True, 'active'),
-    (hex_id(0x10000000, 8), 'elena.rostova@example.com', 'Elena Rostova', 'customer', True, 'active'),
-    (hex_id(0x10000000, 9), 'david.beck@example.com', 'David Beck', 'customer', True, 'active'),
-    (hex_id(0x10000000, 10), 'emily.watson@example.com', 'Emily Watson', 'customer', True, 'active'),
-    (hex_id(0x10000000, 11), 'carlos.mendez@example.com', 'Carlos Mendez', 'customer', True, 'active'),
-    (hex_id(0x10000000, 12), 'hannah.abbott@example.com', 'Hannah Abbott', 'customer', False, 'active'),
-    (hex_id(0x10000000, 13), 'omar.hassan@example.com', 'Omar Hassan', 'customer', True, 'active'),
-    (hex_id(0x10000000, 14), 'lucia.fernandez@example.com', 'Lucia Fernandez', 'customer', True, 'active'),
-    (hex_id(0x10000000, 15), 'kenji.tanaka@example.com', 'Kenji Tanaka', 'customer', True, 'active'),
-    (hex_id(0x10000000, 16), 'nina.petrova@example.com', 'Nina Petrova', 'customer', True, 'active'),
-    (hex_id(0x10000000, 17), 'diego.silva@example.com', 'Diego Silva', 'customer', True, 'active'),
-    (hex_id(0x10000000, 18), 'amara.okoye@example.com', 'Amara Okoye', 'customer', True, 'active'),
+    (hex_id(0x10000000, 1), '+201000000001', 'Admin User', 'admin', True, 'EG', 'active'),
+    (hex_id(0x10000000, 2), '+201000000002', 'John Doe', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 3), '+201000000003', 'Jane Smith', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 4), '+201000000004', 'Support Specialist', 'support', True, 'EG', 'active'),
+    (hex_id(0x10000000, 5), '+201000000005', 'Alex Turner', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 6), '+201000000006', 'Sarah Connor', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 7), '+201000000007', 'Michael Scott', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 8), '+201000000008', 'Elena Rostova', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 9), '+201000000009', 'David Beck', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 10), '+201000000010', 'Emily Watson', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 11), '+201000000011', 'Carlos Mendez', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 12), '+201000000012', 'Hannah Abbott', 'customer', False, 'EG', 'active'),
+    (hex_id(0x10000000, 13), '+201000000013', 'Omar Hassan', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 14), '+201000000014', 'Lucia Fernandez', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 15), '+201000000015', 'Kenji Tanaka', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 16), '+201000000016', 'Nina Petrova', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 17), '+201000000017', 'Diego Silva', 'customer', True, 'EG', 'active'),
+    (hex_id(0x10000000, 18), '+201000000018', 'Amara Okoye', 'customer', True, 'EG', 'active'),
 ]
 
 addresses = [
@@ -853,16 +853,16 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append("-- 2. USERS (Admins, Support, Customers)")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO users (id, email, full_name, role, is_email_verified, status, created_at, updated_at) VALUES")
-val_rows = [f"({esc(u[0])}, {esc(u[1])}, {esc(u[2])}, {esc(u[3])}, {'true' if u[4] else 'false'}, {esc(u[5])}, now() - INTERVAL '60 days', now() - INTERVAL '60 days')" for u in users]
+lines.append("INSERT INTO users (id, phone, full_name, role, phone_verified, country_code, status, created_at, updated_at) VALUES")
+val_rows = [f"({esc(u[0])}, {esc(u[1])}, {esc(u[2])}, {esc(u[3])}, {'true' if u[4] else 'false'}, {esc(u[5])}, {esc(u[6])}, now() - INTERVAL '60 days', now() - INTERVAL '60 days')" for u in users]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 3. addresses
 lines.append("-- =====================================================================")
 lines.append("-- 3. ADDRESSES")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO addresses (id, user_id, label, full_name, phone, line1, line2, city, state, postal_code, country, is_default, created_at, updated_at) VALUES")
-val_rows = [f"({esc(a[0])}, {esc(a[1])}, {esc(a[2])}, {esc(a[3])}, {esc(a[4])}, {esc(a[5])}, {esc(a[6])}, {esc(a[7])}, {esc(a[8])}, {esc(a[9])}, {esc(a[10])}, {'true' if a[11] else 'false'}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for a in addresses]
+lines.append("INSERT INTO addresses (id, user_id, line1, line2, city, state, postal_code, country, is_default, created_at, updated_at) VALUES")
+val_rows = [f"({esc(a[0])}, {esc(a[1])}, {esc(a[5])}, {esc(a[6])}, {esc(a[7])}, {esc(a[8])}, {esc(a[9])}, {esc(a[10])}, {'true' if a[11] else 'false'}, now() - INTERVAL '50 days', now() - INTERVAL '50 days')" for a in addresses]
 lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 
 # 4. brands
@@ -971,17 +971,21 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (product_id, tag_id) DO NOTHI
 lines.append("-- =====================================================================")
 lines.append("-- 11. VARIANT MEDIA")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO variant_media (variant_id, object_id, media_type, sort_order) VALUES")
-val_rows = [f"({esc(vm[0])}, {esc(vm[1])}, {esc(vm[2])}, {vm[3]})" for vm in variant_media]
-lines.append(",\n".join(val_rows) + ";\n")
+lines.append("INSERT INTO variant_media (variant_id, object_id, media_type, sort_order)")
+lines.append("SELECT v.variant_id, v.object_id, v.media_type, v.sort_order FROM (VALUES")
+val_rows = [f"({esc(vm[0])}::uuid, {esc(vm[1])}::uuid, {esc(vm[2])}, {vm[3]})" for vm in variant_media]
+lines.append(",\n".join(val_rows) + "\n) AS v(variant_id, object_id, media_type, sort_order)")
+lines.append("WHERE NOT EXISTS (SELECT 1 FROM variant_media vm WHERE vm.variant_id = v.variant_id AND vm.object_id = v.object_id);\n")
 
 # 12. inventory_ledgers
 lines.append("-- =====================================================================")
 lines.append("-- 12. INVENTORY LEDGERS")
 lines.append("-- =====================================================================")
-lines.append("INSERT INTO inventory_ledgers (variant_id, quantity, reason, created_at) VALUES")
-val_rows = [f"({esc(inv[0])}, {inv[1]}, {esc(inv[2])}, now() - INTERVAL '35 days')" for inv in inventory_ledgers]
-lines.append(",\n".join(val_rows) + ";\n")
+lines.append("INSERT INTO inventory_ledgers (variant_id, quantity, reason, created_at)")
+lines.append("SELECT v.variant_id, v.quantity, v.reason::inventory_reason, v.created_at FROM (VALUES")
+val_rows = [f"({esc(inv[0])}::uuid, {inv[1]}, {esc(inv[2])}, now() - INTERVAL '35 days')" for inv in inventory_ledgers]
+lines.append(",\n".join(val_rows) + "\n) AS v(variant_id, quantity, reason, created_at)")
+lines.append("WHERE NOT EXISTS (SELECT 1 FROM inventory_ledgers il WHERE il.variant_id = v.variant_id AND il.reason = 'restock');\n")
 
 # 13. coupons
 lines.append("-- =====================================================================")
@@ -1020,7 +1024,8 @@ lines.append(f"""INSERT INTO cart_items (cart_id, variant_id, quantity, price_at
 ('a0000000-0000-0000-0000-000000000001', '{variants[1][0]}', 1, {variants[1][5]}, 'EGP', now() - INTERVAL '2 days'),
 ('a0000000-0000-0000-0000-000000000002', '{variants[2][0]}', 1, {variants[2][5]}, 'EGP', now() - INTERVAL '2 days'),
 ('a0000000-0000-0000-0000-000000000003', '{variants[3][0]}', 1, {variants[3][5]}, 'EGP', now() - INTERVAL '2 days'),
-('a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'EGP', now() - INTERVAL '2 days');
+('a0000000-0000-0000-0000-000000000004', '{variants[4][0]}', 2, {variants[4][5]}, 'EGP', now() - INTERVAL '2 days')
+ON CONFLICT (cart_id, variant_id) DO NOTHING;
 """)
 
 # 16. inventory_reservations
@@ -1151,10 +1156,13 @@ lines.append(",\n".join(val_rows) + "\nON CONFLICT (id) DO NOTHING;\n")
 lines.append("-- =====================================================================")
 lines.append("-- 19. ORDER STATUS HISTORY")
 lines.append("-- =====================================================================")
-lines.append("""INSERT INTO order_status_history (order_id, status, notes, created_at) VALUES
-('90000000-0000-0000-0000-000000000001', 'pending', 'Order placed by customer', now() - INTERVAL '20 days'),
-('90000000-0000-0000-0000-000000000001', 'paid', 'Payment authorized and captured via Stripe', now() - INTERVAL '20 days' + INTERVAL '5 minutes'),
-('90000000-0000-0000-0000-000000000001', 'delivered', 'Package delivered to front door', now() - INTERVAL '15 days');
+lines.append("""INSERT INTO order_status_history (order_id, status, notes, created_at)
+SELECT v.order_id, v.status::order_status, v.notes, v.created_at FROM (VALUES
+('90000000-0000-0000-0000-000000000001'::uuid, 'pending', 'Order placed by customer', now() - INTERVAL '20 days'),
+('90000000-0000-0000-0000-000000000001'::uuid, 'paid', 'Payment authorized and captured via Stripe', now() - INTERVAL '20 days' + INTERVAL '5 minutes'),
+('90000000-0000-0000-0000-000000000001'::uuid, 'delivered', 'Package delivered to front door', now() - INTERVAL '15 days')
+) AS v(order_id, status, notes, created_at)
+WHERE NOT EXISTS (SELECT 1 FROM order_status_history osh WHERE osh.order_id = v.order_id AND osh.status = v.status::order_status);
 """)
 
 # 20. coupon_redemptions
@@ -1162,7 +1170,8 @@ lines.append("-- ===============================================================
 lines.append("-- 20. COUPON REDEMPTIONS")
 lines.append("-- =====================================================================")
 lines.append("""INSERT INTO coupon_redemptions (coupon_id, user_id, order_id, discount_amount, currency, created_at) VALUES
-('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, 'EGP', now() - INTERVAL '18 days');
+('c0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', '90000000-0000-0000-0000-000000000002', 13000, 'EGP', now() - INTERVAL '18 days')
+ON CONFLICT (coupon_id, user_id) DO NOTHING;
 """)
 
 # 21. payments
@@ -1195,7 +1204,8 @@ ON CONFLICT (id) DO NOTHING;
 lines.append("\nCOMMIT;\n")
 
 sql_content = "\n".join(lines)
-with open("migrations/000002_seed.up.sql", "w") as f:
+seed_path = os.path.join(os.path.dirname(__file__), "seed.sql")
+with open(seed_path, "w") as f:
     f.write(sql_content)
 
-print(f"Generated 000002_seed.up.sql with {len(storage_objects)} storage_objects and {len(variants)} variants ({len(sql_content)} bytes).")
+print(f"Generated {seed_path} with {len(storage_objects)} storage_objects and {len(variants)} variants ({len(sql_content)} bytes).")

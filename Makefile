@@ -3,7 +3,7 @@ PROD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-c
 
 .PHONY: up up-build up-d down clean clean-dev clean-prod clean-volumes-dev clean-volumes-prod \
 	logs logs-api logs-worker logs-frontend \
-	migrate-up migrate-down migrate-drop migrate-reset \
+	migrate-up migrate-down migrate-drop migrate-reset seed \
 	prod-up prod-down prod-logs prod-ps prod-migrate
 
 ## ─── Full Stack ──────────────────────────────────────────
@@ -68,6 +68,10 @@ migrate-drop:
 migrate-reset:
 	$(COMPOSE) run --rm migrate drop -f
 	$(COMPOSE) run --rm migrate
+
+seed:
+	@test -f backend/seed/seed.sql || { echo "Seed file backend/seed/seed.sql not found" >&2; exit 1; }
+	$(COMPOSE) exec -T postgres psql -U prim -d prim -f /seed/seed.sql
 
 ## ─── Production ──────────────────────────────────────────
 
