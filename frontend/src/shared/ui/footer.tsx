@@ -7,12 +7,14 @@ import { CurrencySwitcher } from "@/shared/ui/currencySwitcher";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 import { useAuthContext } from "@/modules/auth/model/authContext";
 import { useTranslations } from "next-intl";
-import { Link } from "@/shared/i18n/navigation";
+import { Link, usePathname } from "@/shared/i18n/navigation";
 
 const currentDate = new Date().getFullYear();
 
 export function Footer() {
   const t = useTranslations("common");
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
   const { settings } = usePublicSettings();
   const { isAuthenticated } = useAuthContext();
   const storeName = settings?.storeName?.trim() || t("footer.defaultStore");
@@ -110,7 +112,7 @@ export function Footer() {
   return (
     <footer className="bg-secondary/40 text-foreground mt-auto border-t border-border/60 transition-colors">
       <div className="w-full px-3 sm:px-6 lg:px-8 py-10 md:py-14">
-        <TrustBar />
+        {!isHomePage && <TrustBar />}
         <div className="mb-10 flex flex-col gap-10 md:flex-row text-txt-sm md:text-txt-md lg:text-txt-lg">
           <div className="flex-1 max-w-sm">
             <Brand />

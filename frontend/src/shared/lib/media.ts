@@ -18,12 +18,12 @@ function getMediaOrigin(): string {
 	try {
 		const parsed = new URL(apiUrl);
 		if (parsed.hostname) {
-			return `${parsed.protocol}//${parsed.hostname}:9000`;
+			return `${parsed.protocol}//${parsed.hostname}:4566`;
 		}
 	} catch {
 		// Fall through to the local default.
 	}
-	return "http://localhost:9000";
+	return "http://localhost:4566";
 }
 
 export function normalizeMediaUrl(url?: string | null): string {
@@ -32,7 +32,14 @@ export function normalizeMediaUrl(url?: string | null): string {
 	let result = url.trim();
 	if (!result) return PLACEHOLDER_PRODUCT_IMAGE;
 
-	// In the browser on a mobile or remote LAN device, replace localhost MinIO host with current hostname
+	const mediaOrigin = getMediaOrigin();
+
+	// Rewrite legacy MinIO port 9000 or container-internal hostnames (minio, floci) to the public media origin.
+	result = result.replace(/^https?:\/\/(localhost|127\.0\.0\.1|minio):9000/, mediaOrigin);
+	result = result.replace(/^https?:\/\/(localhost|127\.0\.0\.1):4566/, mediaOrigin);
+	result = result.replace(/^https?:\/\/floci:4566/, mediaOrigin);
+
+	// In the browser on a mobile or remote LAN device, replace localhost with current hostname
 	if (
 		typeof window !== "undefined" &&
 		window.location.hostname &&
@@ -40,9 +47,18 @@ export function normalizeMediaUrl(url?: string | null): string {
 		window.location.hostname !== "127.0.0.1"
 	) {
 		result = result.replace(
-			/^http:\/\/(localhost|127\.0\.0\.1):9000/,
-			`${window.location.protocol}//${window.location.hostname}:9000`
+			/^http:\/\/(localhost|127\.0\.0\.1):4566/,
+			`${window.location.protocol}//${window.location.hostname}:4566`
 		);
+	}
+
+	// Absolute URLs are passed through untouched.
+	// Recognize S3, Cloudflare R2 and Floci/LocalStack (port 4566) storage URLs.
+	if (
+		/^https?:\/\//i.test(result) &&
+		/(amazonaws\.com|r2\.cloudflarestorage\.com|:(4566|9000)\b)/.test(result)
+	) {
+		return result;
 	}
 
 	// Absolute URLs are passed through untouched.
@@ -66,5 +82,12 @@ export function normalizeMediaUrl(url?: string | null): string {
 		? result
 		: `/catalog/${result.replace(/^\/?catalog\//, "")}`;
 
+	return `${getMediaOrigin()}${path}`;
+}
+
+export function getStoragePublicUrl(key: string): string {
+	const trimmed = (key || "").trim();
+	if (!trimmed) return PLACEHOLDER_PRODUCT_IMAGE;
+	const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 	return `${getMediaOrigin()}${path}`;
 }

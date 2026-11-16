@@ -4,7 +4,6 @@ import { useMemo, useRef } from "react";
 import { Link } from "@/shared/i18n/navigation";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import type { Category, ProductDetailsEntity } from "@/modules/catalog/types";
-import { ErrorState } from "@/shared/ui/errorState";
 import { ProductsCard } from "@/shared/ui/productsCard";
 import { useTranslations, useLocale } from "next-intl";
 import { localizedName } from "@/shared/lib/localizedName";
@@ -146,8 +145,8 @@ export default function CategoryShelves({
     );
   }
 
-  if (!loading && shelves.length === 0 && categories.length === 0) {
-    return <ErrorState />;
+  if (shelves.length === 0) {
+    return null;
   }
 
   return (

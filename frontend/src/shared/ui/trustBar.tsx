@@ -1,12 +1,13 @@
 "use client";
 
 import { ShieldCheck, CreditCard, Banknote, Truck, Clock } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 import { formatMoney } from "@/shared/lib/money";
 
 export function TrustBar() {
 	const t = useTranslations("common.trustBar");
+	const locale = useLocale();
 	const { settings } = usePublicSettings();
 
 	const threshold = settings?.freeShippingThreshold ?? 0;
@@ -37,9 +38,15 @@ export function TrustBar() {
 				</span>
 			)}
 			{deliveryDays && (
-				<span className="inline-flex items-center gap-1.5">
+				<span className="inline-flex items-center gap-1.5" dir="auto">
 					<Clock className="size-4" aria-hidden="true" />
-					{t("deliveryDays", { days: deliveryDays })}
+					<span dir="auto">
+						{t("deliveryDays", {
+							days: locale.startsWith("ar")
+								? deliveryDays.replace(/business days/i, "أيام عمل").replace(/days/i, "أيام")
+								: deliveryDays,
+						})}
+					</span>
 				</span>
 			)}
 		</div>

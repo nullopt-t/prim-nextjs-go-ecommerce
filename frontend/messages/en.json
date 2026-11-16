@@ -1803,7 +1803,7 @@
       "contactUs": "Contact Us",
       "copyright": "© {year} {store}. All rights reserved.",
       "faqs": "FAQs",
-      "footerDescription": "Shop {store} online — fast delivery, easy returns, and secure checkout.",
+      "footerDescription": "Discover quality products from verified local and global merchants on {store}.",
       "careers": "Careers",
       "press": "Press & News",
       "defaultStore": "Store",
@@ -1906,7 +1906,14 @@
       "title": "Everything you need, ",
       "viewDeals": "View deals",
       "featured": "Featured",
-      "viewProduct": "View product"
+      "viewProduct": "View product",
+      "defaultBadge": "PRIM Superstore",
+      "defaultTitle": "Everything you need, delivered with care.",
+      "defaultDescription": "Connecting shoppers with trusted local and global merchants for a seamless marketplace experience.",
+      "browseProducts": "Browse Products",
+      "sellOnPrim": "Sell on PRIM",
+      "curatedMarketplace": "Curated Multi-Vendor Marketplace",
+      "curatedDescription": "Discover unique products from vetted sellers"
     },
     "product": {
       "addToCart": "Add to cart"
@@ -2613,7 +2620,9 @@
   "shop": {
     "categories": {
       "description": "Explore our diverse range of product categories.",
-      "title": "Categories"
+      "title": "Categories",
+      "emptyTitle": "No categories available yet",
+      "emptyDescription": "Categories will appear here once merchants organize their product lines."
     },
     "pages": {
       "careers": {

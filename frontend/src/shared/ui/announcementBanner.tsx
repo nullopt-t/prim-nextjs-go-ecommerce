@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Megaphone, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { usePublicSettings } from "@/modules/settings/model/publicSettingsContext";
 
 /**
@@ -12,10 +12,19 @@ import { usePublicSettings } from "@/modules/settings/model/publicSettingsContex
 export function AnnouncementBanner() {
   const { settings } = usePublicSettings();
   const t = useTranslations("common");
+  const locale = useLocale();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed || !settings?.announcementEnabled || !settings.announcementText?.trim()) {
     return null;
+  }
+
+  let displayText = settings.announcementText;
+  if (
+    locale.startsWith("ar") &&
+    displayText.trim().toLowerCase() === "welcome to prim! enjoy free delivery on qualifying orders."
+  ) {
+    displayText = "مرحباً بكم في بريم! استمتع بتوصيل مجاني على الطلبات المؤهلة.";
   }
 
   return (
@@ -23,7 +32,7 @@ export function AnnouncementBanner() {
       <div className="w-full px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-center gap-2 text-center">
         <Megaphone aria-hidden className="size-3.5 shrink-0" />
         <span dir="auto" className="text-[11px] sm:text-xs font-semibold leading-snug min-w-0 break-words text-balance">
-          {settings.announcementText}
+          {displayText}
         </span>
         <button
           type="button"

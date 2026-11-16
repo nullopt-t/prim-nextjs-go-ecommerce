@@ -31,11 +31,26 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     ),
+    alternates: {
+      canonical: "/",
+    },
     title: {
       default: t("title"),
       template: storeName ? `%s | ${storeName}` : "%s",
     },
     description: t("description"),
+    openGraph: {
+      url: "/",
+      siteName: storeName || undefined,
+      type: "website",
+      title: t("title"),
+      description: t("description"),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: t("title"),
+      description: t("description"),
+    },
     icons: {
       icon: [
         { url: "/favicon.svg", type: "image/svg+xml" },

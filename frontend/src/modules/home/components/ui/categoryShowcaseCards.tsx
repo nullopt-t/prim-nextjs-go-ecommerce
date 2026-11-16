@@ -2,9 +2,8 @@
 
 import { useMemo } from "react";
 import { Link } from "@/shared/i18n/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FolderOpen } from "lucide-react";
 
-import { ErrorState } from "@/shared/ui/errorState";
 import { useTranslations, useLocale } from "next-intl";
 import { normalizeMediaUrl } from "@/shared/lib/media";
 import { localizedName } from "@/shared/lib/localizedName";
@@ -82,6 +81,7 @@ export default function CategoryShowcaseCards({
   showAll?: boolean;
 }) {
   const locale = useLocale();
+  const tShop = useTranslations("shop");
 
   const categoryGroups = useMemo(() => {
     if (!categories || categories.length === 0) {
@@ -134,9 +134,18 @@ export default function CategoryShowcaseCards({
     );
   }
 
-  if (!loading && categoryGroups.length === 0 && categories.length === 0) return <ErrorState />;
-
-  if (categoryGroups.length === 0) return null;
+  if (categoryGroups.length === 0) {
+    if (showAll) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-6 py-16 text-center">
+          <FolderOpen className="size-10 text-muted-foreground/60" aria-hidden="true" />
+          <h2 className="text-base font-semibold text-foreground">{tShop("categories.emptyTitle")}</h2>
+          <p className="max-w-md text-sm text-muted-foreground">{tShop("categories.emptyDescription")}</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">

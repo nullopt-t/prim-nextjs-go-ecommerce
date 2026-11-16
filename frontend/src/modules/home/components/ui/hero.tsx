@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/shared/i18n/navigation";
-import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, Pause, Play, ShoppingBag } from "lucide-react";
 import type { ProductDetailsEntity } from "@/modules/catalog/types";
 import { useCurrency } from "@/modules/settings/model/publicSettingsContext";
 import { formatMoney } from "@/shared/lib/money";
@@ -53,7 +53,52 @@ export default function Hero({ products = [] }: { products?: ProductDetailsEntit
 		};
 	}, [isPlaying, nextSlide, slides.length, currentIndex]);
 
-	if (slides.length === 0) return null;
+	if (slides.length === 0) {
+		return (
+			<div
+				className="relative w-full overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-secondary/40 via-background to-secondary/20"
+				aria-label={t("billboard")}
+			>
+				<div className="relative flex min-h-[290px] flex-col items-center justify-between gap-6 px-6 py-8 sm:min-h-[320px] sm:px-10 sm:py-10 md:flex-row md:gap-12 md:px-14 md:py-12">
+					<div className="z-10 max-w-xl flex-1 text-start">
+						<div className="mb-3 inline-flex items-center gap-2">
+							<span className="rounded bg-accent-brand/10 text-accent-brand px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider">
+								{t("defaultBadge")}
+							</span>
+						</div>
+
+						<h1 className="mb-3 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl md:text-4xl">
+							{t("defaultTitle")}
+						</h1>
+
+						<p className="mb-6 max-w-lg text-sm sm:text-base leading-relaxed text-muted-foreground">
+							{t("defaultDescription")}
+						</p>
+
+						<div className="flex items-center gap-3">
+							<Link
+								href="/sell"
+								className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold min-h-11 text-background shadow-xs transition-transform hover:-translate-y-0.5"
+							>
+								<span>{t("sellOnPrim")}</span>
+								<ArrowRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+							</Link>
+						</div>
+					</div>
+
+					<div className="z-10 flex w-full shrink-0 items-center justify-center md:w-auto">
+						<div className="relative flex size-56 sm:size-64 md:size-72 flex-col items-center justify-center rounded-2xl border border-border/50 bg-background/90 p-6 text-center shadow-md">
+							<div className="mb-4 flex size-20 items-center justify-center rounded-2xl bg-secondary/80 text-foreground ring-1 ring-border/50">
+								<ShoppingBag className="size-10 text-accent-brand" aria-hidden="true" />
+							</div>
+							<p className="text-sm font-bold text-foreground">{t("curatedMarketplace")}</p>
+							<p className="mt-1 text-xs text-muted-foreground">{t("curatedDescription")}</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	const activeSlide = slides[currentIndex % slides.length];
 	const activeName = productName(activeSlide, locale);

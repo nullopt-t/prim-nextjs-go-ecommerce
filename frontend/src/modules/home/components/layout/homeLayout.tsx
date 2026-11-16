@@ -14,6 +14,17 @@ export default function HomeLayout({
   products?: import("@/modules/catalog/types").ProductDetailsEntity[];
   categories?: import("@/modules/catalog/types").Category[];
 }) {
+  const isCatalogEmpty = products.length === 0 && categories.length === 0;
+
+  if (isCatalogEmpty) {
+    return (
+      <div className="flex flex-col gap-6 md:gap-8">
+        <CatalogFeedLoader />
+        <Hero products={products} />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 md:gap-8">
       <CatalogFeedLoader />
