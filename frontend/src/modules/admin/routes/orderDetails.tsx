@@ -161,6 +161,23 @@ export function AdminOrderDetails() {
     fetchOrderFromApi();
   }, [id]);
 
+  const statusSelectOptions = useMemo(() => {
+    if (!order) return [];
+    const cur = order.status.toLowerCase();
+    const transitions: Record<string, string[]> = {
+      pending: ["processing", "cancelled"],
+      processing: ["shipped", "cancelled"],
+      shipped: ["delivered", "cancelled"],
+      delivered: [],
+      cancelled: [],
+    };
+    const allowed = [cur, ...(transitions[cur] ?? [])];
+    return allowed.map((st) => ({
+      value: st.charAt(0).toUpperCase() + st.slice(1),
+      label: t(`status.${st}`, { defaultValue: st.charAt(0).toUpperCase() + st.slice(1) }),
+    }));
+  }, [order?.status, t]);
+
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">{t("orderDetails.loading")}</div>;
   }
@@ -203,23 +220,6 @@ export function AdminOrderDetails() {
       notify.error(apiErrorMessage(err, t("orderDetails.toast.trackingFailed")));
     }
   };
-
-  const statusSelectOptions = useMemo(() => {
-    if (!order) return [];
-    const cur = order.status.toLowerCase();
-    const transitions: Record<string, string[]> = {
-      pending: ["processing", "cancelled"],
-      processing: ["shipped", "cancelled"],
-      shipped: ["delivered", "cancelled"],
-      delivered: [],
-      cancelled: [],
-    };
-    const allowed = [cur, ...(transitions[cur] ?? [])];
-    return allowed.map((st) => ({
-      value: st.charAt(0).toUpperCase() + st.slice(1),
-      label: t(`status.${st}`, { defaultValue: st.charAt(0).toUpperCase() + st.slice(1) }),
-    }));
-  }, [order?.status, t]);
 
   const handleUpdateProgress = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
