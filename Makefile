@@ -4,7 +4,7 @@ PROD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-c
 .PHONY: up up-build up-d down clean clean-dev clean-prod clean-volumes-dev clean-volumes-prod \
 	logs logs-api logs-worker logs-frontend \
 	migrate-up migrate-down migrate-drop migrate-reset seed \
-	prod-up prod-down prod-logs prod-ps prod-migrate
+	prod-up prod-down prod-logs prod-ps prod-migrate prod-seed
 
 ## ─── Full Stack ──────────────────────────────────────────
 
@@ -33,11 +33,11 @@ clean-prod:
 
 # Explicitly destructive. Only use when you intend to delete persisted data.
 clean-volumes-dev:
-	@echo "WARNING: removing dev volumes (Postgres, Redis, MinIO, Kafka)"
+	@echo "WARNING: removing dev volumes (Postgres, Redis, Floci, Kafka)"
 	$(COMPOSE) down -v --remove-orphans
 
 clean-volumes-prod:
-	@echo "WARNING: removing the production MinIO volume"
+	@echo "WARNING: removing production volumes (Postgres, Redis, Floci, Kafka)"
 	$(PROD_COMPOSE) down -v --remove-orphans
 
 ## ─── Logs ────────────────────────────────────────────────
@@ -71,7 +71,13 @@ migrate-reset:
 
 seed:
 	@test -f backend/seed/seed.sql || { echo "Seed file backend/seed/seed.sql not found" >&2; exit 1; }
-	$(COMPOSE) exec -T postgres psql -U prim -d prim -f /seed/seed.sql
+	$(COMPOSE) up -d s3-init
+	$(COMPOSE) exec -T postgres psql -U prim -d prim < backend/seed/seed.sql
+
+prod-seed:
+	@test -f backend/seed/seed.sql || { echo "Seed file backend/seed/seed.sql not found" >&2; exit 1; }
+	$(PROD_COMPOSE) up -d s3-init
+	$(PROD_COMPOSE) exec -T postgres psql -U prim -d prim < backend/seed/seed.sql
 
 ## ─── Production ──────────────────────────────────────────
 

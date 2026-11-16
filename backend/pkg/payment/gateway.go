@@ -241,13 +241,9 @@ func (g *StripeGateway) RetrievePaymentIntent(ctx context.Context, intentID stri
 	}
 
 	if strings.TrimSpace(g.apiKey) == "" {
-		// Mock intents exist only when no API key is configured. With a key set,
-		// every id is verified against Stripe, so a pi_mock_ id cannot fake a payment.
-		result := &PaymentIntentResult{ID: intentID, Status: "succeeded"}
-		if orderID := strings.TrimPrefix(intentID, "pi_mock_"); orderID != intentID {
-			result.Metadata = map[string]string{"order_id": orderID}
-		}
-		return result, nil
+		// No API key configured: never fabricate a settled payment. Confirm calls
+		// must fail closed rather than treat an intent as paid.
+		return nil, ErrMissingAPIKey
 	}
 
 	params := &stripe.PaymentIntentParams{}

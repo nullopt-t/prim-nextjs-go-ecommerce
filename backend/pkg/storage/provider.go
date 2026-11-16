@@ -27,6 +27,9 @@ type StorageProvider interface {
 	GetPublicURL(bucket, key string) string
 }
 
+// S3StorageProvider is an alias for the S3-compatible storage backend.
+type S3StorageProvider = MinioStorageProvider
+
 // MinioStorageProvider implements StorageProvider backed by MinIO Go SDK.
 type MinioStorageProvider struct {
 	// Client is the underlying MinIO S3 API client.
@@ -104,13 +107,17 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string, o
 		cleanPublicURL = "http://" + cleanPublicURL
 	}
 
-	// Align internal container hosts (e.g. "minio:9000") to public browser endpoints ("localhost:9000")
+	// Align internal container hosts (e.g. "minio:9000", "floci:4566", "localstack:4566") to public browser endpoints ("localhost:...")
 	// so assets served to browsers load without ERR_CONNECTION_REFUSED.
 	if cleanPublicURL != "" && strings.Contains(cleanPublicURL, "://") {
-		if u, err := url.Parse(cleanPublicURL); err == nil && u.Hostname() == "minio" {
+		if u, err := url.Parse(cleanPublicURL); err == nil && (u.Hostname() == "minio" || u.Hostname() == "floci" || u.Hostname() == "localstack") {
 			port := u.Port()
 			if port == "" {
-				port = "9000"
+				if u.Hostname() == "minio" {
+					port = "9000"
+				} else {
+					port = "4566"
+				}
 			}
 			u.Host = "localhost:" + port
 			cleanPublicURL = u.String()
@@ -131,6 +138,11 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string, o
 		publicURL: cleanPublicURL,
 		region:    cfg.region,
 	}, nil
+}
+
+// NewS3StorageProvider initializes an S3-compatible (AWS S3 / LocalStack / R2) storage provider.
+func NewS3StorageProvider(endpoint, accessKey, secretKey, publicURL string, opts ...StorageOption) (*S3StorageProvider, error) {
+	return NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL, opts...)
 }
 
 // ensureBucket checks if the specified bucket exists, and creates it if it does not.

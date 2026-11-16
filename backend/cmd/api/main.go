@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
 	_ "github.com/nullopt-t/prim-backend/docs/admin"
@@ -29,7 +28,6 @@ import (
 )
 
 func main() {
-	runtime.GOMAXPROCS(1)
 	app := &app.App{}
 
 	go func() {

@@ -44,6 +44,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set in backend/.env}
+        NEXT_PUBLIC_MEDIA_BASE_URL: ${NEXT_PUBLIC_MEDIA_BASE_URL:-http://localhost:4566}
     ports:
       - "3000:3000"
     restart: unless-stopped
@@ -53,6 +54,7 @@ services:
       # The build arg (set above) bakes the browser-facing
       # NEXT_PUBLIC_API_URL into the client bundle.
       API_URL: "http://api:8080"
+      NEXT_PUBLIC_MEDIA_BASE_URL: ${NEXT_PUBLIC_MEDIA_BASE_URL:-http://localhost:4566}
     env_file:
       - ../.env
     depends_on:
@@ -94,42 +96,39 @@ services:
       kafka:
         condition: service_healthy
 
-  minio:
-    image: pgsty/minio:latest
-    command: server /data --console-address ":9001"
+  floci:
+    image: floci/floci:latest
     ports:
-      - "9000:9000"
-      - "9001:9001"
-    env_file:
-      - ../.env
+      - "4566:4566"
     volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - floci_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      FLOCI_HOSTNAME: floci
+      SERVICES: s3
+      AWS_DEFAULT_REGION: us-east-1
 
-  minio-init:
-    image: pgsty/mc:latest
+  s3-init:
+    image: amazon/aws-cli
     depends_on:
-      minio:
+      floci:
         condition: service_healthy
     volumes:
       - ../seed/media:/seed/media:ro
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
     env_file:
       - ../.env
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >
-        mc alias set myminio http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
-        mc mb --ignore-existing myminio/catalog;
-        mc mb --ignore-existing myminio/product-thumbnails;
-        mc mb --ignore-existing myminio/product-media;
-        mc anonymous set download myminio/catalog;
-        mc anonymous set download myminio/product-thumbnails;
-        mc anonymous set download myminio/product-media;
-        if [ -d /seed/media/catalog ]; then mc cp --recursive /seed/media/catalog/ myminio/catalog/; fi;
+        aws --endpoint-url http://floci:4566 s3api create-bucket --bucket catalog 2>/dev/null || true;
+        aws --endpoint-url http://floci:4566 s3api create-bucket --bucket product-thumbnails 2>/dev/null || true;
+        aws --endpoint-url http://floci:4566 s3api create-bucket --bucket product-media 2>/dev/null || true;
+        aws --endpoint-url http://floci:4566 s3api put-bucket-policy --bucket catalog --policy '{"Version":"2012-10-17","Statement":[{"Sid":"PublicRead","Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::catalog/*"}]}' 2>/dev/null || true;
+        if [ -d /seed/media/catalog ]; then aws --endpoint-url http://floci:4566 s3 sync /seed/media/catalog/ s3://catalog/; fi;
         exit 0;
 
   kafka:
@@ -152,5 +151,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  floci_data:
   kafka_data:

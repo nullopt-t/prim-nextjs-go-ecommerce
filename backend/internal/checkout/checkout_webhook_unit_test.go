@@ -885,7 +885,14 @@ func TestConfirmPayment_MockMode(t *testing.T) {
 	}
 
 	stockWriter := &unitTestStockWriter{}
-	svc := setupTestService(orderWriter, stockWriter, "")
+	customGW := &customPaymentGatewayMock{intent: &payment.PaymentIntentResult{
+		ID:       piID,
+		Status:   "succeeded",
+		Amount:   4000,
+		Currency: "egp",
+		Metadata: map[string]string{"order_id": orderID.String()},
+	}}
+	svc := setupTestService(orderWriter, stockWriter, "secret", WithPaymentGateway(customGW))
 
 	res, err := svc.ConfirmPayment(context.Background(), &ConfirmPaymentInput{
 		CustomerID:      customerID,

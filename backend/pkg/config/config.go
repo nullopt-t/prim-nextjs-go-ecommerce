@@ -23,6 +23,15 @@ type DatabaseConfig struct {
 	DBPassword string `yaml:"password" env:"DB_PASSWORD" env-default:""`
 	DBName     string `yaml:"name" env:"DB_NAME" env-default:""`
 	SSLMode    string `yaml:"ssl_mode" env:"DB_SSL_MODE" env-default:""`
+
+	// MaxConns is the maximum number of connections in the PostgreSQL pool.
+	MaxConns int `yaml:"max_conns" env:"DB_MAX_CONNS" env-default:"25"`
+	// MinConns is the minimum number of idle connections kept in the pool.
+	MinConns int `yaml:"min_conns" env:"DB_MIN_CONNS" env-default:"5"`
+	// MaxConnLifetime is the maximum time a pooled connection may be reused.
+	MaxConnLifetime time.Duration `yaml:"max_conn_lifetime" env:"DB_MAX_CONN_LIFETIME" env-default:"1h"`
+	// MaxConnIdleTime is the maximum time an idle connection may be kept in the pool.
+	MaxConnIdleTime time.Duration `yaml:"max_conn_idle_time" env:"DB_MAX_CONN_IDLE_TIME" env-default:"30m"`
 }
 
 // RedisConfig holds connection and database index configuration for Redis cache/rate-limiter.
@@ -114,7 +123,7 @@ type ClientConfig struct {
 
 // MinioConfig holds object storage connection credentials for S3/MinIO compatible stores.
 type MinioConfig struct {
-	// Endpoint is the internal network endpoint for MinIO operations.
+	// Endpoint is the internal network endpoint for MinIO/S3 operations.
 	Endpoint string `yaml:"endpoint" env:"MINIO_ENDPOINT" env-default:""`
 
 	// AccessKey is the S3 access key ID.
@@ -132,8 +141,17 @@ type MinioConfig struct {
 	// Region specifies the target S3 bucket region (defaults to us-east-1).
 	Region string `yaml:"region" env:"MINIO_REGION" env-default:"us-east-1"`
 
-	// UseSSL explicitly toggles HTTPS for S3 operations. If unset, auto-detected from endpoint.
-	UseSSL *bool `yaml:"use_ssl" env:"MINIO_USE_SSL"`
+	// UseSSL explicitly toggles HTTPS for S3 operations. If unset (""), auto-detected from endpoint.
+	UseSSL string `yaml:"use_ssl" env:"MINIO_USE_SSL" env-default:""`
+
+	// S3_* variants (AWS S3 / LocalStack). Take precedence over MINIO_* when set.
+	S3Endpoint  string `yaml:"s3_endpoint" env:"S3_ENDPOINT" env-default:""`
+	S3PublicURL string `yaml:"s3_public_url" env:"S3_PUBLIC_URL" env-default:""`
+	S3AccessKey string `yaml:"s3_access_key" env:"S3_ACCESS_KEY" env-default:""`
+	S3SecretKey string `yaml:"s3_secret_key" env:"S3_SECRET_KEY" env-default:""`
+	S3Bucket    string `yaml:"s3_bucket" env:"S3_BUCKET" env-default:""`
+	S3Region    string `yaml:"s3_region" env:"S3_REGION" env-default:""`
+	S3UseSSL    string `yaml:"s3_use_ssl" env:"S3_USE_SSL" env-default:""`
 }
 
 // AuthConfig defines token lifespans and session retention durations.
@@ -278,6 +296,29 @@ func Load(configPath ...string) (Config, error) {
 		if hp := os.Getenv("HTTP_PORT"); hp != "" {
 			cfg.ServerCfg.Port = strings.TrimSpace(hp)
 		}
+	}
+
+	// S3_* config falls back to MINIO_* when unset (backward compatibility).
+	if cfg.MinioCfg.S3Endpoint == "" {
+		cfg.MinioCfg.S3Endpoint = cfg.MinioCfg.Endpoint
+	}
+	if cfg.MinioCfg.S3PublicURL == "" {
+		cfg.MinioCfg.S3PublicURL = cfg.MinioCfg.PublicURL
+	}
+	if cfg.MinioCfg.S3AccessKey == "" {
+		cfg.MinioCfg.S3AccessKey = cfg.MinioCfg.AccessKey
+	}
+	if cfg.MinioCfg.S3SecretKey == "" {
+		cfg.MinioCfg.S3SecretKey = cfg.MinioCfg.SecretKey
+	}
+	if cfg.MinioCfg.S3Bucket == "" {
+		cfg.MinioCfg.S3Bucket = cfg.MinioCfg.Bucket
+	}
+	if cfg.MinioCfg.S3Region == "" {
+		cfg.MinioCfg.S3Region = cfg.MinioCfg.Region
+	}
+	if cfg.MinioCfg.S3UseSSL == "" {
+		cfg.MinioCfg.S3UseSSL = cfg.MinioCfg.UseSSL
 	}
 
 	// Synchronize backward-compatible top-level fields from canonical ServerCfg

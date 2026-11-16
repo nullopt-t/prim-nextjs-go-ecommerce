@@ -30,6 +30,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nullopt-t/prim-backend/pkg/api/security"
@@ -103,15 +104,6 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	router.Use(middleware.SecurityHeadersExcept())
 
 	v1 := router.Group("/api/v1")
-	healthHandler := func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "prim-api"})
-	}
-	router.GET("/", healthHandler)
-	router.HEAD("/", healthHandler)
-	router.GET("/health", healthHandler)
-	router.HEAD("/health", healthHandler)
-	v1.GET("/health", healthHandler)
-	v1.HEAD("/health", healthHandler)
 
 	// settings: constructed early so the maintenance gate can wrap the whole API
 	// surface before any routes are mounted.
@@ -441,6 +433,51 @@ func (app *App) setupRoutes(router *gin.Engine) {
 	settingRouter.MapPublicRoutes(v1)
 
 	// system health
+	healthHandler := func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "prim-api"})
+	}
+	readinessHandler := func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		pgErr := app.db.Ping(ctx)
+		redisErr := app.redisClient.Ping(ctx)
+		services := gin.H{"postgres": "up", "redis": "up"}
+		status := http.StatusOK
+		combinedErr := ""
+		if pgErr != nil {
+			services["postgres"] = "down"
+			status = http.StatusServiceUnavailable
+			combinedErr = pgErr.Error()
+		}
+		if redisErr != nil {
+			services["redis"] = "down"
+			status = http.StatusServiceUnavailable
+			if combinedErr == "" {
+				combinedErr = redisErr.Err().Error()
+			}
+		}
+		if status != http.StatusOK {
+			c.JSON(status, gin.H{
+				"status":   "not_ready",
+				"services": services,
+				"error":    combinedErr,
+			})
+			return
+		}
+		c.JSON(status, gin.H{"status": "ready", "services": services})
+	}
+	router.GET("/", healthHandler)
+	router.HEAD("/", healthHandler)
+	router.GET("/health", healthHandler)
+	router.HEAD("/health", healthHandler)
+	v1.GET("/health", healthHandler)
+	v1.HEAD("/health", healthHandler)
+	router.GET("/ready", readinessHandler)
+	router.HEAD("/ready", readinessHandler)
+	v1.GET("/ready", readinessHandler)
+	v1.HEAD("/ready", readinessHandler)
+
+	// system health
 	systemService := system.NewService(
 		app.db,
 		app.redisClient,
@@ -543,18 +580,19 @@ func (app *App) Run() error {
 	pingCancel()
 
 	var storageOpts []storage.StorageOption
-	if app.config.MinioCfg.Region != "" {
-		storageOpts = append(storageOpts, storage.WithRegion(app.config.MinioCfg.Region))
+	if app.config.MinioCfg.S3Region != "" {
+		storageOpts = append(storageOpts, storage.WithRegion(app.config.MinioCfg.S3Region))
 	}
-	if app.config.MinioCfg.UseSSL != nil {
-		storageOpts = append(storageOpts, storage.WithSSL(*app.config.MinioCfg.UseSSL))
+	if app.config.MinioCfg.S3UseSSL != "" {
+		ssl := strings.EqualFold(app.config.MinioCfg.S3UseSSL, "true") || app.config.MinioCfg.S3UseSSL == "1"
+		storageOpts = append(storageOpts, storage.WithSSL(ssl))
 	}
 
-	storageProv, err := storage.NewMinioStorageProvider(
-		app.config.MinioCfg.Endpoint,
-		app.config.MinioCfg.AccessKey,
-		app.config.MinioCfg.SecretKey,
-		app.config.MinioCfg.PublicURL,
+	storageProv, err := storage.NewS3StorageProvider(
+		app.config.MinioCfg.S3Endpoint,
+		app.config.MinioCfg.S3AccessKey,
+		app.config.MinioCfg.S3SecretKey,
+		app.config.MinioCfg.S3PublicURL,
 		storageOpts...,
 	)
 	if err != nil {
@@ -569,7 +607,7 @@ func (app *App) Run() error {
 	app.storageProvider = storageProv
 	app.minioClient = storageProv.Client
 
-	bucketName := app.config.MinioCfg.Bucket
+	bucketName := app.config.MinioCfg.S3Bucket
 	if bucketName == "" {
 		bucketName = "product-media"
 	}
