@@ -132,27 +132,42 @@ type OrderStatusHistoryResponse struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// customerHistoryNotes hides internal payment/provider diagnostics from the
+// customer timeline. Those details remain in the payments ledger for support.
+func customerHistoryNotes(notes *string) *string {
+	if notes == nil {
+		return nil
+	}
+	lower := strings.ToLower(*notes)
+	for _, marker := range []string{"intent=", "tx=", "webhook", "order created with status"} {
+		if strings.Contains(lower, marker) {
+			return nil
+		}
+	}
+	return notes
+}
+
 // mapOrderResponse converts internal domain model.Order into the external OrderResponse DTO.
 func mapOrderResponse(o *model.Order) OrderResponse {
 	milestone := DeriveMilestone(o.Status, o.TrackingNumber != "")
 	res := OrderResponse{
-		ID:            o.ID.String(),
-		CustomerEmail: o.CustomerEmail,
-		Status:         o.Status,
-		Substatus:      milestone,
+		ID:               o.ID.String(),
+		CustomerEmail:    o.CustomerEmail,
+		Status:           o.Status,
+		Substatus:        milestone,
 		MilestonePercent: MilestonePercent[milestone],
-		DiscountAmount: o.DiscountAmount,
-		ShippingAmount: o.ShippingAmount,
-		TaxAmount:      o.TaxAmount,
-		CODFee:         o.CODFee,
-		TotalAmount:    o.TotalAmount,
-		Currency:       o.Currency,
-		PaymentMethod:  o.PaymentMethod,
-		TrackingNumber: o.TrackingNumber,
-		Carrier:        o.Carrier,
-		TrackingURL:    o.TrackingURL,
-		CreatedAt:      o.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:      o.UpdatedAt.Format(time.RFC3339),
+		DiscountAmount:   o.DiscountAmount,
+		ShippingAmount:   o.ShippingAmount,
+		TaxAmount:        o.TaxAmount,
+		CODFee:           o.CODFee,
+		TotalAmount:      o.TotalAmount,
+		Currency:         o.Currency,
+		PaymentMethod:    o.PaymentMethod,
+		TrackingNumber:   o.TrackingNumber,
+		Carrier:          o.Carrier,
+		TrackingURL:      o.TrackingURL,
+		CreatedAt:        o.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        o.UpdatedAt.Format(time.RFC3339),
 	}
 	if o.ShippingAddress != nil {
 		res.ShippingAddress = AddressResponse{
@@ -209,7 +224,7 @@ func mapOrderResponse(o *model.Order) OrderResponse {
 			ID:        fmt.Sprintf("%d", h.ID),
 			OrderID:   h.OrderID.String(),
 			Status:    h.Status,
-			Notes:     h.Notes,
+			Notes:     customerHistoryNotes(h.Notes),
 			CreatedAt: h.CreatedAt.Format(time.RFC3339),
 		})
 	}

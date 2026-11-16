@@ -283,8 +283,7 @@ func (s *OrderService) PlaceOrder(
 		}
 
 		// Insert initial audit history entry.
-		note := "Order created with status pending"
-		if err := s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusPending, &note); err != nil {
+		if err := s.orderRepo.AddStatusHistory(ctx, orderID, model.OrderStatusPending, nil); err != nil {
 			return err
 		}
 

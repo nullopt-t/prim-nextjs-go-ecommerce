@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import type { OrderStatusHistoryEntry } from "@/modules/orders/types";
+import { customerFacingNote } from "@/modules/orders/utils/orderNotes";
 
 interface OrderTimelineHistoryProps {
   history?: OrderStatusHistoryEntry[];
@@ -67,6 +68,7 @@ export function OrderTimelineHistory({
             defaultMessage: statusKey.charAt(0).toUpperCase() + statusKey.slice(1),
           });
           const formattedDate = formatDateTime(item.createdAt, locale);
+          const note = customerFacingNote(item.notes);
 
           return (
             <div key={item.id || idx} className="relative flex flex-col gap-1.5 group">
@@ -84,9 +86,9 @@ export function OrderTimelineHistory({
                 <time className="text-xs text-muted-foreground">{formattedDate}</time>
               </div>
 
-              {item.notes ? (
+              {note ? (
                 <div className="mt-1 rounded-xl bg-secondary/50 border border-border/60 p-3 text-xs sm:text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                  {item.notes}
+                  {note}
                 </div>
               ) : null}
             </div>

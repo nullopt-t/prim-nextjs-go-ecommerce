@@ -25,6 +25,8 @@ export const orderService = {
   },
   checkout: (payload: CheckoutPayload) =>
     api.post<ApiResponse<CheckoutResult>, CheckoutPayload>("/api/v1/checkout", payload),
+  confirmPayment: (payload: { orderId: string; paymentIntentId?: string }) =>
+    api.post<ApiResponse<{ orderId: string; orderStatus: string; paymentStatus: string }>, { orderId: string; paymentIntentId?: string }>("/api/v1/checkout/confirm", payload),
   updateOrder: (id: string, payload: UpdateOrderPayload) =>
     api.patch<ApiResponse<Order>, UpdateOrderPayload>(`/api/v1/orders/${id}`, payload),
   cancelOrder: (id: string) => api.post<ApiResponse<Order>>(`/api/v1/orders/${id}/cancel`),

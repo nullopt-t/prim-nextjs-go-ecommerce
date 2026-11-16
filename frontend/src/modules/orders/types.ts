@@ -65,6 +65,7 @@ export interface Order {
 export interface CheckoutPayload {
   shippingAddressId: string;
   couponId?: string;
+  couponCode?: string;
   paymentMethod: string;
 }
 
@@ -72,6 +73,7 @@ export interface CheckoutResult {
   orderId: string;
   status: string;
   paymentStatus?: string;
+  clientSecret?: string;
 }
 
 export interface UpdateOrderPayload {

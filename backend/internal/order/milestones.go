@@ -6,12 +6,12 @@ import "github.com/nullopt-t/prim-backend/internal/model"
 // Single source of truth shared by derivation, the milestone state machine,
 // and the API response (see docs/order-milestones.md).
 var MilestonePercent = map[model.OrderMilestone]int{
-	model.OrderMilestonePreTransit:          0,
-	model.OrderMilestonePickedAtWarehouse:   5,
-	model.OrderMilestoneArrivedRegionalHub:  10,
-	model.OrderMilestoneArrivedLocalDepot:   25,
-	model.OrderMilestoneOutForDelivery:      50,
-	model.OrderMilestoneDelivered:           100,
+	model.OrderMilestonePreTransit:         0,
+	model.OrderMilestonePickedAtWarehouse:  5,
+	model.OrderMilestoneArrivedRegionalHub: 10,
+	model.OrderMilestoneArrivedLocalDepot:  25,
+	model.OrderMilestoneOutForDelivery:     50,
+	model.OrderMilestoneDelivered:          100,
 }
 
 // DeriveMilestone maps the order lifecycle status (plus tracking presence)
