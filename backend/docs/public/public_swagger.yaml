@@ -306,12 +306,23 @@ definitions:
     type: object
   CheckoutResponse:
     properties:
+      clientSecret:
+        type: string
       orderId:
         type: string
       paymentStatus:
         type: string
       status:
         type: string
+    type: object
+  ConfirmPaymentRequest:
+    properties:
+      orderId:
+        type: string
+      paymentIntentId:
+        type: string
+    required:
+    - orderId
     type: object
   ConflictErrorResponse:
     properties:
@@ -940,6 +951,39 @@ definitions:
       meta:
         description: Meta contains the pagination metadata (page, pageSize, totalItems,
           totalPages).
+    type: object
+  PayloadTooLargeErrorResponse:
+    properties:
+      code:
+        example: FILE_TOO_LARGE
+        type: string
+      message:
+        example: Request payload exceeds the maximum allowed size
+        type: string
+    type: object
+  PaymentWebhookRequest:
+    properties:
+      event:
+        type: string
+      order_id:
+        type: string
+      signature:
+        type: string
+      transaction_id:
+        type: string
+      type:
+        type: string
+    type: object
+  PaymentWebhookResult:
+    properties:
+      duplicate:
+        type: boolean
+      orderId:
+        type: string
+      orderStatus:
+        type: string
+      paymentStatus:
+        type: string
     type: object
   PayoutResponse:
     properties:
@@ -3453,6 +3497,99 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Perform checkout
+      tags:
+      - Checkout
+  /checkout/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Confirms an order payment after external card confirmation, transitioning
+        order to processing and committing stock.
+      parameters:
+      - description: Payment Confirmation Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ConfirmPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Confirmation result
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/PaymentWebhookResult'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Confirm payment
+      tags:
+      - Checkout
+  /checkout/webhook/payment:
+    post:
+      consumes:
+      - application/json
+      description: 'Unauthenticated provider webhook: verifies the HMAC signature,
+        claims the transaction id idempotently, and on success transitions the order
+        Pending->Processing with a payment audit entry.'
+      parameters:
+      - description: Payment event payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/PaymentWebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Webhook processed (duplicate=true on replay)
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/PaymentWebhookResult'
+              type: object
+        "400":
+          description: Validation error or invalid order status
+          schema:
+            $ref: '#/definitions/BadRequestErrorResponse'
+        "401":
+          description: Invalid webhook signature or missing secret
+          schema:
+            $ref: '#/definitions/UnauthorizedErrorResponse'
+        "404":
+          description: Order not found
+          schema:
+            $ref: '#/definitions/NotFoundErrorResponse'
+        "409":
+          description: Transaction belongs to another order
+          schema:
+            $ref: '#/definitions/ConflictErrorResponse'
+        "413":
+          description: Webhook payload exceeds maximum size
+          schema:
+            $ref: '#/definitions/PayloadTooLargeErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/InternalServerErrorResponse'
+      summary: Ingest a payment webhook event
       tags:
       - Checkout
   /coupons/apply:

@@ -23,6 +23,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/payment"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
@@ -44,6 +45,31 @@ type CartWriter interface {
 type OrderWriter interface {
 	PlaceOrder(ctx context.Context, in *order.CreateOrderInput) (*model.Order, error)
 	RecordPayment(ctx context.Context, in *order.CreatePaymentInput) (*model.Payment, error)
+
+	// Webhook primitives. All participate in the caller's transaction (the
+	// webhook use case locks the order row first so concurrent deliveries
+	// of the same transaction serialize and the second observes the first's
+	// claimed provider_transaction_id as a duplicate).
+	GetOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Order, error)
+	FindPaymentByTransactionID(ctx context.Context, transactionID string) (*model.Payment, error)
+	FindPendingPaymentForOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Payment, error)
+	UpdatePaymentWebhook(ctx context.Context, paymentID uuid.UUID, status model.PaymentStatus, transactionID string) error
+	UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status model.OrderStatus, notes *string) error
+	AddOrderStatusHistory(ctx context.Context, orderID uuid.UUID, status model.OrderStatus, notes *string) error
+}
+
+// PaymentGateway abstracts external payment providers for webhook ingestion and verification.
+// Concrete adapters (e.g. HMACGateway, Stripe, Paymob) implement this contract.
+type PaymentGateway interface {
+	VerifyWebhook(ctx context.Context, payload payment.WebhookPayload) (*payment.WebhookResult, error)
+	CreatePaymentIntent(ctx context.Context, input payment.PaymentIntentInput) (*payment.PaymentIntentResult, error)
+	RetrievePaymentIntent(ctx context.Context, intentID string) (*payment.PaymentIntentResult, error)
+}
+
+// CheckoutOutput bundles the committed order snapshot with any payment gateway client token/secret.
+type CheckoutOutput struct {
+	Order        *model.Order
+	ClientSecret string
 }
 
 // StockWriter owns stock reservation/commitment invariants and participates in
@@ -51,6 +77,7 @@ type OrderWriter interface {
 type StockWriter interface {
 	HoldStock(ctx context.Context, in inventory.ReserveStockInput) (*model.InventoryReservation, error)
 	CommitReservationsForOrder(ctx context.Context, orderID uuid.UUID) error
+	ReleaseReservationsForOrder(ctx context.Context, orderID uuid.UUID) (int64, error)
 }
 
 // UserReader is the subset of user persistence checkout needs.
@@ -120,23 +147,36 @@ type AdminOrderNotifier interface {
 }
 
 type CheckoutService struct {
-	cartReader    CartReader
-	cartWriter    CartWriter
-	orderWriter   OrderWriter
-	stockWriter   StockWriter
-	userReader    UserReader
-	addressReader AddressReader
-	couponService CouponService
-	variantReader VariantReader
-	productReader ProductReader
-	sellerReader  SellerReader
-	objectReader  ObjectReader
-	storage       storage.StorageProvider
-	settings      SettingsProvider
-	runner        database.Runner
-	orderNotifier OrderNotifier
-	adminNotifier AdminOrderNotifier
-	logger        log.Logger
+	cartReader     CartReader
+	cartWriter     CartWriter
+	orderWriter    OrderWriter
+	stockWriter    StockWriter
+	userReader     UserReader
+	addressReader  AddressReader
+	couponService  CouponService
+	variantReader  VariantReader
+	productReader  ProductReader
+	sellerReader   SellerReader
+	objectReader   ObjectReader
+	storage        storage.StorageProvider
+	settings       SettingsProvider
+	runner         database.Runner
+	orderNotifier  OrderNotifier
+	adminNotifier  AdminOrderNotifier
+	paymentGateway PaymentGateway
+	logger         log.Logger
+}
+
+// CheckoutOption configures optional checkout service behaviors.
+type CheckoutOption func(*CheckoutService)
+
+// WithPaymentGateway overrides the default payment gateway adapter.
+func WithPaymentGateway(gw PaymentGateway) CheckoutOption {
+	return func(s *CheckoutService) {
+		if gw != nil {
+			s.paymentGateway = gw
+		}
+	}
 }
 
 func NewService(
@@ -157,6 +197,7 @@ func NewService(
 	orderNotifier OrderNotifier,
 	adminNotifier AdminOrderNotifier,
 	logger log.Logger,
+	opts ...CheckoutOption,
 ) *CheckoutService {
 	if cartReader == nil {
 		panic("checkout: cart reader is required")
@@ -209,25 +250,30 @@ func NewService(
 	if logger == nil {
 		panic("checkout: logger is required")
 	}
-	return &CheckoutService{
-		cartReader:    cartReader,
-		cartWriter:    cartWriter,
-		orderWriter:   orderWriter,
-		stockWriter:   stockWriter,
-		userReader:    userReader,
-		addressReader: addressReader,
-		couponService: couponService,
-		variantReader: variantReader,
-		productReader: productReader,
-		sellerReader:  sellerReader,
-		objectReader:  objectReader,
-		storage:       storageProvider,
-		settings:      settings,
-		runner:        runner,
-		orderNotifier: orderNotifier,
-		adminNotifier: adminNotifier,
-		logger:        logger,
+	svc := &CheckoutService{
+		cartReader:     cartReader,
+		cartWriter:     cartWriter,
+		orderWriter:    orderWriter,
+		stockWriter:    stockWriter,
+		userReader:     userReader,
+		addressReader:  addressReader,
+		couponService:  couponService,
+		variantReader:  variantReader,
+		productReader:  productReader,
+		sellerReader:   sellerReader,
+		objectReader:   objectReader,
+		storage:        storageProvider,
+		settings:       settings,
+		runner:         runner,
+		orderNotifier:  orderNotifier,
+		adminNotifier:  adminNotifier,
+		paymentGateway: payment.NewHMACGateway("stripe", ""),
+		logger:         logger,
 	}
+	for _, opt := range opts {
+		opt(svc)
+	}
+	return svc
 }
 
 // handleError translates repository and driver errors into typed APIErrors so
@@ -331,11 +377,16 @@ type resolvedPayment struct {
 // cart clearance. Any failure rolls everything back (including reservations),
 // so there is no deducted-but-no-order or order-without-payment outcome.
 // Each numbered responsibility below lives in its own named helper.
-func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*model.Order, error) {
+func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*CheckoutOutput, error) {
 	cfg := s.resolveConfig(ctx)
 
 	var createdOrder *model.Order
 	var customerName string
+	var buyerContact string
+	var isCOD bool
+	var pendingPayment *model.Payment
+	var clientSecret string
+	var cartID uuid.UUID
 
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		// 1. Lock and load the cart so concurrent checkouts serialize.
@@ -343,6 +394,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		if err != nil {
 			return err
 		}
+		cartID = cart.ID
 
 		// 2. Resolve the buyer and shipping address that identify the order.
 		buyer, err := s.resolveBuyer(ctx, in.CustomerID)
@@ -350,6 +402,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			return err
 		}
 		customerName = buyer.displayName
+		buyerContact = buyer.contact
 
 		shippingAddr, err := s.resolveShippingAddress(ctx, in.CustomerID, in.ShippingAddressID)
 		if err != nil {
@@ -370,10 +423,11 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 
 		// 5. Derive shipping, payment, and tax from the effective store config.
 		shippingCost := s.shippingCost(cfg, priced.grossTotal)
-		payment, err := s.resolvePaymentMethod(cfg, in.PaymentMethod)
+		method, err := s.resolvePaymentMethod(cfg, in.PaymentMethod)
 		if err != nil {
 			return err
 		}
+		isCOD = method.isCOD
 		taxAmount := s.taxAmount(cfg, priced.grossTotal, coupon.discount)
 
 		// 6. Create the order, then 7. reserve stock against it, so each
@@ -388,8 +442,8 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			DiscountAmount:  coupon.discount,
 			ShippingAmount:  shippingCost,
 			TaxAmount:       taxAmount,
-			CODFee:          payment.codFee,
-			PaymentMethod:   payment.normalizedName,
+			CODFee:          method.codFee,
+			PaymentMethod:   method.normalizedName,
 			Currency:        priced.currency,
 			Locale:          localeFromContext(ctx),
 			Items:           priced.items,
@@ -410,7 +464,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		// units leave salable stock and the expiry reaper never cancels a
 		// legitimate COD order. Card orders keep their hold until the
 		// payment is captured.
-		if payment.isCOD {
+		if method.isCOD {
 			if err := s.stockWriter.CommitReservationsForOrder(ctx, createdOrder.ID); err != nil {
 				return err
 			}
@@ -421,15 +475,36 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 			return err
 		}
 
-		// 9. Record the payment transaction against the created order.
-		if err := s.recordOrderPayment(ctx, createdOrder, payment.normalizedName); err != nil {
-			return err
+		// 9. Record initial payment record. External PaymentIntent for cards is created
+		//    outside WithTx to avoid holding row locks during external network calls.
+		var providerTxID string
+		if method.isCOD {
+			providerTxID = fmt.Sprintf("COD-%s", createdOrder.ID.String())
+		} else {
+			providerTxID = fmt.Sprintf("PENDING-%s", createdOrder.ID.String())
 		}
 
-		// 10. Clear the cart inside the same transaction so checkout and cart
-		//     clearance commit atomically.
-		if err := s.cartWriter.ClearItems(ctx, cart.ID); err != nil {
-			return s.handleError(err, "Failed to clear cart")
+		pmt, err := s.orderWriter.RecordPayment(ctx, &order.CreatePaymentInput{
+			OrderID:               createdOrder.ID,
+			Amount:                createdOrder.TotalAmount,
+			Currency:              createdOrder.Currency,
+			Status:                model.StatusPending,
+			Type:                  method.normalizedName,
+			Provider:              method.normalizedName,
+			ProviderTransactionID: &providerTxID,
+		})
+		if err != nil {
+			return s.handleError(err, "Failed to record payment")
+		}
+		pendingPayment = pmt
+
+		// 10. COD orders are committed immediately, so cart clearance is part
+		//     of the same transaction. Card orders clear only after the payment
+		//     intent is created successfully to avoid emptying the cart on failure.
+		if method.isCOD {
+			if err := s.cartWriter.ClearItems(ctx, cart.ID); err != nil {
+				return s.handleError(err, "Failed to clear cart")
+			}
 		}
 
 		return nil
@@ -439,11 +514,48 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*mod
 		return nil, s.handleError(err, "Checkout failed")
 	}
 
+	// For card checkouts, initialize external payment intent outside WithTx.
+	// If the gateway call fails, cancel the order and release inventory hold;
+	// the cart remains intact so the customer can retry.
+	if !isCOD && s.paymentGateway != nil {
+		intent, intentErr := s.paymentGateway.CreatePaymentIntent(ctx, payment.PaymentIntentInput{
+			OrderID:       createdOrder.ID.String(),
+			Amount:        createdOrder.TotalAmount,
+			Currency:      strings.ToLower(createdOrder.Currency),
+			CustomerEmail: buyerContact,
+			Metadata: map[string]string{
+				"order_id": createdOrder.ID.String(),
+			},
+		})
+		if intentErr != nil {
+			s.logger.Error("payment intent initialization failed", log.Meta{"order_id": createdOrder.ID.String(), "error": intentErr.Error()})
+			if cancelErr := s.orderWriter.UpdateOrderStatus(ctx, createdOrder.ID, model.OrderStatusCancelled, nil); cancelErr != nil {
+				s.logger.Error("failed to cancel order after payment intent failure", log.Meta{"order_id": createdOrder.ID.String(), "error": cancelErr.Error()})
+			}
+			if _, relErr := s.stockWriter.ReleaseReservationsForOrder(ctx, createdOrder.ID); relErr != nil {
+				s.logger.Error("failed to release reservations after payment intent failure", log.Meta{"order_id": createdOrder.ID.String(), "error": relErr.Error()})
+			}
+			return nil, apierr.BadRequestError(fmt.Sprintf("Failed to initialize card payment: %v", intentErr))
+		}
+		clientSecret = intent.ClientSecret
+		if pendingPayment != nil {
+			if err := s.orderWriter.UpdatePaymentWebhook(ctx, pendingPayment.ID, model.StatusPending, intent.ID); err != nil {
+				return nil, s.handleError(err, "Failed to link payment intent")
+			}
+		}
+		if err := s.cartWriter.ClearItems(ctx, cartID); err != nil {
+			return nil, s.handleError(err, "Failed to clear cart")
+		}
+	}
+
 	// Notifications run only after the transaction commits: a Kafka/SMTP
 	// failure must never turn a successful order into an error response.
 	s.notifyOrderPlaced(ctx, cfg, createdOrder, customerName)
 
-	return createdOrder, nil
+	return &CheckoutOutput{
+		Order:        createdOrder,
+		ClientSecret: clientSecret,
+	}, nil
 }
 
 // buyerContact is the customer identity checkout needs to own an order.
@@ -943,29 +1055,6 @@ func (s *CheckoutService) recordCouponRedemption(ctx context.Context, coupon *ap
 	)
 }
 
-// recordOrderPayment records the pending payment transaction tied to the order
-// before checkout commits. Errors propagate so the transaction rolls back.
-func (s *CheckoutService) recordOrderPayment(ctx context.Context, createdOrder *model.Order, paymentMethod string) error {
-	providerTxID := fmt.Sprintf("COD-%s", createdOrder.ID.String()[:8])
-	if paymentMethod != "cash_on_delivery" {
-		providerTxID = fmt.Sprintf("PAY-%s", createdOrder.ID.String()[:8])
-	}
-
-	_, err := s.orderWriter.RecordPayment(ctx, &order.CreatePaymentInput{
-		OrderID:               createdOrder.ID,
-		Amount:                createdOrder.TotalAmount,
-		Currency:              createdOrder.Currency,
-		Status:                model.StatusPending,
-		Type:                  paymentMethod,
-		Provider:              paymentMethod,
-		ProviderTransactionID: &providerTxID,
-	})
-	if err != nil {
-		return s.handleError(err, "Failed to record payment")
-	}
-	return nil
-}
-
 // notifyOrderPlaced publishes the order confirmation after the transaction
 // commits. A Kafka/SMTP failure is logged and never turns a successful order
 // into an error response.
@@ -1239,4 +1328,337 @@ func (s *CheckoutService) lenientSellerTotal(ctx context.Context, cart *model.Ca
 		}
 	}
 	return total, nil
+}
+
+// --- Payment webhook ingestion ---
+
+// PaymentWebhookInput carries the validated payment event together with the
+// signature to verify. EventType is the provider event name (for example
+// payment_intent.succeeded); succeeded is derived by the payment gateway adapter.
+type PaymentWebhookInput struct {
+	EventType     string
+	OrderID       uuid.UUID
+	TransactionID string
+	Signature     string
+	RawPayload    []byte
+}
+
+// PaymentWebhookResult is the idempotent outcome of a webhook delivery.
+// Duplicate reports that the transaction was already processed: the provider
+// may retry safely and the caller must not re-apply side effects.
+type PaymentWebhookResult struct {
+	OrderID       string `json:"orderId"`
+	OrderStatus   string `json:"orderStatus"`
+	PaymentStatus string `json:"paymentStatus"`
+	Duplicate     bool   `json:"duplicate"`
+}
+
+// HandlePaymentWebhook ingests one payment event. It verifies the signature
+// via the adaptable PaymentGateway, then in a single transaction: claims the
+// provider transaction id for idempotency, updates the payment (captured/failed),
+// transitions the order Pending->Processing on success with a status-history audit entry
+// (the payment audit ledger), and commits stock holds on capture.
+//
+// The order row is locked FOR UPDATE before any idempotency read, so
+// concurrent deliveries of the same transaction serialize: the second
+// observes the first's claimed transaction id and reports duplicate instead
+// of double-committing stock or duplicating the audit entry.
+// Failure matrix: a timeout is an unknown outcome, not a failure; a provider
+// retry with the same transaction id lands in the duplicate path and returns
+// success without side effects.
+func (s *CheckoutService) HandlePaymentWebhook(ctx context.Context, in *PaymentWebhookInput) (*PaymentWebhookResult, error) {
+	if in == nil {
+		return nil, apierr.BadRequestError("Webhook payload is required").WithCode(apierr.CodeInvalidPayload)
+	}
+	sig := strings.TrimSpace(in.Signature)
+	if sig == "" {
+		return nil, apierr.BadRequestError("Signature is required").WithCode(apierr.CodeInvalidInput)
+	}
+
+	secret := strings.TrimSpace(s.resolveConfig(ctx).StripeWebhookSecret)
+	orderIDStr := ""
+	if in.OrderID != uuid.Nil {
+		orderIDStr = in.OrderID.String()
+	}
+	verified, err := s.paymentGateway.VerifyWebhook(ctx, payment.WebhookPayload{
+		EventType:     in.EventType,
+		OrderID:       orderIDStr,
+		TransactionID: strings.TrimSpace(in.TransactionID),
+		Signature:     sig,
+		Secret:        secret,
+		RawPayload:    in.RawPayload,
+	})
+	if err != nil {
+		if errors.Is(err, payment.ErrMissingWebhookSecret) {
+			return nil, apierr.UnauthorizedError("Payment webhook secret is not configured").WithCode(apierr.CodeUnauthorized)
+		}
+		if errors.Is(err, payment.ErrInvalidSignature) || errors.Is(err, payment.ErrTimestampToleranceExceeded) {
+			return nil, apierr.UnauthorizedError("Invalid webhook signature").WithCode(errcode.CodeInvalidWebhookSignature)
+		}
+		return nil, apierr.BadRequestError("Invalid payment webhook payload").WithCode(apierr.CodeInvalidPayload)
+	}
+
+	// Unhandled or non-payment event: return 200 OK so provider stops retrying
+	if verified.Ignored {
+		return &PaymentWebhookResult{
+			OrderStatus:   "ignored",
+			PaymentStatus: "ignored",
+			Duplicate:     false,
+		}, nil
+	}
+
+	targetOrderID := in.OrderID
+	if targetOrderID == uuid.Nil && verified.OrderID != "" {
+		if parsed, parseErr := uuid.Parse(verified.OrderID); parseErr == nil {
+			targetOrderID = parsed
+		}
+	}
+	if targetOrderID == uuid.Nil {
+		// Valid signature from provider but not bound to any known PRIM order.
+		// Return 200 OK so the payment provider does not retry indefinitely.
+		return &PaymentWebhookResult{
+			OrderStatus:   "unlinked",
+			PaymentStatus: "unlinked",
+			Duplicate:     false,
+		}, nil
+	}
+
+	txID := strings.TrimSpace(verified.TransactionID)
+	if txID == "" {
+		return nil, apierr.BadRequestError("Transaction ID is required").WithCode(apierr.CodeInvalidInput)
+	}
+
+	var result *PaymentWebhookResult
+	err = s.runner.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderWriter.GetOrderForUpdate(ctx, targetOrderID)
+		if err != nil {
+			return err
+		}
+
+		// Idempotency: a transaction id already claimed for this order is checked.
+		// If it was already captured, or failed with a failure retry, return duplicate.
+		// But if the payment record is still pending (e.g. created during checkout),
+		// or previously failed and now succeeded (retry), we proceed with fulfillment.
+		var existingPayment *model.Payment
+		if existing, findErr := s.orderWriter.FindPaymentByTransactionID(ctx, txID); findErr == nil && existing != nil {
+			if existing.OrderID != targetOrderID {
+				return apierr.ConflictError("Payment transaction belongs to another order").WithCode(apierr.CodeResourceConflict)
+			}
+			if existing.Status == model.StatusCaptured || (existing.Status == model.StatusFailed && !verified.Succeeded) {
+				result = &PaymentWebhookResult{
+					OrderID:       ord.ID.String(),
+					OrderStatus:   string(ord.Status),
+					PaymentStatus: string(existing.Status),
+					Duplicate:     true,
+				}
+				return nil
+			}
+			existingPayment = existing
+		} else if findErr != nil && !errors.Is(database.MapError(findErr), database.ErrNotFound) && !errors.Is(findErr, database.ErrNotFound) {
+			return findErr
+		}
+
+		if ord.Status != model.OrderStatusPending {
+			// Order is in a terminal or non-pending status (e.g. already processed or auto-cancelled by reaper).
+			// Return 200 OK duplicate rather than 400 error to prevent Stripe 3-day retry storms.
+			result = &PaymentWebhookResult{
+				OrderID:       ord.ID.String(),
+				OrderStatus:   string(ord.Status),
+				PaymentStatus: string(model.StatusFailed),
+				Duplicate:     true,
+			}
+			return nil
+		}
+
+		target := model.StatusCaptured
+		if !verified.Succeeded {
+			target = model.StatusFailed
+		}
+
+		if existingPayment != nil {
+			if err := s.orderWriter.UpdatePaymentWebhook(ctx, existingPayment.ID, target, txID); err != nil {
+				return err
+			}
+		} else if pending, pendingErr := s.orderWriter.FindPendingPaymentForOrderForUpdate(ctx, targetOrderID); pendingErr == nil && pending != nil {
+			if err := s.orderWriter.UpdatePaymentWebhook(ctx, pending.ID, target, txID); err != nil {
+				return err
+			}
+		} else if pendingErr != nil && (errors.Is(database.MapError(pendingErr), database.ErrNotFound) || errors.Is(pendingErr, database.ErrNotFound)) {
+			// No open payment row (order placed without one): record the
+			// provider result directly so the ledger stays complete.
+			if _, err := s.orderWriter.RecordPayment(ctx, &order.CreatePaymentInput{
+				OrderID:               targetOrderID,
+				Amount:                ord.TotalAmount,
+				Currency:              ord.Currency,
+				Status:                target,
+				Type:                  ord.PaymentMethod,
+				Provider:              ord.PaymentMethod,
+				ProviderTransactionID: &txID,
+			}); err != nil {
+				return err
+			}
+		} else if pendingErr != nil {
+			return pendingErr
+		}
+
+		if verified.Succeeded {
+			if err := s.orderWriter.UpdateOrderStatus(ctx, targetOrderID, model.OrderStatusProcessing, nil); err != nil {
+				return err
+			}
+			if err := s.stockWriter.CommitReservationsForOrder(ctx, targetOrderID); err != nil {
+				return err
+			}
+			result = &PaymentWebhookResult{
+				OrderID:       ord.ID.String(),
+				OrderStatus:   string(model.OrderStatusProcessing),
+				PaymentStatus: string(model.StatusCaptured),
+			}
+			return nil
+		}
+
+		if err := s.orderWriter.AddOrderStatusHistory(ctx, targetOrderID, ord.Status, nil); err != nil {
+			return err
+		}
+		result = &PaymentWebhookResult{
+			OrderID:       ord.ID.String(),
+			OrderStatus:   string(ord.Status),
+			PaymentStatus: string(model.StatusFailed),
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, s.handleError(err, "Failed to handle payment webhook")
+	}
+	return result, nil
+}
+
+// ConfirmPaymentInput contains parameters to confirm an external client payment.
+type ConfirmPaymentInput struct {
+	CustomerID      uuid.UUID
+	OrderID         uuid.UUID
+	PaymentIntentID string
+}
+
+// ConfirmPayment verifies an external card payment (via Stripe or dev mock) and immediately
+// transitions the order from pending to processing and commits the reserved stock.
+// This prevents orders from lapsing into the 15-minute reservation expiry when client-side
+// confirmation has already succeeded before or in the absence of a webhook delivery.
+func (s *CheckoutService) ConfirmPayment(ctx context.Context, in *ConfirmPaymentInput) (*PaymentWebhookResult, error) {
+	if in == nil || in.OrderID == uuid.Nil || in.CustomerID == uuid.Nil || in.PaymentIntentID == "" {
+		return nil, apierr.BadRequestError("Order ID, customer ID and payment intent ID are required")
+	}
+
+	// 1. Verify payment intent outside WithTx to prevent holding row locks during network call.
+	intent, err := s.paymentGateway.RetrievePaymentIntent(ctx, in.PaymentIntentID)
+	if err != nil {
+		return nil, s.handleError(err, "Failed to verify payment intent with provider")
+	}
+	// Only a settled payment may commit stock; "processing" can still fail later.
+	if intent.Status != "succeeded" {
+		return nil, apierr.BadRequestError("Payment has not been completed")
+	}
+	// A succeeded intent is scoped to one order. Bind it before touching any
+	// order state so it cannot be replayed against another order of the caller.
+	if intent.Metadata["order_id"] != in.OrderID.String() {
+		return nil, apierr.ConflictError("Payment intent does not belong to this order").WithCode(apierr.CodeResourceConflict)
+	}
+
+	lateCapture := false
+	var result *PaymentWebhookResult
+	err = s.runner.WithTx(ctx, func(ctx context.Context) error {
+		ord, err := s.orderWriter.GetOrderForUpdate(ctx, in.OrderID)
+		if err != nil {
+			return err
+		}
+
+		if ord.CustomerID == nil || *ord.CustomerID != in.CustomerID {
+			return apierr.ForbiddenError("You do not have access to this order")
+		}
+
+		// Idempotency: if already confirmed or completed, return success
+		if ord.Status == model.OrderStatusProcessing || ord.Status == model.OrderStatusPaid || ord.Status == model.OrderStatusShipped || ord.Status == model.OrderStatusDelivered {
+			result = &PaymentWebhookResult{
+				OrderID:       ord.ID.String(),
+				OrderStatus:   string(ord.Status),
+				PaymentStatus: string(model.StatusCaptured),
+			}
+			return nil
+		}
+
+		// Money was captured after the order left pending (slow 3DS past the
+		// reservation TTL). Fulfilment stays cancelled; record the capture so the
+		// refund has a trail instead of disappearing.
+		if ord.Status != model.OrderStatusPending {
+			existing, findErr := s.orderWriter.FindPaymentByTransactionID(ctx, intent.ID)
+			if findErr != nil && !errors.Is(database.MapError(findErr), database.ErrNotFound) && !errors.Is(findErr, database.ErrNotFound) {
+				return findErr
+			}
+			switch {
+			case existing != nil && existing.OrderID != ord.ID:
+				return apierr.ConflictError("Payment transaction belongs to another order").WithCode(apierr.CodeResourceConflict)
+			case existing != nil:
+				if err := s.orderWriter.UpdatePaymentWebhook(ctx, existing.ID, model.StatusCaptured, intent.ID); err != nil {
+					return err
+				}
+			default:
+				if _, err := s.orderWriter.RecordPayment(ctx, &order.CreatePaymentInput{
+					OrderID:               ord.ID,
+					Amount:                ord.TotalAmount,
+					Currency:              ord.Currency,
+					Status:                model.StatusCaptured,
+					Type:                  ord.PaymentMethod,
+					Provider:              ord.PaymentMethod,
+					ProviderTransactionID: &intent.ID,
+				}); err != nil {
+					return err
+				}
+			}
+			note := "payment succeeded after order cancellation - refund required"
+			if err := s.orderWriter.AddOrderStatusHistory(ctx, ord.ID, ord.Status, &note); err != nil {
+				return err
+			}
+			lateCapture = true
+			return nil
+		}
+
+		pending, err := s.orderWriter.FindPendingPaymentForOrderForUpdate(ctx, in.OrderID)
+		if err != nil {
+			return err
+		}
+		// The id stored on this order's own payment row is the binding: an intent
+		// minted for another order never matches it.
+		if pending.ProviderTransactionID == nil || *pending.ProviderTransactionID != intent.ID {
+			return apierr.ConflictError("Payment intent is not linked to this order").WithCode(apierr.CodeResourceConflict)
+		}
+		// Mock intents (no API key) carry no amount or currency; their id binds them.
+		if intent.Currency != "" && (intent.Amount != ord.TotalAmount || !strings.EqualFold(intent.Currency, ord.Currency)) {
+			return apierr.ConflictError("Payment amount does not match the order total").WithCode(apierr.CodeResourceConflict)
+		}
+
+		if err := s.orderWriter.UpdatePaymentWebhook(ctx, pending.ID, model.StatusCaptured, intent.ID); err != nil {
+			return err
+		}
+
+		if err := s.orderWriter.UpdateOrderStatus(ctx, in.OrderID, model.OrderStatusProcessing, nil); err != nil {
+			return err
+		}
+		if err := s.stockWriter.CommitReservationsForOrder(ctx, in.OrderID); err != nil {
+			return err
+		}
+
+		result = &PaymentWebhookResult{
+			OrderID:       ord.ID.String(),
+			OrderStatus:   string(model.OrderStatusProcessing),
+			PaymentStatus: string(model.StatusCaptured),
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, s.handleError(err, "Failed to confirm payment")
+	}
+	if lateCapture {
+		return nil, apierr.ConflictError("Payment was captured after the order expired; a refund is required").WithCode(apierr.CodeResourceConflict)
+	}
+	return result, nil
 }

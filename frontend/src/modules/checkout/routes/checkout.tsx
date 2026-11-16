@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useCart } from "@/modules/cart/model/useCart";
 import { calculateCartTotals } from "@/modules/cart/utils/cartCalculations";
 import { formatMoney } from "@/shared/lib/money";
 import { useCheckout } from "@/modules/orders/model/useOrders";
+import { orderService } from "@/modules/orders/api/orderService";
+import type { CheckoutResult } from "@/modules/orders/types";
 import { useAddresses } from "@/modules/account/model/useUserAccount";
 import type { Address } from "@/modules/account/types";
-import { useRouter } from "@/shared/i18n/navigation";
+import { usePathname, useRouter } from "@/shared/i18n/navigation";
 import { 
-	CheckCircle2, 
+	CheckCircle2,
 	Check,
-	Truck, 
+	Copy,
+	Receipt,
+	Truck,
 	CreditCard, 
 	ShieldCheck, 
 	MapPin, 
@@ -52,6 +56,8 @@ import {
 	FormMessage,
 } from "@/shared/ui/form/form";
 import { normalizeMediaUrl } from "@/shared/lib/media";
+import { cn } from "@/shared/lib/cn";
+import { StripePaymentModal, isStripeConfigured, type PendingStripeOrder } from "../components/StripePaymentModal";
 import type { FormEvent } from "react";
 
 interface CheckoutAddress {
@@ -71,14 +77,47 @@ interface CheckoutOrder {
 	total: string;
 	shippingAddress: string;
 	date: string;
+	pending?: boolean;
 }
 
-interface CheckoutData {
-	orderId?: string;
-	trackingNumber?: string;
-	totalAmount?: number;
-	order?: { orderId?: string; trackingNumber?: string; totalAmount?: number };
-	data?: CheckoutData;
+const PENDING_ORDER_KEY = "prim:pending-stripe-order";
+// shortcut: 15 min matches the backend stock reservation TTL; bump it if that setting changes.
+const PENDING_ORDER_TTL = 15 * 60 * 1000;
+
+function readPendingOrder(): PendingStripeOrder | null {
+	if (typeof window === "undefined") return null;
+	try {
+		const raw = sessionStorage.getItem(PENDING_ORDER_KEY);
+		if (!raw) return null;
+		const saved = JSON.parse(raw) as { order?: PendingStripeOrder; savedAt?: number };
+		if (
+			!saved.order?.clientSecret ||
+			!saved.order?.orderId ||
+			Date.now() - (saved.savedAt ?? 0) > PENDING_ORDER_TTL
+		) {
+			sessionStorage.removeItem(PENDING_ORDER_KEY);
+			return null;
+		}
+		return saved.order;
+	} catch {
+		return null;
+	}
+}
+
+function writePendingOrder(order: PendingStripeOrder | null) {
+	if (typeof window === "undefined") return;
+	try {
+		if (order) {
+			sessionStorage.setItem(
+				PENDING_ORDER_KEY,
+				JSON.stringify({ order, savedAt: Date.now() }),
+			);
+		} else {
+			sessionStorage.removeItem(PENDING_ORDER_KEY);
+		}
+	} catch {
+		// Storage can be unavailable (private mode); the in-memory banner still works.
+	}
 }
 
 function resolveShippingAddress(
@@ -107,6 +146,7 @@ export function Checkout() {
 	const [applyingCoupon, setApplyingCoupon] = useState(false);
 	const { addresses, addAddress, refreshAddresses, loading: addressesLoading, error: addressesError } = useAddresses();
 	const router = useRouter();
+	const pathname = usePathname();
 	const { settings: storeSettings } = usePublicSettings();
 
 	// Step management: 1: Delivery Address, 2: Delivery Speed, 3: Payment & Confirm
@@ -131,13 +171,49 @@ export function Checkout() {
 	const [shippingSpeed, setShippingSpeed] = useState("standard"); // 'standard' | 'express'
 	const [deliveryNotes, setDeliveryNotes] = useState("");
 
-	// Card checkout stays disabled until the backend exposes a payment-provider
-	// token/intent contract. This page must never collect raw PAN/CVC data.
-	const codAvailable = storeSettings?.allowCod !== false;
-	const canPlaceOrder = codAvailable;
+	// Card checkout is supported via Stripe PaymentIntents when cards are allowed and key configured.
+	const settingsLoaded = storeSettings !== null;
+	const codAvailable = settingsLoaded && storeSettings?.allowCod !== false;
+	const stripeKeyConfigured = isStripeConfigured;
+	const cardsAvailable =
+		settingsLoaded &&
+		storeSettings?.allowCards !== false &&
+		(stripeKeyConfigured || process.env.NODE_ENV !== "production");
+	const canPlaceOrder = settingsLoaded && (codAvailable || cardsAvailable);
+
+	const [userChosenMethod, setUserChosenMethod] = useState<"cash_on_delivery" | "card" | null>(null);
+
+	// Derive the effective payment method based on live availability and user selection
+	const selectedPaymentMethod: "cash_on_delivery" | "card" =
+		userChosenMethod && ((userChosenMethod === "card" && cardsAvailable) || (userChosenMethod === "cash_on_delivery" && codAvailable))
+			? userChosenMethod
+			: cardsAvailable
+				? "card"
+				: "cash_on_delivery";
 
 	// Order confirmation modal state
 	const [completedOrder, setCompletedOrder] = useState<CheckoutOrder | null>(null);
+	const [pendingStripeOrder, setPendingStripeOrder] = useState<PendingStripeOrder | null>(null);
+	const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+	const [copiedOrderId, setCopiedOrderId] = useState(false);
+
+	const handleCopyOrderId = (id: string) => {
+		navigator.clipboard.writeText(id);
+		setCopiedOrderId(true);
+		setTimeout(() => setCopiedOrderId(false), 2000);
+	};
+
+	const setPersistedPendingOrder = (order: PendingStripeOrder | null) => {
+		writePendingOrder(order);
+		setPendingStripeOrder(order);
+	};
+
+	// Restore a card order whose payment was interrupted (close/refresh) so the
+	// shopper can finish it instead of placing a duplicate order.
+	useEffect(() => {
+		const saved = readPendingOrder();
+		if (saved) setPendingStripeOrder(saved);
+	}, []);
 
 	// Derived selection IDs without setState in effect
 	const effectiveAddressId = selectedAddressId || addresses?.find((a: Address) => a.isDefault)?.id || addresses?.[0]?.id || "";
@@ -174,11 +250,70 @@ export function Checkout() {
 			: 0;
 
 	// Cash-on-delivery surcharge, applied only when COD is the selected method.
-	const codFee = codAvailable ? roundCents(storeSettings?.codFee ?? 0) : 0;
+	const codFee = (codAvailable && selectedPaymentMethod === "cash_on_delivery") ? roundCents(storeSettings?.codFee ?? 0) : 0;
 
 	const finalTotal = Math.round(Math.max(0, subtotal - discount + shippingCost + taxAmount + codFee) * 100) / 100;
 
 	const resolvedAddressString = resolveShippingAddress(addresses, effectiveAddressId);
+
+	// Reconcile a return from 3D-Secure. Must run once: the query string is user
+	// input, and re-running would repeat the confirm call and wipe the cart.
+	const handledReturnRef = useRef(false);
+	useEffect(() => {
+		if (handledReturnRef.current || typeof window === "undefined") return;
+		const params = new URLSearchParams(window.location.search);
+		const redirectStatus = params.get("redirect_status");
+		const orderIdParam = params.get("order_id");
+		if (!redirectStatus) return;
+		handledReturnRef.current = true;
+
+		const cleanUrl = () => router.replace(pathname, { scroll: false });
+
+		if (redirectStatus !== "succeeded" || !orderIdParam) {
+			const msg = t("payment.paymentFailed");
+			setOrderError(msg);
+			notify.error(msg);
+			cleanUrl();
+			return;
+		}
+
+		void (async () => {
+			try {
+				await orderService.confirmPayment({
+					orderId: orderIdParam,
+					paymentIntentId: params.get("payment_intent") || undefined,
+				});
+			} catch (err) {
+				// Keep the cart and report the failure; never claim a settled order.
+				const msg = apiErrorMessage(err, t("payment.confirmFailed"));
+				setOrderError(msg);
+				notify.error(msg);
+				cleanUrl();
+				return;
+			}
+
+			const order = await orderService
+				.getOrderById(orderIdParam)
+				.then((res) => res.data)
+				.catch(() => null);
+			const address = order?.shippingAddress;
+			setPersistedPendingOrder(null);
+			if (resetCart) resetCart();
+			if (refreshCart) void refreshCart();
+			setCompletedOrder({
+				id: orderIdParam,
+				trackingNumber: order?.trackingNumber || "",
+				total: formatMoney(order ? order.totalAmount / 100 : undefined, order?.currency || currency),
+				shippingAddress: address
+					? [address.street, address.city, address.state, address.country].filter(Boolean).join(", ")
+					: resolvedAddressString,
+				date: t("success.today"),
+				pending: order?.status === "pending",
+			});
+			window.scrollTo({ top: 0, behavior: "smooth" });
+			cleanUrl();
+		})();
+	}, [pathname, router, t, resetCart, refreshCart, currency, resolvedAddressString]);
 
 	const handleOpenAddAddress = () => {
 		setAddressModalError(null);
@@ -328,7 +463,7 @@ export function Checkout() {
 			return;
 		}
 
-		if (!canPlaceOrder) {
+		if (!canPlaceOrder || (selectedPaymentMethod === "card" && !cardsAvailable) || (selectedPaymentMethod === "cash_on_delivery" && !codAvailable)) {
 			const msg = t("validation.paymentUnavailable");
 			setOrderError(msg);
 			notify.error(msg);
@@ -341,25 +476,44 @@ export function Checkout() {
 			shippingAddressId: effectiveAddressId,
 			couponId: appliedCoupon?.id || undefined,
 			couponCode: appliedCoupon?.code || undefined,
-			paymentMethod: "cash_on_delivery",
+			paymentMethod: selectedPaymentMethod,
 		};
 
 		const result = await checkout(orderPayload);
 
 		if (result.success) {
 			setOrderError(null);
-			if (resetCart) resetCart();
-			if (refreshCart) await refreshCart();
-			const rawResult = (result.data || {}) as CheckoutData;
-			const orderData = rawResult.data || rawResult;
-			const order = orderData.order || orderData;
+			// Checkout returns { data: CheckoutResult }; the mutation wraps it once more.
+			const data = (result.data?.data ?? result.data) as CheckoutResult | undefined;
+			const clientSecret = data?.clientSecret;
 			const completedOrderInfo = {
-				id: orderData.orderId || order.orderId || "",
-				trackingNumber: orderData.trackingNumber || order.trackingNumber || "",
-				total: formatMoney(Number(orderData.totalAmount ?? order.totalAmount ?? finalTotal), currency),
+				id: data?.orderId || "",
+				trackingNumber: "",
+				total: formatMoney(finalTotal, currency),
 				shippingAddress: finalShippingAddress,
 				date: t("success.today"),
 			};
+
+			if (selectedPaymentMethod === "card") {
+				if (!clientSecret) {
+					const errorMsg = t("validation.cardInitFailed");
+					setOrderError(errorMsg);
+					notify.error(errorMsg);
+					return;
+				}
+
+				setPersistedPendingOrder({
+					clientSecret,
+					orderId: completedOrderInfo.id,
+					totalFormatted: completedOrderInfo.total,
+					completedOrderInfo,
+				});
+				setIsPaymentModalOpen(true);
+				return;
+			}
+
+			if (resetCart) resetCart();
+			if (refreshCart) await refreshCart();
 			setCompletedOrder(completedOrderInfo);
 			window.scrollTo({ top: 0, behavior: "smooth" });
 		} else {
@@ -369,64 +523,183 @@ export function Checkout() {
 		}
 	};
 
+	// Kept as elements so the empty-cart screen (cart cleared by checkout) can
+	// still offer the resume flow after a refresh.
+	const resumeBanner = pendingStripeOrder && !isPaymentModalOpen ? (
+		<div className="max-w-4xl mx-auto mb-6 rounded-2xl border border-accent-brand/30 bg-accent-brand/5 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+			<div className="flex items-center gap-3">
+				<CreditCard className="size-5 text-accent-brand shrink-0" />
+				<div>
+					<p className="text-sm font-bold text-foreground">
+						{t("payment.modalTitle")}
+					</p>
+					<p className="text-xs text-muted-foreground">
+						{t("payment.pendingNotice", { orderId: pendingStripeOrder.orderId })}
+					</p>
+				</div>
+			</div>
+			<div className="flex items-center gap-2 w-full sm:w-auto">
+				<button
+					type="button"
+					onClick={() => setIsPaymentModalOpen(true)}
+					className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-accent-brand text-white font-bold text-xs hover:bg-accent-brand/90 transition-all cursor-pointer shadow-sm"
+				>
+					{t("payment.resumePayment")}
+				</button>
+				<button
+					type="button"
+					onClick={() => setPersistedPendingOrder(null)}
+					className="px-3 py-2 rounded-xl border border-border text-muted-foreground font-medium text-xs hover:bg-secondary transition-all cursor-pointer"
+				>
+					{t("payment.dismissPending")}
+				</button>
+			</div>
+		</div>
+	) : null;
+
+	const paymentModal = pendingStripeOrder && isPaymentModalOpen ? (
+		<StripePaymentModal
+			clientSecret={pendingStripeOrder.clientSecret}
+			orderId={pendingStripeOrder.orderId}
+			totalFormatted={pendingStripeOrder.totalFormatted}
+			onClose={() => setIsPaymentModalOpen(false)}
+			onSuccess={() => {
+				const info = pendingStripeOrder.completedOrderInfo;
+				setPersistedPendingOrder(null);
+				setIsPaymentModalOpen(false);
+				if (resetCart) resetCart();
+				void refreshCart?.();
+				setCompletedOrder(info);
+				window.scrollTo({ top: 0, behavior: "smooth" });
+			}}
+			onPending={() => {
+				// Payment not settled yet: the order exists, so show it as pending
+				// rather than as paid, and let the webhook finalize it.
+				const info = pendingStripeOrder.completedOrderInfo;
+				setPersistedPendingOrder(null);
+				setIsPaymentModalOpen(false);
+				if (resetCart) resetCart();
+				void refreshCart?.();
+				setCompletedOrder({ ...info, pending: true });
+				window.scrollTo({ top: 0, behavior: "smooth" });
+			}}
+		/>
+	) : null;
+
 	if (completedOrder) {
 		return (
 			<div className="max-w-2xl mx-auto py-12 px-4">
-				<div className="bg-card border border-border rounded-3xl p-8 sm:p-12 text-center shadow-lg flex flex-col items-center">
-						<div className="w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-6 shadow-inner">
-							<PackageCheck className="size-10" />
+				<div className="relative overflow-hidden bg-card border border-border/80 rounded-3xl p-8 sm:p-12 text-center shadow-xl flex flex-col items-center">
+					{/* Subtle brand top accent gradient */}
+					<div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-accent-brand/40 via-accent-brand to-accent-brand/40" />
+
+					{/* Icon container */}
+					<div className={cn(
+						"size-20 rounded-2xl flex items-center justify-center mb-5 shadow-xs ring-8 transition-all",
+						completedOrder.pending
+							? "bg-amber-500/10 text-amber-600 ring-amber-500/5"
+							: "bg-accent-brand/10 text-accent-brand ring-accent-brand/5"
+					)}>
+						{completedOrder.pending ? <Clock className="size-10 stroke-[2]" /> : <PackageCheck className="size-10 stroke-[2]" />}
+					</div>
+
+					{/* Status Badge */}
+					<span className={cn(
+						"inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border mb-4 shadow-2xs",
+						completedOrder.pending
+							? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+							: "border-accent-brand/30 bg-accent-brand/10 text-accent-brand"
+					)}>
+						<span className={cn("size-1.5 rounded-full", completedOrder.pending ? "bg-amber-500 animate-pulse" : "bg-accent-brand")} />
+						{completedOrder.pending ? t("success.pendingBadge") : t("success.badge")}
+					</span>
+
+					{/* Headings */}
+					<h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground mb-2">
+						{completedOrder.pending ? t("success.pendingTitle") : t("success.title")}
+					</h1>
+					<p className="text-muted-foreground text-xs sm:text-sm max-w-md mb-8 leading-relaxed">
+						{completedOrder.pending ? t("success.pendingDesc") : t("success.desc")}
+					</p>
+
+					{/* Summary Box */}
+					<div className="w-full bg-secondary/30 dark:bg-secondary/20 border border-border/80 rounded-2xl p-5 sm:p-6 text-start mb-8 divide-y divide-border/60 space-y-3.5">
+						{completedOrder.id ? (
+							<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 text-xs sm:text-sm">
+								<span className="flex items-center gap-2 text-muted-foreground font-medium">
+									<Receipt className="size-4 text-accent-brand shrink-0" />
+									{t("success.orderNumber")}
+								</span>
+								<div className="flex items-center gap-1.5">
+									<span className="font-mono text-xs sm:text-sm font-bold text-foreground bg-background px-2.5 py-1 rounded-lg border border-border/80 shadow-2xs select-all">
+										{completedOrder.id}
+									</span>
+									<button
+										type="button"
+										onClick={() => handleCopyOrderId(completedOrder.id!)}
+										title={copiedOrderId ? "Copied" : "Copy"}
+										aria-label="Copy order ID"
+										className="p-1.5 rounded-lg border border-border/80 bg-background hover:bg-secondary text-muted-foreground hover:text-foreground transition-all cursor-pointer"
+									>
+										{copiedOrderId ? <Check className="size-3.5 text-accent-brand" /> : <Copy className="size-3.5" />}
+									</button>
+								</div>
+							</div>
+						) : null}
+
+						{completedOrder.trackingNumber ? (
+							<div className="flex items-center justify-between gap-2 py-3.5 text-xs sm:text-sm">
+								<span className="flex items-center gap-2 text-muted-foreground font-medium">
+									<Truck className="size-4 text-accent-brand shrink-0" />
+									{t("success.trackingNumber")}
+								</span>
+								<span className="font-mono font-bold text-accent-brand bg-accent-brand/5 border border-accent-brand/20 px-2.5 py-1 rounded-lg">
+									{completedOrder.trackingNumber}
+								</span>
+							</div>
+						) : null}
+
+						<div className="flex items-center justify-between gap-2 py-3.5 text-xs sm:text-sm">
+							<span className="flex items-center gap-2 text-muted-foreground font-medium">
+								<CreditCard className="size-4 text-accent-brand shrink-0" />
+								{completedOrder.pending ? t("success.orderTotal") : t("success.totalPaid")}
+							</span>
+							<span className="font-extrabold text-foreground text-base sm:text-lg">
+								{completedOrder.total}
+							</span>
 						</div>
 
-						<span className="px-3.5 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-3">
-							{t("success.badge")}
-						</span>
-						<h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-							{t("success.title")}
-						</h1>
-						<p className="text-muted-foreground text-sm sm:text-base max-w-md mb-8">
-							{t("success.desc")}
-						</p>
-
-						<div className="w-full bg-secondary/40 border border-border/80 rounded-2xl p-6 text-start mb-8 flex flex-col gap-4">
-							{completedOrder.id ? (
-								<div className="flex justify-between items-center pb-3 border-b border-border/50 text-sm">
-									<span className="text-muted-foreground font-medium">{t("success.orderNumber")}</span>
-									<span className="font-mono font-bold text-foreground">{completedOrder.id}</span>
-								</div>
-							) : null}
-							{completedOrder.trackingNumber ? (
-								<div className="flex justify-between items-center pb-3 border-b border-border/50 text-sm">
-									<span className="text-muted-foreground font-medium">{t("success.trackingNumber")}</span>
-									<span className="font-mono font-semibold text-accent-brand">{completedOrder.trackingNumber}</span>
-								</div>
-							) : null}
-							<div className="flex justify-between items-center pb-3 border-b border-border/50 text-sm">
-								<span className="text-muted-foreground font-medium">{t("success.totalPaid")}</span>
-								<span className="font-bold text-foreground text-base">{completedOrder.total}</span>
-							</div>
-							<div className="flex flex-col gap-1 text-sm pt-1">
-								<span className="text-muted-foreground font-medium">{t("success.destination")}</span>
-								<span className="text-foreground text-xs sm:text-sm font-medium">{completedOrder.shippingAddress}</span>
-							</div>
-						</div>
-
-						<div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-							<button
-								onClick={() => router.push("/user/orders")}
-								className="flex-1 py-3.5 px-6 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm flex items-center justify-center gap-2"
-							>
-								<span>{t("success.trackOrders")}</span>
-								<ArrowRight className="size-4 rtl:rotate-180" />
-							</button>
-							<button
-								onClick={() => router.push("/products")}
-								className="flex-1 py-3.5 px-6 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/80 border border-border transition-colors flex items-center justify-center"
-							>
-								{t("success.continueShopping")}
-							</button>
+						<div className="flex items-start justify-between gap-4 pt-3.5 text-xs sm:text-sm">
+							<span className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
+								<MapPin className="size-4 text-accent-brand shrink-0" />
+								{t("success.destination")}
+							</span>
+							<span className="text-foreground font-medium text-end max-w-[260px] leading-relaxed">
+								{completedOrder.shippingAddress}
+							</span>
 						</div>
 					</div>
+
+					{/* Action Buttons */}
+					<div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+						<button
+							type="button"
+							onClick={() => router.push("/user/orders")}
+							className="flex-1 py-3.5 px-6 rounded-xl bg-accent-brand hover:bg-accent-brand/90 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+						>
+							<span>{t("success.trackOrders")}</span>
+							<ArrowRight className="size-4 rtl:rotate-180" />
+						</button>
+						<button
+							type="button"
+							onClick={() => router.push("/products")}
+							className="flex-1 py-3.5 px-6 rounded-xl bg-background hover:bg-secondary/80 border border-border text-foreground font-semibold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+						>
+							{t("success.continueShopping")}
+						</button>
+					</div>
 				</div>
+			</div>
 		);
 	}
 
@@ -446,6 +719,16 @@ export function Checkout() {
 	}
 
 	if (!cartItems || cartItems.length === 0) {
+		// Checkout already cleared the cart server-side; keep the pending card
+		// order reachable after a refresh instead of showing an empty cart.
+		if (pendingStripeOrder) {
+			return (
+				<div className="w-full py-4 sm:py-8">
+					{resumeBanner}
+					{paymentModal}
+				</div>
+			);
+		}
 		return (
 				<div className="max-w-2xl mx-auto py-16 px-4">
 					<div className="bg-card border border-border rounded-3xl p-8 sm:p-12 text-center shadow-sm flex flex-col items-center">
@@ -476,7 +759,8 @@ export function Checkout() {
 
 	return (
 		<div className="w-full py-4 sm:py-8">
-				
+				{resumeBanner}
+
 				{/* Step Progress Bar */}
 				<div className={hasStartedCheckout ? "mb-10" : "hidden"}>
 					<div className="max-w-xl mx-auto">
@@ -822,7 +1106,6 @@ export function Checkout() {
 														onClick={() => setSelectedAddressId(addr.id)}
 														role="radio"
 														aria-checked={isSelected}
-														aria-pressed={isSelected}
 														className={`p-4 rounded-xl border cursor-pointer transition-all flex flex-col justify-between text-start ${
 															isSelected
 																? "border-accent-brand bg-accent-brand/5 ring-2 ring-accent-brand"
@@ -1132,43 +1415,59 @@ export function Checkout() {
 											</div>
 										</div>
 
-										{codAvailable ? (
-											<div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent-brand bg-accent-brand/10 p-3.5 text-xs font-semibold text-accent-brand ring-1 ring-accent-brand">
-												<span className="flex items-center gap-2">
-													<Banknote className="size-4" />
-													{t("payment.cod")}
-												</span>
-												<CheckCircle2 className="size-4" />
+										{cardsAvailable || codAvailable ? (
+											<div className="space-y-3 mb-6" role="radiogroup" aria-label={t("payment.heading")}>
+												{cardsAvailable && (
+													<button
+														type="button"
+														role="radio"
+														aria-checked={selectedPaymentMethod === "card"}
+														onClick={() => setUserChosenMethod("card")}
+														className={cn(
+															"w-full flex items-center justify-between gap-3 rounded-xl border p-4 text-xs font-semibold transition-all text-start cursor-pointer",
+															selectedPaymentMethod === "card"
+																? "border-accent-brand bg-accent-brand/10 text-accent-brand ring-1 ring-accent-brand"
+																: "border-border bg-card text-foreground hover:bg-secondary/30"
+														)}
+													>
+														<div className="flex items-center gap-3">
+															<CreditCard className="size-5 shrink-0 text-accent-brand" />
+															<div className="flex flex-col gap-0.5">
+																<span className="font-semibold text-foreground">{t("payment.creditCard")}</span>
+																<span className="text-[11px] font-normal text-muted-foreground">{t("payment.stripeCardDesc")}</span>
+															</div>
+														</div>
+														{selectedPaymentMethod === "card" && <CheckCircle2 className="size-4 shrink-0 text-accent-brand" />}
+													</button>
+												)}
+
+												{codAvailable && (
+													<button
+														type="button"
+														role="radio"
+														aria-checked={selectedPaymentMethod === "cash_on_delivery"}
+														onClick={() => setUserChosenMethod("cash_on_delivery")}
+														className={cn(
+															"w-full flex items-center justify-between gap-3 rounded-xl border p-4 text-xs font-semibold transition-all text-start cursor-pointer",
+															selectedPaymentMethod === "cash_on_delivery"
+																? "border-accent-brand bg-accent-brand/10 text-accent-brand ring-1 ring-accent-brand"
+																: "border-border bg-card text-foreground hover:bg-secondary/30"
+														)}
+													>
+														<div className="flex items-center gap-3">
+															<Banknote className="size-5 shrink-0 text-accent-brand" />
+															<div className="flex flex-col gap-0.5">
+																<span className="font-semibold text-foreground">{t("payment.codTitle")}</span>
+																<span className="text-[11px] font-normal text-muted-foreground leading-relaxed">{t("payment.codDesc")}</span>
+															</div>
+														</div>
+														{selectedPaymentMethod === "cash_on_delivery" && <CheckCircle2 className="size-4 shrink-0 text-accent-brand" />}
+													</button>
+												)}
 											</div>
 										) : (
 											<div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-800 dark:text-amber-300">
 												{t("payment.noPaymentMethods")}
-											</div>
-										)}
-
-										{storeSettings?.allowCards !== false && (
-											<div className="mb-6 flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-4">
-												<CreditCard className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-												<div className="space-y-0.5 text-xs">
-													<span className="block font-semibold text-foreground">
-														{t("payment.cardsUnavailableTitle")}
-													</span>
-													<span className="block leading-relaxed text-muted-foreground">
-														{t("payment.cardsUnavailable")}
-													</span>
-												</div>
-											</div>
-										)}
-
-										{codAvailable && (
-											<div className="p-5 rounded-xl bg-secondary/30 border border-border flex items-start gap-3">
-												<Banknote className="size-5 text-accent-brand shrink-0 mt-0.5" />
-												<div className="flex flex-col gap-1 text-xs">
-													<span className="font-semibold text-foreground">{t("payment.codTitle")}</span>
-													<span className="text-muted-foreground leading-relaxed">
-														{t("payment.codDesc")}
-													</span>
-												</div>
 											</div>
 										)}
 
@@ -1394,6 +1693,8 @@ export function Checkout() {
 						</div>
 					</div>
 			</div>
+
+			{paymentModal}
 		</div>
 	);
 }

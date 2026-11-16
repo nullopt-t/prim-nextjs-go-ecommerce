@@ -977,6 +977,152 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/checkout/confirm": {
+            "post": {
+                "description": "Confirms an order payment after external card confirmation, transitioning order to processing and committing stock.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Checkout"
+                ],
+                "summary": "Confirm payment",
+                "parameters": [
+                    {
+                        "description": "Payment Confirmation Details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ConfirmPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Confirmation result",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/PaymentWebhookResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/checkout/webhook/payment": {
+            "post": {
+                "description": "Unauthenticated provider webhook: verifies the HMAC signature, claims the transaction id idempotently, and on success transitions the order Pending-\u003eProcessing with a payment audit entry.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Checkout"
+                ],
+                "summary": "Ingest a payment webhook event",
+                "parameters": [
+                    {
+                        "description": "Payment event payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/PaymentWebhookRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed (duplicate=true on replay)",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/PaymentWebhookResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or invalid order status",
+                        "schema": {
+                            "$ref": "#/definitions/BadRequestErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid webhook signature or missing secret",
+                        "schema": {
+                            "$ref": "#/definitions/UnauthorizedErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Order not found",
+                        "schema": {
+                            "$ref": "#/definitions/NotFoundErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Transaction belongs to another order",
+                        "schema": {
+                            "$ref": "#/definitions/ConflictErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Webhook payload exceeds maximum size",
+                        "schema": {
+                            "$ref": "#/definitions/PayloadTooLargeErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/InternalServerErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/coupons/apply": {
             "post": {
                 "description": "Validates and applies a coupon code, returning discount details.",
@@ -6545,6 +6691,9 @@ const docTemplatepublic = `{
         "CheckoutResponse": {
             "type": "object",
             "properties": {
+                "clientSecret": {
+                    "type": "string"
+                },
                 "orderId": {
                     "type": "string"
                 },
@@ -6552,6 +6701,20 @@ const docTemplatepublic = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "ConfirmPaymentRequest": {
+            "type": "object",
+            "required": [
+                "orderId"
+            ],
+            "properties": {
+                "orderId": {
+                    "type": "string"
+                },
+                "paymentIntentId": {
                     "type": "string"
                 }
             }
@@ -7397,6 +7560,56 @@ const docTemplatepublic = `{
                 },
                 "meta": {
                     "description": "Meta contains the pagination metadata (page, pageSize, totalItems, totalPages)."
+                }
+            }
+        },
+        "PayloadTooLargeErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "FILE_TOO_LARGE"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Request payload exceeds the maximum allowed size"
+                }
+            }
+        },
+        "PaymentWebhookRequest": {
+            "type": "object",
+            "properties": {
+                "event": {
+                    "type": "string"
+                },
+                "order_id": {
+                    "type": "string"
+                },
+                "signature": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "PaymentWebhookResult": {
+            "type": "object",
+            "properties": {
+                "duplicate": {
+                    "type": "boolean"
+                },
+                "orderId": {
+                    "type": "string"
+                },
+                "orderStatus": {
+                    "type": "string"
+                },
+                "paymentStatus": {
+                    "type": "string"
                 }
             }
         },

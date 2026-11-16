@@ -27,6 +27,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -61,6 +62,7 @@ import (
 	"github.com/nullopt-t/prim-backend/pkg/config"
 	"github.com/nullopt-t/prim-backend/pkg/database"
 	"github.com/nullopt-t/prim-backend/pkg/log"
+	"github.com/nullopt-t/prim-backend/pkg/payment"
 	"github.com/nullopt-t/prim-backend/pkg/storage"
 )
 
@@ -302,6 +304,7 @@ func (s *CheckoutTestSuite) SetupSuite() {
 		s.orderNotifier,
 		s.adminNotifier,
 		logger,
+		checkout.WithPaymentGateway(suitePaymentGatewayMock{}),
 	)
 
 	// ---- Seed catalog base ------------------------------------------------
@@ -501,6 +504,65 @@ func (s *CheckoutTestSuite) newCheckoutServiceWithOrderWriter(writer checkout.Or
 	)
 }
 
+func (s *CheckoutTestSuite) newCheckoutServiceWithGateway(gw checkout.PaymentGateway) *checkout.CheckoutService {
+	return checkout.NewService(
+		s.cartRepo,
+		s.cartService,
+		s.orderService,
+		s.inventoryService,
+		s.userRepo,
+		s.addressRepo,
+		s.couponService,
+		s.variantRepo,
+		s.productRepo,
+		s.sellerRepo,
+		object.NewRepository(),
+		storage.NoopProvider{},
+		s.settingsService,
+		s.txRunner,
+		s.orderNotifier,
+		s.adminNotifier,
+		log.NewNoopLogger(),
+		checkout.WithPaymentGateway(gw),
+	)
+}
+
+type failingTestGateway struct{}
+
+func (failingTestGateway) VerifyWebhook(context.Context, payment.WebhookPayload) (*payment.WebhookResult, error) {
+	return nil, nil
+}
+
+func (failingTestGateway) CreatePaymentIntent(context.Context, payment.PaymentIntentInput) (*payment.PaymentIntentResult, error) {
+	return nil, errors.New("simulated stripe error")
+}
+
+func (failingTestGateway) RetrievePaymentIntent(context.Context, string) (*payment.PaymentIntentResult, error) {
+	return nil, errors.New("simulated stripe error")
+}
+
+type suitePaymentGatewayMock struct{}
+
+func (suitePaymentGatewayMock) VerifyWebhook(context.Context, payment.WebhookPayload) (*payment.WebhookResult, error) {
+	return nil, nil
+}
+
+func (suitePaymentGatewayMock) CreatePaymentIntent(_ context.Context, input payment.PaymentIntentInput) (*payment.PaymentIntentResult, error) {
+	id := "pi_test_" + input.OrderID
+	return &payment.PaymentIntentResult{
+		ID:           id,
+		ClientSecret: id + "_secret",
+		Status:       "requires_payment_method",
+		Amount:       input.Amount,
+		Currency:     strings.ToLower(input.Currency),
+		Metadata:     map[string]string{"order_id": input.OrderID},
+	}, nil
+}
+
+func (suitePaymentGatewayMock) RetrievePaymentIntent(_ context.Context, intentID string) (*payment.PaymentIntentResult, error) {
+	return &payment.PaymentIntentResult{ID: intentID, Status: "succeeded"}, nil
+}
+
 // newCheckoutServiceWithCoupon builds a checkout service that shares every real
 // dependency but uses the supplied coupon service (e.g. one with a fixed clock).
 func (s *CheckoutTestSuite) newCheckoutServiceWithCoupon(c *coupon.CouponService) *checkout.CheckoutService {
@@ -538,6 +600,30 @@ func (f *failingPaymentOrderWriter) PlaceOrder(ctx context.Context, in *order.Cr
 
 func (f *failingPaymentOrderWriter) RecordPayment(ctx context.Context, in *order.CreatePaymentInput) (*model.Payment, error) {
 	return nil, f.err
+}
+
+func (f *failingPaymentOrderWriter) GetOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Order, error) {
+	return f.real.GetOrderForUpdate(ctx, orderID)
+}
+
+func (f *failingPaymentOrderWriter) FindPaymentByTransactionID(ctx context.Context, transactionID string) (*model.Payment, error) {
+	return f.real.FindPaymentByTransactionID(ctx, transactionID)
+}
+
+func (f *failingPaymentOrderWriter) FindPendingPaymentForOrderForUpdate(ctx context.Context, orderID uuid.UUID) (*model.Payment, error) {
+	return f.real.FindPendingPaymentForOrderForUpdate(ctx, orderID)
+}
+
+func (f *failingPaymentOrderWriter) UpdatePaymentWebhook(ctx context.Context, paymentID uuid.UUID, status model.PaymentStatus, transactionID string) error {
+	return f.real.UpdatePaymentWebhook(ctx, paymentID, status, transactionID)
+}
+
+func (f *failingPaymentOrderWriter) UpdateOrderStatus(ctx context.Context, orderID uuid.UUID, status model.OrderStatus, notes *string) error {
+	return f.real.UpdateOrderStatus(ctx, orderID, status, notes)
+}
+
+func (f *failingPaymentOrderWriter) AddOrderStatusHistory(ctx context.Context, orderID uuid.UUID, status model.OrderStatus, notes *string) error {
+	return f.real.AddOrderStatusHistory(ctx, orderID, status, notes)
 }
 
 type couponSeed struct {
@@ -1750,6 +1836,38 @@ func (s *CheckoutTestSuite) TestCheckout_CardPayment_HoldsStockWithoutCommitting
 	s.Equal(2, stock.ReservedQuantity)
 	s.Equal(8, stock.AvailableQuantity)
 	s.Equal(1, s.countActiveReservations(variantID))
+}
+
+func (s *CheckoutTestSuite) TestCheckout_CardPayment_IntentFailure_CancelsOrderAndReleasesHold() {
+	userID, _ := s.seedUser()
+	addressID := s.seedAddress(userID)
+	variantID := s.seedPricedVariant(2500, 10)
+	s.addToCart(userID, variantID, 2)
+
+	svc := s.newCheckoutServiceWithGateway(failingTestGateway{})
+
+	_, err := svc.Checkout(context.Background(), &checkout.CheckoutInput{
+		CustomerID:        userID,
+		ShippingAddressID: addressID,
+		PaymentMethod:     "card",
+	})
+	s.Require().Error(err)
+
+	// Verify order was marked cancelled and inventory hold was released
+	var orderID uuid.UUID
+	var orderStatus string
+	err = s.db.QueryRowContext(context.Background(),
+		`SELECT id, status::text FROM orders WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 1`,
+		userID).Scan(&orderID, &orderStatus)
+	s.Require().NoError(err)
+	s.Equal(string(model.OrderStatusCancelled), orderStatus)
+
+	stock := s.fetchStock(variantID)
+	s.Equal(10, stock.OnHandQuantity)
+	s.Equal(0, stock.ReservedQuantity, "hold should be released on intent failure")
+	s.Equal(10, stock.AvailableQuantity, "all stock should be available again")
+	s.Equal(0, s.countActiveReservations(variantID))
+	s.Equal(1, s.countActiveCartItems(userID), "cart must survive a failed card payment intent")
 }
 
 // TestCheckout_CODFeeAndTaxOnDiscountedSubtotal verifies the fee is added and
