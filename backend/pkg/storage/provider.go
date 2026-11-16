@@ -33,12 +33,45 @@ type MinioStorageProvider struct {
 	Client *minio.Client
 	// publicURL is the base public endpoint URL (e.g. "https://cdn.example.com" or "http://minio:9000").
 	publicURL string
+	// region is the S3 bucket region (defaults to "us-east-1").
+	region string
 	// knownBuckets caches verified or created buckets in-memory to eliminate redundant BucketExists round-trips.
 	knownBuckets sync.Map
 }
 
+// StorageOption configures optional MinioStorageProvider settings.
+type StorageOption func(*minioStorageConfig)
+
+type minioStorageConfig struct {
+	useSSL *bool
+	region string
+}
+
+// WithSSL explicitly sets whether to use HTTPS/TLS for S3 requests.
+func WithSSL(ssl bool) StorageOption {
+	return func(c *minioStorageConfig) {
+		c.useSSL = &ssl
+	}
+}
+
+// WithRegion specifies the target S3 bucket region (e.g. "eu-west-1", "me-central-1").
+func WithRegion(region string) StorageOption {
+	return func(c *minioStorageConfig) {
+		if strings.TrimSpace(region) != "" {
+			c.region = strings.TrimSpace(region)
+		}
+	}
+}
+
 // NewMinioStorageProvider initializes and configures a new MinioStorageProvider instance.
-func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (*MinioStorageProvider, error) {
+func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string, opts ...StorageOption) (*MinioStorageProvider, error) {
+	cfg := minioStorageConfig{
+		region: "us-east-1",
+	}
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	useSSL := false
 	trimmedEndpoint := strings.TrimSpace(endpoint)
 
@@ -53,9 +86,16 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 		trimmedEndpoint = u.Host
 	} else {
 		trimmedEndpoint = strings.TrimRight(trimmedEndpoint, "/")
-		if strings.Contains(trimmedEndpoint, "amazonaws.com") {
+		lower := strings.ToLower(trimmedEndpoint)
+		if strings.Contains(lower, "amazonaws.com") ||
+			strings.Contains(lower, "r2.cloudflarestorage.com") ||
+			strings.Contains(lower, "storage.googleapis.com") {
 			useSSL = true
 		}
+	}
+
+	if cfg.useSSL != nil {
+		useSSL = *cfg.useSSL
 	}
 
 	cleanPublicURL := strings.TrimSpace(publicURL)
@@ -80,6 +120,7 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 	minioClient, err := minio.New(trimmedEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
+		Region: cfg.region,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to init minio client: %w", err)
@@ -88,6 +129,7 @@ func NewMinioStorageProvider(endpoint, accessKey, secretKey, publicURL string) (
 	return &MinioStorageProvider{
 		Client:    minioClient,
 		publicURL: cleanPublicURL,
+		region:    cfg.region,
 	}, nil
 }
 
@@ -106,11 +148,15 @@ func (m *MinioStorageProvider) ensureBucket(ctx context.Context, bucket string) 
 
 	if !exists {
 		err = m.Client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{
-			Region: "us-east-1",
+			Region: m.region,
 		})
 		if err != nil {
 			errResp := minio.ToErrorResponse(err)
-			if errResp.Code != "BucketAlreadyOwnedByYou" && errResp.Code != "BucketAlreadyExists" {
+			// Ignore if bucket already exists or if IAM policy forbids CreateBucket on pre-provisioned buckets
+			if errResp.Code != "BucketAlreadyOwnedByYou" &&
+				errResp.Code != "BucketAlreadyExists" &&
+				errResp.Code != "AccessDenied" &&
+				errResp.Code != "MethodNotAllowed" {
 				return fmt.Errorf("make bucket: %w", err)
 			}
 		}
@@ -138,6 +184,7 @@ func (m *MinioStorageProvider) Upload(ctx context.Context, bucket, key string, f
 	}
 	if size <= 0 {
 		opts.PartSize = 16 * 1024 * 1024
+		size = -1
 	}
 
 	_, err := m.Client.PutObject(ctx, bucket, cleanKey, file, size, opts)
@@ -184,6 +231,7 @@ func (m *MinioStorageProvider) GetPresignedURL(ctx context.Context, bucket, key 
 
 // GetPublicURL returns a direct public URL for an object based on the configured publicURL base.
 // Object key path segments are properly URL-escaped to ensure valid URLs with spaces and special characters.
+// Prevents duplicate bucket segments if publicURL already includes the bucket in its hostname or path.
 func (m *MinioStorageProvider) GetPublicURL(bucket, key string) string {
 	cleanKey := strings.TrimPrefix(path.Clean(key), "/")
 	parts := strings.Split(cleanKey, "/")
@@ -196,6 +244,22 @@ func (m *MinioStorageProvider) GetPublicURL(bucket, key string) string {
 	if baseURL == "" {
 		return fmt.Sprintf("/%s/%s", bucket, escapedKey)
 	}
+
+	// Avoid duplicate bucket in path if publicURL already embeds the bucket in its host or path.
+	if u, err := url.Parse(baseURL); err == nil {
+		bucketLower := strings.ToLower(bucket)
+		hostLower := strings.ToLower(u.Hostname())
+		// e.g. "my-bucket.s3.eu-west-1.amazonaws.com" or "my-bucket.r2.cloudflarestorage.com"
+		if strings.HasPrefix(hostLower, bucketLower+".") {
+			return fmt.Sprintf("%s/%s", baseURL, escapedKey)
+		}
+		// e.g. "https://cdn.example.com/my-bucket"
+		pathTrimmed := strings.Trim(strings.ToLower(u.Path), "/")
+		if pathTrimmed == bucketLower || strings.HasSuffix(pathTrimmed, "/"+bucketLower) {
+			return fmt.Sprintf("%s/%s", baseURL, escapedKey)
+		}
+	}
+
 	return fmt.Sprintf("%s/%s/%s", baseURL, bucket, escapedKey)
 }
 

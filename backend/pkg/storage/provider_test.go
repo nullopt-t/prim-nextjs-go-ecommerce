@@ -10,12 +10,12 @@ import (
 
 func TestNewMinioStorageProvider_PublicURLEndpointAlignment(t *testing.T) {
 	tests := []struct {
-		name         string
-		endpoint     string
-		publicURL    string
-		bucket       string
-		key          string
-		wantURL      string
+		name      string
+		endpoint  string
+		publicURL string
+		bucket    string
+		key       string
+		wantURL   string
 	}{
 		{
 			name:      "internal docker hostname rewritten to localhost",
@@ -72,6 +72,30 @@ func TestNewMinioStorageProvider_PublicURLEndpointAlignment(t *testing.T) {
 			bucket:    "catalog",
 			key:       "products/my new shoes & socks.jpg",
 			wantURL:   "http://localhost:9000/catalog/products/my%20new%20shoes%20&%20socks.jpg",
+		},
+		{
+			name:      "AWS S3 bucket in host not duplicated in path",
+			endpoint:  "s3.eu-west-1.amazonaws.com",
+			publicURL: "https://catalog.s3.eu-west-1.amazonaws.com",
+			bucket:    "catalog",
+			key:       "products/shoe.jpg",
+			wantURL:   "https://catalog.s3.eu-west-1.amazonaws.com/products/shoe.jpg",
+		},
+		{
+			name:      "Cloudflare R2 bucket in host not duplicated in path",
+			endpoint:  "abc123.r2.cloudflarestorage.com",
+			publicURL: "https://catalog.r2.cloudflarestorage.com",
+			bucket:    "catalog",
+			key:       "products/shoe.jpg",
+			wantURL:   "https://catalog.r2.cloudflarestorage.com/products/shoe.jpg",
+		},
+		{
+			name:      "public URL with bucket path prefix not duplicated",
+			endpoint:  "minio:9000",
+			publicURL: "https://cdn.example.com/catalog",
+			bucket:    "catalog",
+			key:       "products/shoe.jpg",
+			wantURL:   "https://cdn.example.com/catalog/products/shoe.jpg",
 		},
 	}
 
