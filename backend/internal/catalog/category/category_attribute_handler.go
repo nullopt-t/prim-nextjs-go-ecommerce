@@ -3,6 +3,7 @@ package category
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -57,13 +58,12 @@ func (h *AttributeHandler) ListAttributes(c *gin.Context) {
 }
 
 func (h *AttributeHandler) ListByCategory(c *gin.Context) {
-	rawID := c.Param("id")
-	parsed, err := uuid.Parse(rawID)
-	if err != nil {
+	rawID := strings.TrimSpace(c.Param("id"))
+	if rawID == "" {
 		_ = c.Error(apierr.BadRequestError("Invalid category ID").WithCode(apierr.CodeValidationFailed))
 		return
 	}
-	list, err := h.attributeService.ListByCategory(c.Request.Context(), parsed)
+	list, err := h.attributeService.ListByCategoryIdentifier(c.Request.Context(), rawID)
 	if err != nil {
 		_ = c.Error(err)
 		return

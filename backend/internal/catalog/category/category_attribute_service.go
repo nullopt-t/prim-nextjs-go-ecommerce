@@ -42,6 +42,19 @@ func (s *AttributeService) ListByCategory(ctx context.Context, categoryID uuid.U
 	return list, nil
 }
 
+func (s *AttributeService) ListByCategoryIdentifier(ctx context.Context, identifier string) ([]AttributeItem, error) {
+	var list []AttributeItem
+	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {
+		var err error
+		list, err = s.repo.ListByCategoryIdentifier(ctx, identifier)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "Failed to fetch category attributes")
+	}
+	return list, nil
+}
+
 func (s *AttributeService) ListBySellerCategory(ctx context.Context, sellerID, categoryID uuid.UUID) ([]AttributeItem, error) {
 	var list []AttributeItem
 	err := s.dr.WithExecutor(ctx, func(ctx context.Context) error {

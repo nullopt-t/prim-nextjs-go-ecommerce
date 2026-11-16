@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { X } from "lucide-react";
 import { ProductsGrid } from "@/shared/ui/productsGrid";
 import { CardDetails } from "@/shared/ui/productsCard";
 import { useCatalogContext, normalizeProduct } from "@/modules/catalog/model/catalogContext";
@@ -19,6 +20,7 @@ interface ContentProps {
 export default function Content({ products, category }: ContentProps) {
   const { products: contextProducts, loading: contextLoading, filters, setFilter, clearFilters } = useCatalogContext();
   const t = useTranslations("products");
+  const tFilters = useTranslations("common.filters");
   const baseCurrency = useCurrency();
   const displayCurrency = useDisplayCurrency();
   const [categoryProducts, setCategoryProducts] = useState<ProductDetailsEntity[] | null>(products ?? null);
@@ -69,6 +71,27 @@ export default function Content({ products, category }: ContentProps) {
     if (Object.keys(attributes).length > 0) setFilter("attributes", attributes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When category changes in searchParams, sync category-specific attribute filters from URL.
+  const prevCategoryRef = useRef(searchParams.get("category"));
+  useEffect(() => {
+    const currentCategory = searchParams.get("category");
+    if (prevCategoryRef.current !== currentCategory) {
+      prevCategoryRef.current = currentCategory;
+      const params = new URLSearchParams(searchParamsString);
+      const attributes: Record<string, string> = {};
+      for (const attributeParam of params.getAll("attribute")) {
+        for (const part of attributeParam.split(",")) {
+          const colon = part.indexOf(":");
+          if (colon <= 0 || colon >= part.length - 1) continue;
+          const k = part.slice(0, colon).trim();
+          const v = part.slice(colon + 1).trim();
+          if (k && v) attributes[k] = v;
+        }
+      }
+      setFilter("attributes", attributes);
+    }
+  }, [searchParams, searchParamsString, setFilter]);
 
   // Push filter state back to the URL (debounced) so views are shareable and
   // the server can apply the same filters to the next request.
@@ -189,18 +212,21 @@ export default function Content({ products, category }: ContentProps) {
       if (filters.maxPrice !== null && priceVal > filters.maxPrice) return false;
     }
 
-    // Attribute facet filter: one variant must match every selected key:value
-    // (mirrors the backend EXISTS clause on /api/v1/products?attribute=).
+    // Attribute facet filter: when variant data is present in memory, match variants.
+    // If variants array is omitted from product card read models, server SQL filtering
+    // already satisfied the criteria.
     const selectedFacets = Object.entries(filters.attributes || {});
     if (selectedFacets.length > 0) {
       const variants = (p.variants ?? []) as Array<{ attributes?: Record<string, unknown> }>;
-      const matchesSomeVariant = variants.some((v) =>
-        selectedFacets.every(([key, value]) => {
-          const attr = v.attributes?.[key];
-          return attr !== undefined && attr !== null && String(attr) === value;
-        }),
-      );
-      if (!matchesSomeVariant) return false;
+      if (variants.length > 0) {
+        const matchesSomeVariant = variants.some((v) =>
+          selectedFacets.every(([key, value]) => {
+            const attr = v.attributes?.[key];
+            return attr !== undefined && attr !== null && String(attr) === value;
+          }),
+        );
+        if (!matchesSomeVariant) return false;
+      }
     }
 
     return true;
@@ -220,36 +246,134 @@ export default function Content({ products, category }: ContentProps) {
     });
   }
 
+  const activeChips: Array<{ id: string; label: string; onRemove: () => void }> = [];
+
+  if (filters.brand) {
+    activeChips.push({
+      id: "brand",
+      label: `${tFilters("brands")}: ${filters.brand}`,
+      onRemove: () => setFilter("brand", null),
+    });
+  }
+  if (filters.inStockOnly) {
+    activeChips.push({
+      id: "inStock",
+      label: tFilters("inStockOnly"),
+      onRemove: () => setFilter("inStockOnly", false),
+    });
+  }
+  if (filters.minPrice !== null || filters.maxPrice !== null) {
+    const minTxt = filters.minPrice !== null ? `${filters.minPrice} ${displayCurrency}` : "";
+    const maxTxt = filters.maxPrice !== null ? `${filters.maxPrice} ${displayCurrency}` : "";
+    const label =
+      minTxt && maxTxt
+        ? `${minTxt} - ${maxTxt}`
+        : minTxt
+          ? `>= ${minTxt}`
+          : `<= ${maxTxt}`;
+    activeChips.push({
+      id: "price",
+      label: `${tFilters("price")}: ${label}`,
+      onRemove: () => {
+        setFilter("minPrice", null);
+        setFilter("maxPrice", null);
+      },
+    });
+  }
+  if (filters.rating !== null) {
+    activeChips.push({
+      id: "rating",
+      label: `${filters.rating}★ ${tFilters("andUp")}`,
+      onRemove: () => setFilter("rating", null),
+    });
+  }
+  if (filters.discount !== null) {
+    activeChips.push({
+      id: "discount",
+      label: tFilters("discountMore", { percent: filters.discount }),
+      onRemove: () => setFilter("discount", null),
+    });
+  }
+  for (const [key, val] of Object.entries(filters.attributes || {})) {
+    if (!val) continue;
+    activeChips.push({
+      id: `attr-${key}`,
+      label: `${key}: ${val}`,
+      onRemove: () => {
+        const next = { ...filters.attributes };
+        delete next[key];
+        setFilter("attributes", next);
+      },
+    });
+  }
+
+  const activeChipsRow = activeChips.length > 0 && (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      {activeChips.map((chip) => (
+        <span
+          key={chip.id}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3 py-1 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+        >
+          <span>{chip.label}</span>
+          <button
+            type="button"
+            onClick={chip.onRemove}
+            className="rounded-full p-0.5 text-muted-foreground hover:bg-background hover:text-foreground cursor-pointer"
+            aria-label={`Remove ${chip.label}`}
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      <button
+        type="button"
+        onClick={clearFilters}
+        className="text-xs font-medium text-accent-brand hover:underline cursor-pointer"
+      >
+        {tFilters("clearAll")}
+      </button>
+    </div>
+  );
+
   if (loading && filtered.length === 0) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
-        {[...Array(10)].map((_, i) => (
-          <div key={i} className="aspect-square bg-secondary/50 rounded-xl animate-pulse" />
-        ))}
+      <div>
+        {activeChipsRow}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4">
+          {[...Array(10)].map((_, i) => (
+            <div key={i} className="aspect-square bg-secondary/50 rounded-xl animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (filtered.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-16 text-center">
-        <p className="text-sm font-medium text-foreground">{t("layout.emptyTitle")}</p>
-        <p className="max-w-sm text-sm text-muted-foreground">{t("layout.emptyDescription")}</p>
-        <button
-          type="button"
-          onClick={clearFilters}
-          className="mt-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
-        >
-          {t("layout.clearFilters")}
-        </button>
+      <div>
+        {activeChipsRow}
+        <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-16 text-center">
+          <p className="text-sm font-medium text-foreground">{t("layout.emptyTitle")}</p>
+          <p className="max-w-sm text-sm text-muted-foreground">{t("layout.emptyDescription")}</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            {t("layout.clearFilters")}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <ProductsGrid
-      products={filtered as unknown as CardDetails[]}
-      className="grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-    />
+    <div>
+      {activeChipsRow}
+      <ProductsGrid
+        products={filtered as unknown as CardDetails[]}
+        className="grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+      />
+    </div>
   );
 }

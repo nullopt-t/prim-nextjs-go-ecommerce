@@ -122,6 +122,65 @@ func (r *AttributeRepository) ListByCategory(ctx context.Context, categoryID uui
 	return list, rows.Err()
 }
 
+// ListByCategoryIdentifier returns attribute definitions for a category specified by either its UUID or name/slug.
+func (r *AttributeRepository) ListByCategoryIdentifier(ctx context.Context, identifier string) ([]AttributeItem, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		query string
+		args  []any
+	)
+
+	parsedID, parseErr := uuid.Parse(identifier)
+	if parseErr == nil {
+		query = `
+			SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
+			       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
+			FROM category_attributes ca
+			LEFT JOIN product_categories pc ON ca.category_id = pc.id
+			WHERE ca.category_id = $1
+			ORDER BY ca.sort_order ASC, ca.key ASC
+		`
+		args = []any{parsedID}
+	} else {
+		// Match category name or slugified name (e.g. "laptops" -> "Laptops", "computer-accessories" -> "Computer Accessories")
+		query = `
+			SELECT ca.id, ca.category_id, COALESCE(pc.name, 'Global'), ca.key, ca.label, ca.value_type,
+			       ca.allowed_values, ca.is_filterable, ca.sort_order, ca.created_at, ca.updated_at
+			FROM category_attributes ca
+			JOIN product_categories pc ON ca.category_id = pc.id AND pc.deleted_at IS NULL
+			WHERE LOWER(pc.name) = LOWER($1)
+			   OR LOWER(pc.name) = LOWER(REPLACE($1, '-', ' '))
+			   OR REPLACE(LOWER(pc.name), ' ', '-') = LOWER($1)
+			   OR REPLACE(REPLACE(LOWER(pc.name), ' ', '-'), '&', 'and') = LOWER($1)
+			ORDER BY ca.sort_order ASC, ca.key ASC
+		`
+		args = []any{identifier}
+	}
+
+	rows, err := executor.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("list category attributes by identifier: %w", err)
+	}
+	defer rows.Close()
+
+	var list []AttributeItem
+	for rows.Next() {
+		var ai AttributeItem
+		if err := rows.Scan(
+			&ai.ID, &ai.CategoryID, &ai.CategoryName, &ai.Key, &ai.Label, &ai.ValueType,
+			&ai.AllowedValues, &ai.IsFilterable, &ai.SortOrder, &ai.CreatedAt, &ai.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan category attribute: %w", err)
+		}
+		list = append(list, ai)
+	}
+	return list, rows.Err()
+}
+
 func (r *AttributeRepository) CreateAttribute(ctx context.Context, ai *AttributeItem) error {
 	tx, err := database.RequireTx(ctx)
 	if err != nil {
