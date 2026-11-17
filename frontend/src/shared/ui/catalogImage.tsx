@@ -70,6 +70,7 @@ export function CatalogImage({
 			loader={({ src: loaderSrc }: { src: string }) =>
 				normalizeMediaUrl(loaderSrc)
 			}
+			unoptimized
 			src={currentSrc}
 			alt={alt}
 			fill={fill}

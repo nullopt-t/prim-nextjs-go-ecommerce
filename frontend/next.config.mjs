@@ -34,6 +34,12 @@ const configuredRemotePatterns = [
     pathname: "/**",
   },
   {
+    protocol: "http",
+    hostname: "192.168.1.16",
+    port: "4566",
+    pathname: "/**",
+  },
+  {
     protocol: "https",
     hostname: "**.amazonaws.com",
     pathname: "/**",
@@ -91,6 +97,31 @@ const nextConfig = {
   onDemandEntries: {
     maxInactiveAge: 24 * 60 * 60 * 1000,
     pagesBufferLength: 250,
+  },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "libphonenumber-js",
+      "recharts",
+      "motion",
+      "clsx",
+      "tailwind-merge",
+      "react-icons",
+      "@radix-ui/react-checkbox",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-label",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-radio-group",
+      "@radix-ui/react-select",
+      "@radix-ui/react-slot",
+      "@radix-ui/react-switch",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-tooltip",
+      "@stripe/react-stripe-js",
+      "@stripe/stripe-js",
+      "zod",
+    ],
   },
   webpack(config, { dev }) {
     if (dev && config.experiments) {
