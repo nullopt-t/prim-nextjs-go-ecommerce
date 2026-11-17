@@ -11,6 +11,7 @@ import type {
   Product,
   ProductDetails,
   ProductRatingSummary,
+  ProductSuggestion,
   ProductVariant,
   ProductVariantMedia,
   Review,
@@ -62,6 +63,11 @@ export const catalogService = {
 
   getProductBySlug: (slug: string) =>
     api.get<ApiResponse<ProductDetails>>(`/api/v1/products/${slug}`),
+
+  getSuggestions: (query: string, limit: number = 6) => {
+    const q = encodeURIComponent(query.trim());
+    return api.get<ApiResponse<ProductSuggestion[]>>(`/api/v1/products/suggestions?q=${q}&limit=${limit}`);
+  },
 
   getCategoryAttributes: (categoryId: string) =>
     api.get<ApiResponse<CategoryAttribute[]>>(`/api/v1/categories/${encodeURIComponent(categoryId)}/attributes`),

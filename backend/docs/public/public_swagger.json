@@ -1636,6 +1636,58 @@
                 }
             }
         },
+        "/products/suggestions": {
+            "get": {
+                "description": "Returns up to ten lightweight published product matches for storefront type-ahead search. Queries shorter than two characters return an empty list.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Products"
+                ],
+                "summary": "Instant product search suggestions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "example": "\"mous\"",
+                        "description": "Search query (at least two characters)",
+                        "name": "q",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "example": 6,
+                        "description": "Maximum suggestions (default 6, max 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Matching product suggestions",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ProductSuggestionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/products/{product_id}/variants": {
             "get": {
                 "description": "Returns a paginated list of active variants associated with a specific product for storefront selection.",
@@ -8061,6 +8113,26 @@
                 }
             }
         },
+        "ProductSuggestionResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "description": "Product UUID",
+                    "type": "string",
+                    "example": "60000000-0000-0000-0000-000000000001"
+                },
+                "thumbnail": {
+                    "description": "Public thumbnail URL, empty when the product has no image",
+                    "type": "string",
+                    "example": "https://example.com/thumb.jpg"
+                },
+                "title": {
+                    "description": "Product display title",
+                    "type": "string",
+                    "example": "MacBook Pro 16\""
+                }
+            }
+        },
         "ProductTagSummary": {
             "type": "object",
             "properties": {
@@ -9437,6 +9509,21 @@
                 },
                 "expiresAt": {
                     "type": "string"
+                }
+            }
+        },
+        "SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Data contains the primary response payload (e.g. a resource DTO)."
+                },
+                "message": {
+                    "description": "Message is an optional user-facing confirmation message.",
+                    "type": "string"
+                },
+                "meta": {
+                    "description": "Meta holds optional contextual information (e.g. processing timestamps or request IDs)."
                 }
             }
         },

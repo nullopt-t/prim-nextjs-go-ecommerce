@@ -4,13 +4,16 @@ import { Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/shared/i18n/navigation";
 import { useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { SearchSuggestionsDropdown } from "@/shared/ui/searchSuggestionsDropdown";
 
 export function SearchBar({ className = "" }: { className?: string }) {
   const t = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const containerRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const q = searchParams.get("q") || "";
@@ -20,6 +23,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = query.trim();
+    setIsSuggestionsOpen(false);
     if (trimmed) {
       router.push(`/products?q=${encodeURIComponent(trimmed)}`);
     } else {
@@ -37,6 +41,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
 
   return (
     <form
+      ref={containerRef}
       role="search"
       onSubmit={handleSubmit}
       className={`flex items-center relative bg-secondary/40 hover:bg-secondary/60 focus-within:bg-background rounded-full border border-border/80 focus-within:border-accent-brand focus-within:ring-2 focus-within:ring-accent-brand/15 px-3.5 py-1.5 transition-all duration-200 ${className}`}
@@ -47,6 +52,7 @@ export function SearchBar({ className = "" }: { className?: string }) {
         aria-label={t("header.search")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onFocus={() => setIsSuggestionsOpen(true)}
         className="w-full text-xs sm:text-sm text-foreground bg-transparent placeholder:text-muted-foreground px-2.5 py-1 outline-none font-normal"
         placeholder={t("header.search")}
       />
@@ -59,6 +65,15 @@ export function SearchBar({ className = "" }: { className?: string }) {
         >
           <X className="size-3.5" />
         </button>
+      )}
+      {isSuggestionsOpen && (
+        <SearchSuggestionsDropdown
+          query={query}
+          containerRef={containerRef}
+          onClose={() => setIsSuggestionsOpen(false)}
+          onRecentSelect={setQuery}
+          className="rounded-2xl"
+        />
       )}
     </form>
   );

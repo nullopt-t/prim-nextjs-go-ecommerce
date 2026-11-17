@@ -207,6 +207,19 @@ type ProductResponse struct {
 	Thumbnail *string `json:"thumbnail,omitempty" example:"https://example.com/thumb.jpg"`
 }
 
+// ProductSuggestionResponse is a lightweight storefront search suggestion.
+type ProductSuggestionResponse struct {
+	// Product UUID
+	ID string `json:"id" example:"60000000-0000-0000-0000-000000000001"`
+	// Product display title
+	Title string `json:"title" example:"MacBook Pro 16\""`
+	// Public thumbnail URL, empty when the product has no image
+	Thumbnail string `json:"thumbnail" example:"https://example.com/thumb.jpg"`
+
+	thumbnailBucket string
+	thumbnailKey    string
+}
+
 type ProductRatingSummaryResponse struct {
 	// Average review score (1.0 to 5.0)
 	AverageRating float64 `json:"averageRating" example:"4.5"`
@@ -900,6 +913,51 @@ func (h *ProductHandler) GetAllProducts(c *gin.Context) {
 		Data: itemsRes,
 		Meta: result.Meta(),
 	})
+}
+
+// GetSuggestions godoc
+//
+//	@Summary		Instant product search suggestions
+//	@Description	Returns up to ten lightweight published product matches for storefront type-ahead search. Queries shorter than two characters return an empty list.
+//	@Tags			Products
+//	@Produce		json
+//	@Param			q		query		string	true	"Search query (at least two characters)"	example("mous")
+//	@Param			limit	query		int		false	"Maximum suggestions (default 6, max 10)"	example(6)
+//	@Success		200		{object}	api.SuccessResponse{data=[]ProductSuggestionResponse}	"Matching product suggestions"
+//	@Router			/products/suggestions [get]
+func (h *ProductHandler) GetSuggestions(c *gin.Context) {
+	query, limit := parseSuggestionParams(c.Query("q"), c.Query("limit"))
+	if len(query) < 2 {
+		c.JSON(http.StatusOK, api.SuccessResponse{Data: []*ProductSuggestionResponse{}})
+		return
+	}
+
+	suggestions, err := h.service.GetSuggestions(c.Request.Context(), query, limit)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if suggestions == nil {
+		suggestions = []*ProductSuggestionResponse{}
+	}
+
+	c.JSON(http.StatusOK, api.SuccessResponse{Data: suggestions})
+}
+
+// parseSuggestionParams normalizes type-ahead input: six results by default,
+// capped at ten, with invalid limits falling back to the default.
+func parseSuggestionParams(q, limitRaw string) (string, int) {
+	query := strings.TrimSpace(q)
+	limit := 6
+	if limitRaw != "" {
+		if parsed, err := strconv.Atoi(limitRaw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	if limit > 10 {
+		limit = 10
+	}
+	return query, limit
 }
 
 // AdminGetAllProducts godoc

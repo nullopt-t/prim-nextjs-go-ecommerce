@@ -1318,6 +1318,21 @@ definitions:
         example: Sarah Connor
         type: string
     type: object
+  ProductSuggestionResponse:
+    properties:
+      id:
+        description: Product UUID
+        example: 60000000-0000-0000-0000-000000000001
+        type: string
+      thumbnail:
+        description: Public thumbnail URL, empty when the product has no image
+        example: https://example.com/thumb.jpg
+        type: string
+      title:
+        description: Product display title
+        example: MacBook Pro 16"
+        type: string
+    type: object
   ProductTagSummary:
     properties:
       id:
@@ -2324,6 +2339,17 @@ definitions:
         type: string
       expiresAt:
         type: string
+    type: object
+  SuccessResponse:
+    properties:
+      data:
+        description: Data contains the primary response payload (e.g. a resource DTO).
+      message:
+        description: Message is an optional user-facing confirmation message.
+        type: string
+      meta:
+        description: Meta holds optional contextual information (e.g. processing timestamps
+          or request IDs).
     type: object
   SyncHistoryRequest:
     properties:
@@ -4135,6 +4161,39 @@ paths:
           schema:
             $ref: '#/definitions/InternalServerErrorResponse'
       summary: Get rating summary for a product
+      tags:
+      - Products
+  /products/suggestions:
+    get:
+      description: Returns up to ten lightweight published product matches for storefront
+        type-ahead search. Queries shorter than two characters return an empty list.
+      parameters:
+      - description: Search query (at least two characters)
+        example: '"mous"'
+        in: query
+        name: q
+        required: true
+        type: string
+      - description: Maximum suggestions (default 6, max 10)
+        example: 6
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Matching product suggestions
+          schema:
+            allOf:
+            - $ref: '#/definitions/SuccessResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ProductSuggestionResponse'
+                  type: array
+              type: object
+      summary: Instant product search suggestions
       tags:
       - Products
   /reviews:

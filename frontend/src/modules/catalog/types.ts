@@ -132,6 +132,13 @@ export interface Product {
   [key: string]: unknown;
 }
 
+/** Compact product row returned by the instant-search suggestions endpoint. */
+export interface ProductSuggestion {
+  id: string;
+  title: string;
+  thumbnail: string;
+}
+
 export interface ProductDetails extends Product {
   brand?: { id?: string; name?: string };
   category?: { id?: string; name?: string } | string;

@@ -8,12 +8,15 @@ import { useSearchParams } from "next/navigation";
 import { useOptionalCatalogContext } from "@/modules/catalog/model/catalogContext";
 import { catalogService } from "@/modules/catalog/api/catalogService";
 import type { Category } from "@/modules/catalog/types";
+import { SearchSuggestionsDropdown } from "@/shared/ui/searchSuggestionsDropdown";
 
 export function MobileSearchDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [fetchedCategories, setFetchedCategories] = useState<Category[]>([]);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchBarRef = useRef<HTMLDivElement>(null);
 
   const t = useTranslations("common.header");
   const locale = useLocale();
@@ -93,6 +96,7 @@ export function MobileSearchDialog() {
     e.preventDefault();
     const trimmed = query.trim();
     setIsOpen(false);
+    setIsSuggestionsOpen(false);
     if (trimmed) {
       router.push(`/products?q=${encodeURIComponent(trimmed)}`);
     } else {
@@ -102,6 +106,7 @@ export function MobileSearchDialog() {
 
   const handleSelectCategory = (catId: string) => {
     setIsOpen(false);
+    setIsSuggestionsOpen(false);
     router.push(`/products?category=${catId}`);
   };
 
@@ -127,7 +132,7 @@ export function MobileSearchDialog() {
           className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md md:hidden flex flex-col animate-in fade-in-0 duration-200"
         >
           {/* Top Search Bar */}
-          <div className="flex items-center gap-2.5 px-4 h-16 border-b border-border/80 bg-background/80">
+          <div ref={searchBarRef} className="relative flex items-center gap-2.5 px-4 h-16 border-b border-border/80 bg-background/80">
             <form onSubmit={handleSubmit} className="flex-1 flex items-center relative">
               <Search className="absolute ltr:left-3.5 rtl:right-3.5 size-4.5 text-muted-foreground pointer-events-none" />
               <input
@@ -135,6 +140,7 @@ export function MobileSearchDialog() {
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setIsSuggestionsOpen(true)}
                 placeholder={t("searchPlaceholder")}
                 className="w-full h-11 ltr:pl-10 ltr:pr-9 rtl:pr-10 rtl:pl-9 rounded-xl bg-secondary/60 text-foreground text-sm placeholder:text-muted-foreground border border-border/60 focus:border-accent-brand focus:ring-2 focus:ring-accent-brand/15 outline-none transition-all"
               />
@@ -157,6 +163,16 @@ export function MobileSearchDialog() {
             >
               {t("close")}
             </button>
+
+            {isSuggestionsOpen && (
+              <SearchSuggestionsDropdown
+                query={query}
+                containerRef={searchBarRef}
+                onClose={() => setIsSuggestionsOpen(false)}
+                onRecentSelect={setQuery}
+                className="mx-4"
+              />
+            )}
           </div>
 
           {/* Quick Categories & Suggestions */}

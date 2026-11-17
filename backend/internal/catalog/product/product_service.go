@@ -983,6 +983,32 @@ func (s *ProductService) List(
 	return res, nil
 }
 
+// GetSuggestions returns lightweight product suggestions for storefront search.
+func (s *ProductService) GetSuggestions(ctx context.Context, query string, limit int) ([]*ProductSuggestionResponse, error) {
+	var suggestions []*ProductSuggestionResponse
+	err := s.dbRunner.WithExecutor(ctx, func(ctx context.Context) error {
+		var err error
+		suggestions, err = s.productRepo.GetSuggestions(ctx, query, limit)
+		return err
+	})
+	if err != nil {
+		return nil, s.handleError(err, "get product suggestions")
+	}
+
+	resolveSuggestionThumbnails(suggestions, s.storageProvider)
+	return suggestions, nil
+}
+
+// resolveSuggestionThumbnails turns the storage object locations from the
+// repository into public asset URLs.
+func resolveSuggestionThumbnails(items []*ProductSuggestionResponse, provider storage.StorageProvider) {
+	for _, item := range items {
+		if item != nil && item.thumbnailBucket != "" && provider != nil {
+			item.Thumbnail = provider.GetPublicURL(item.thumbnailBucket, item.thumbnailKey)
+		}
+	}
+}
+
 // PublishProduct transitions a product from draft to published.
 // Verifies that the product has at least one active variant.
 func (s *ProductService) PublishProduct(

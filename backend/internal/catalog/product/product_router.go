@@ -79,6 +79,8 @@ func (r *ProductRouter) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		// GET /products - List published products with brand/category/tag filters
 		public.GET("", r.ph.GetAllProducts)
+		// GET /products/suggestions - Instant type-ahead search suggestions (registered before /:slug)
+		public.GET("/suggestions", r.ph.GetSuggestions)
 		// GET /products/:slug - Retrieve published product details by unique slug
 		public.GET("/:slug", r.ph.GetProductBySlug)
 	}

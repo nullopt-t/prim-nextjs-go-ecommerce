@@ -736,6 +736,88 @@ func (r *ProductRepository) List(
 	return pagination.NewPagedResult(items, pagination.NewPage(q.Page, q.PageSize, total)), nil
 }
 
+// GetSuggestions returns published products matching a storefront search query
+// across title, slug, brand, category, tag and variant SKU. Title prefix matches
+// rank first, then newest products. Thumbnail location is returned unresolved;
+// the service maps it to a public URL.
+func (r *ProductRepository) GetSuggestions(
+	ctx context.Context,
+	query string,
+	limit int,
+) ([]*ProductSuggestionResponse, error) {
+	executor, err := database.Executor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 6
+	}
+
+	const suggestionQuery = `
+		SELECT p.id, p.title, so.bucket, so.object_key
+		FROM products p
+		LEFT JOIN product_brands b ON p.brand_id = b.id AND b.deleted_at IS NULL
+		LEFT JOIN product_categories c ON p.category_id = c.id AND c.deleted_at IS NULL
+		LEFT JOIN storage_objects so ON so.id = COALESCE(
+			p.thumbnail_object_id,
+			(SELECT thumbnail_object_id FROM product_variants
+			 WHERE product_id = p.id AND deleted_at IS NULL AND thumbnail_object_id IS NOT NULL
+			 ORDER BY (id = p.default_variant_id) DESC
+			 LIMIT 1)
+		)
+		WHERE p.deleted_at IS NULL
+			AND p.status = 'published'
+			AND (p.seller_id IS NULL OR EXISTS (
+				SELECT 1 FROM sellers v WHERE v.id = p.seller_id AND v.status = 'active'
+			))
+			AND (
+				p.title ILIKE $1 OR p.slug ILIKE $1 OR b.name ILIKE $1 OR c.name ILIKE $1
+				OR EXISTS (
+					SELECT 1 FROM product_tag_assignments pta
+					JOIN product_tags pt ON pta.tag_id = pt.id
+					WHERE pta.product_id = p.id AND pt.deleted_at IS NULL AND pt.name ILIKE $1
+				)
+				OR EXISTS (
+					SELECT 1 FROM product_variants pv
+					WHERE pv.product_id = p.id AND pv.deleted_at IS NULL AND pv.sku ILIKE $1
+				)
+			)
+		ORDER BY CASE WHEN p.title ILIKE $2 THEN 0 ELSE 1 END, p.created_at DESC
+		LIMIT $3
+	`
+
+	rows, err := executor.QueryContext(ctx, suggestionQuery, "%"+query+"%", query+"%", limit)
+	if err != nil {
+		return nil, fmt.Errorf("get product suggestions: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]*ProductSuggestionResponse, 0, limit)
+	for rows.Next() {
+		var (
+			id                uuid.UUID
+			title             string
+			bucket, objectKey *string
+		)
+		if err := rows.Scan(&id, &title, &bucket, &objectKey); err != nil {
+			return nil, fmt.Errorf("scan product suggestion: %w", err)
+		}
+
+		item := &ProductSuggestionResponse{ID: id.String(), Title: title}
+		if bucket != nil && objectKey != nil {
+			item.thumbnailBucket = *bucket
+			item.thumbnailKey = *objectKey
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate product suggestions: %w", err)
+	}
+
+	return items, nil
+}
+
 // SoftDeleteByID soft-deletes a product by its UUID (setting deleted_at = now()).
 func (r *ProductRepository) SoftDeleteByID(
 	ctx context.Context,
