@@ -5491,6 +5491,15 @@ const docTemplateadmin = `{
                 "discountValue"
             ],
             "properties": {
+                "categoryIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "60000000-0000-0000-0000-000000000002"
+                    ]
+                },
                 "code": {
                     "type": "string",
                     "example": "SUMMER20"

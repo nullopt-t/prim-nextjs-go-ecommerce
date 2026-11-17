@@ -15,6 +15,8 @@ import { emptyCursorMeta, type CursorMeta } from "@/shared/lib/pagination";
 import { Link } from "@/shared/i18n/navigation";
 import { ConfirmDialog } from "@/shared/ui/confirmDialog";
 import { buildPromotionPayload } from "@/modules/admin/lib/promotionPayload";
+import { catalogService } from "@/modules/catalog/api/catalogService";
+import type { Category } from "@/modules/catalog/types";
 
 interface PromotionView {
 	id: string;
@@ -26,6 +28,7 @@ interface PromotionView {
 	status: string;
 	startsAt: string;
 	expiresAt: string;
+	categoryIds: string[];
 }
 
 const KNOWN_STATUSES = ["all", "active", "disabled", "expired"];
@@ -39,6 +42,7 @@ export function AdminPromotionsSearch() {
 	const t = useTranslations("admin");
 
 	const [promotions, setPromotions] = useState<PromotionView[]>([]);
+	const [categories, setCategories] = useState<Category[]>([]);
 	const [meta, setMeta] = useState<CursorMeta>(emptyCursorMeta);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState(false);
@@ -58,6 +62,8 @@ export function AdminPromotionsSearch() {
 		usageLimit: 200,
 		startDate: "2026-08-01",
 		endDate: "2026-12-31",
+		categoryScope: "all" as "all" | "specific",
+		categoryIds: [] as string[],
 	});
 	const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState(false);
@@ -66,6 +72,22 @@ export function AdminPromotionsSearch() {
 		const id = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300);
 		return () => clearTimeout(id);
 	}, [searchQuery]);
+
+	useEffect(() => {
+		let cancelled = false;
+		void catalogService.getCategories({ pageSize: 100 }).then((res) => {
+			if (cancelled) return;
+			const list = Array.isArray(res.data) ? res.data : [];
+			setCategories(list);
+		}).catch(() => {
+			// Category scope is optional; a failed lookup simply leaves the picker empty.
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
 
 	const handleSearchKey = (e: React.KeyboardEvent) => {
 		if (e.key === "Enter") setDebouncedSearch(searchQuery.trim());
@@ -110,6 +132,7 @@ export function AdminPromotionsSearch() {
 					status: p.status ?? "",
 					startsAt: p.startsAt ?? "",
 					expiresAt: p.expiresAt ?? "",
+					categoryIds: p.categoryIds ?? [],
 				}))
 			);
 			if (res?.meta) setMeta(res.meta);
@@ -265,6 +288,7 @@ export function AdminPromotionsSearch() {
 									<th className="py-3 ps-4 text-start font-medium">{t("promotions.colCode")}</th>
 									<th className="py-3 text-start font-medium">{t("promotions.colDiscount")}</th>
 									<th className="py-3 text-start font-medium">{t("promotions.colUsage")}</th>
+									<th className="py-3 text-start font-medium">{t("promotions.colScope")}</th>
 									<th className="py-3 text-start font-medium">{t("promotions.colStatus")}</th>
 									<th className="py-3 pe-4 text-end font-medium">{t("promotions.colActions")}</th>
 								</tr>
@@ -272,11 +296,11 @@ export function AdminPromotionsSearch() {
 							<tbody className="divide-y divide-border/50">
 								{loading ? (
 									<tr>
-										<td colSpan={5} className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</td>
+										<td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">{t("common.loading")}</td>
 									</tr>
 								) : promotions.length === 0 ? (
 									<tr>
-										<td colSpan={5} className="py-12 text-center text-sm text-muted-foreground">{t("promotions.empty")}</td>
+										<td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">{t("promotions.empty")}</td>
 									</tr>
 								) : (
 									promotions.map((promo) => (
@@ -293,6 +317,26 @@ export function AdminPromotionsSearch() {
 												</div>
 											</td>
 											<td className="py-3.5 text-xs text-muted-foreground">{t("promotions.redeemed", { used: promo.currentUsage, limit: promo.usageLimit })}</td>
+											<td className="py-3.5">
+												{promo.categoryIds.length === 0 ? (
+													<span className="inline-flex rounded-md bg-secondary/40 px-2 py-0.5 text-xs text-muted-foreground">
+														{t("promotions.scope.allCategories")}
+													</span>
+												) : (
+													<div className="space-y-0.5">
+														<span className="inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+															{t("promotions.scope.specificCategories")} ({t("promotions.scope.selectedCount", { count: promo.categoryIds.length })})
+														</span>
+														<div
+															className="max-w-40 truncate text-xs text-muted-foreground"
+															title={promo.categoryIds.map((id) => categoryNames.get(id) ?? id).join(", ")}
+														>
+															{promo.categoryIds.slice(0, 2).map((id) => categoryNames.get(id) ?? id).join(", ")}
+															{promo.categoryIds.length > 2 ? ` +${promo.categoryIds.length - 2}` : ""}
+														</div>
+													</div>
+												)}
+											</td>
 											<td className="py-3.5">
 												<StatusPill tone={statusTone(promo.status)}>{t(`status.${String(promo.status).toLowerCase()}`) || promo.status}</StatusPill>
 											</td>
@@ -366,9 +410,68 @@ export function AdminPromotionsSearch() {
 									<input type="date" value={formData.endDate} min={formData.startDate || undefined} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground" />
 								</div>
 							</div>
+							<div className="space-y-2">
+								<label className="text-sm font-medium text-foreground">{t("promotions.scope.categoryScope")}</label>
+								<div className="flex gap-2">
+									<button
+										type="button"
+										onClick={() => setFormData((current) => ({ ...current, categoryScope: "all", categoryIds: [] }))}
+										aria-pressed={formData.categoryScope === "all"}
+										className={`flex-1 rounded-xl border px-3 py-2 text-sm transition-colors cursor-pointer ${formData.categoryScope === "all" ? "border-border bg-foreground text-background" : "border-border/70"}`}
+									>
+										{t("promotions.scope.allCategories")}
+									</button>
+									<button
+										type="button"
+										onClick={() => setFormData((current) => ({ ...current, categoryScope: "specific" }))}
+										aria-pressed={formData.categoryScope === "specific"}
+										className={`flex-1 rounded-xl border px-3 py-2 text-sm transition-colors cursor-pointer ${formData.categoryScope === "specific" ? "border-border bg-foreground text-background" : "border-border/70"}`}
+									>
+										{t("promotions.scope.specificCategories")}
+									</button>
+								</div>
+								{formData.categoryScope === "specific" && (
+									<div className="space-y-1.5 rounded-xl border border-border/70 bg-background p-3">
+										<p className="text-xs font-medium text-muted-foreground">{t("promotions.scope.selectCategories")}</p>
+										{categories.length === 0 ? (
+											<p className="text-xs text-muted-foreground">{t("promotions.scope.noCategories")}</p>
+										) : (
+											<div className="max-h-40 space-y-1 overflow-y-auto">
+												{categories.map((category) => (
+													<label key={category.id} className="flex items-center gap-2 text-sm text-foreground">
+														<input
+															type="checkbox"
+															checked={formData.categoryIds.includes(category.id)}
+															onChange={(e) =>
+																setFormData((current) => ({
+																	...current,
+																	categoryIds: e.target.checked
+																		? [...current.categoryIds, category.id]
+																		: current.categoryIds.filter((id) => id !== category.id),
+																}))
+															}
+															className="size-4 rounded border-border"
+														/>
+														{category.name}
+													</label>
+												))}
+											</div>
+										)}
+										<p className="text-xs text-muted-foreground">
+											{t("promotions.scope.selectedCount", { count: formData.categoryIds.length })}
+										</p>
+									</div>
+								)}
+							</div>
 							<div className="flex justify-end gap-2 border-t border-border/50 pt-3">
 								<button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl border border-border/70 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/30 transition-colors cursor-pointer">{t("actions.cancel")}</button>
-								<button type="submit" className="rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background transition-colors cursor-pointer">{t("promotions.form.submit")}</button>
+								<button
+									type="submit"
+									disabled={formData.categoryScope === "specific" && formData.categoryIds.length === 0}
+									className="rounded-xl bg-foreground px-3 py-2 text-sm font-medium text-background transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{t("promotions.form.submit")}
+								</button>
 							</div>
 						</form>
 					</div>

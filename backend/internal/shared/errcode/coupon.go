@@ -26,4 +26,7 @@ const (
 
 	// CodeCouponMinCartNotMet indicates that the cart subtotal does not meet the coupon's minimum requirement.
 	CodeCouponMinCartNotMet = "COUPON_MIN_AMOUNT_NOT_MET"
+
+	// CodeCouponNotApplicable indicates that no cart line matches the coupon's seller and category restrictions.
+	CodeCouponNotApplicable = "COUPON_NOT_APPLICABLE"
 )

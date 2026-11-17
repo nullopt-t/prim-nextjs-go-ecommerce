@@ -341,6 +341,13 @@ definitions:
     type: object
   Coupon:
     properties:
+      categoryIds:
+        description: |-
+          CategoryIDs scopes the coupon to these product categories. Empty means
+          all categories are eligible.
+        items:
+          type: string
+        type: array
       code:
         type: string
       createdAt:

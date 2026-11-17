@@ -5,6 +5,7 @@ export interface PromotionFormData {
 	usageLimit: number;
 	startDate: string;
 	endDate: string;
+	categoryIds?: string[];
 }
 
 export interface PromotionPayload {
@@ -15,6 +16,7 @@ export interface PromotionPayload {
 	minCartAmount: number;
 	usageLimit: number;
 	status: "active";
+	categoryIds?: string[];
 	startsAt?: string;
 	expiresAt?: string;
 }
@@ -50,6 +52,7 @@ export function buildPromotionPayload(form: PromotionFormData): PromotionPayload
 		usageLimit: Number(form.usageLimit) || 100,
 		status: "active",
 	};
+	if (form.categoryIds?.length) payload.categoryIds = form.categoryIds;
 	if (form.startDate) payload.startsAt = new Date(form.startDate).toISOString();
 	if (form.endDate) payload.expiresAt = new Date(form.endDate).toISOString();
 	if (payload.startsAt && payload.expiresAt && payload.expiresAt < payload.startsAt) return null;

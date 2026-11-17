@@ -9,6 +9,7 @@ export interface Promotion {
   discountValue: number;
   currency: string;
   minCartAmount?: number;
+  categoryIds?: string[];
   usageLimit?: number;
   perUserLimit?: number;
   startsAt?: string;
@@ -27,6 +28,7 @@ export interface CreatePromotionPayload {
   discountValue: number;
   currency?: string;
   minCartAmount?: number;
+  categoryIds?: string[];
   usageLimit?: number;
   perUserLimit?: number;
   startsAt?: string;

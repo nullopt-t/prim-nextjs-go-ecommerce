@@ -91,6 +91,7 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 		 	expires_at,
 		 	status,
 		 	seller_id,
+		 	ARRAY(SELECT cc.category_id FROM coupon_categories cc WHERE cc.coupon_id = coupons.id) AS category_ids,
 		 	created_at,
 		 	updated_at
 		FROM coupons
@@ -117,6 +118,7 @@ func (r *CouponRepository) get(ctx context.Context, where string, args ...any) (
 		&c.ExpiresAt,
 		&c.Status,
 		&c.SellerID,
+		&c.CategoryIDs,
 		&c.CreatedAt,
 		&c.UpdatedAt,
 	)
@@ -167,6 +169,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			expires_at,
 			status,
 			seller_id,
+			ARRAY(SELECT cc.category_id FROM coupon_categories cc WHERE cc.coupon_id = coupons.id) AS category_ids,
 			created_at,
 			updated_at,
 			(SELECT COUNT(*) FROM coupon_redemptions r WHERE r.coupon_id = coupons.id) AS usage_count
@@ -230,6 +233,7 @@ func (r *CouponRepository) List(ctx context.Context, filter ListCouponFilter) ([
 			&c.ExpiresAt,
 			&c.Status,
 			&c.SellerID,
+			&c.CategoryIDs,
 			&c.CreatedAt,
 			&c.UpdatedAt,
 			&c.UsageCount,
@@ -308,7 +312,7 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 		status = model.CouponStatusActive
 	}
 
-	return executor.QueryRowContext(ctx, query,
+	if err := executor.QueryRowContext(ctx, query,
 		c.ID,
 		c.Code,
 		c.DiscountType,
@@ -321,7 +325,20 @@ func (r *CouponRepository) Create(ctx context.Context, c *model.Coupon) error {
 		c.ExpiresAt,
 		status,
 		c.SellerID,
-	).Scan(&c.CreatedAt, &c.UpdatedAt)
+	).Scan(&c.CreatedAt, &c.UpdatedAt); err != nil {
+		return err
+	}
+
+	for _, categoryID := range c.CategoryIDs {
+		if _, err := executor.ExecContext(ctx, `
+			INSERT INTO coupon_categories (coupon_id, category_id)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, c.ID, categoryID); err != nil {
+			return fmt.Errorf("create coupon categories: %w", err)
+		}
+	}
+	return nil
 }
 
 // UpdateStatus changes the coupon status.

@@ -1,10 +1,15 @@
 package coupon_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/nullopt-t/prim-backend/internal/catalog/coupon"
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
@@ -97,4 +102,27 @@ func TestCreateCouponValidation(t *testing.T) {
 		require.True(t, errors.As(err, &apiErr))
 		assert.Equal(t, apierr.CodeValidationFailed, apiErr.Code)
 	})
+}
+
+func TestCreateCouponRequestCategoryIDs(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := coupon.NewHandler(coupon.NewService(&fakeRunner{}, coupon.NewRepository()))
+
+	body, err := json.Marshal(map[string]any{
+		"code":          "CATS",
+		"discountType":  "percentage",
+		"discountValue": 10,
+		"categoryIds":   []string{"not-a-uuid"},
+	})
+	require.NoError(t, err)
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/admin/promotions", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	handler.CreateCoupon(c)
+
+	require.Len(t, c.Errors, 1)
+	var apiErr *apierr.APIError
+	require.ErrorAs(t, c.Errors.Last().Err, &apiErr)
+	assert.Equal(t, apierr.CodeInvalidInput, apiErr.Code)
 }

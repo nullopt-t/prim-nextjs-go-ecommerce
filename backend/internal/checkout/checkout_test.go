@@ -55,6 +55,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/order"
 	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/setting"
+	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/internal/user"
 	"github.com/nullopt-t/prim-backend/pkg/api"
@@ -240,6 +241,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.ExecContext(ctx, string(shippingBytes))
 	require.NoError(s.T(), err)
 
+	categoryCouponBytes, err := os.ReadFile("../../migrations/000006_coupon_categories.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.ExecContext(ctx, string(categoryCouponBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)
@@ -423,6 +429,47 @@ func (s *CheckoutTestSuite) seedVariant(price *int64, stock int) uuid.UUID {
 func (s *CheckoutTestSuite) seedPricedVariant(price int64, stock int) uuid.UUID {
 	p := price
 	return s.seedVariant(&p, stock)
+}
+
+// seedCategory inserts a taxonomy category used to scope coupons.
+func (s *CheckoutTestSuite) seedCategory(categoryID uuid.UUID) {
+	_, err := s.db.ExecContext(context.Background(), `
+		INSERT INTO product_categories (id, name)
+		VALUES ($1, $2)
+	`, categoryID, "coupon-category-"+uuid.NewString())
+	s.Require().NoError(err)
+}
+
+// seedCategoryVariant creates a priced, stocked variant in the given category,
+// optionally owned by a seller, for coupon-scoping fixtures.
+func (s *CheckoutTestSuite) seedCategoryVariant(categoryID uuid.UUID, sellerID *uuid.UUID, price int64) uuid.UUID {
+	ctx := context.Background()
+	productID := uuid.New()
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO products (id, category_id, slug, title, status, product_type, variation_axes, seller_id)
+		VALUES ($1, $2, $3, $4, 'published', 'variable', ARRAY['color']::text[], $5)
+	`, productID, categoryID, "coupon-product-"+uuid.NewString(), "Coupon Scope Product", sellerID)
+	s.Require().NoError(err)
+
+	p := price
+	currency := defaultCurrency
+	sku := "SKU-" + uuid.NewString()
+	v, err := s.variantService.CreateVariant(ctx, &product.CreateVariantInput{
+		ProductID:  productID,
+		SKU:        &sku,
+		Title:      "Default / Standard",
+		Price:      &p,
+		Currency:   &currency,
+		Attributes: map[string]any{"color": sku},
+	})
+	s.Require().NoError(err)
+	_, err = s.inventoryService.AdjustStock(ctx, inventory.AdjustStockInput{
+		VariantID: v.ID,
+		Quantity:  20,
+		Reason:    "restock",
+	})
+	s.Require().NoError(err)
+	return v.ID
 }
 
 // seedUser inserts an active customer and seeds an authenticated session in Redis.
@@ -646,6 +693,8 @@ type couponSeed struct {
 	StartsAt      *time.Time
 	ExpiresAt     *time.Time
 	Status        string
+	SellerID      *uuid.UUID
+	CategoryIDs   []uuid.UUID
 }
 
 // seedCoupon inserts a coupon directly, giving tests precise control over the
@@ -664,7 +713,11 @@ func (s *CheckoutTestSuite) seedCoupon(c couponSeed) uuid.UUID {
 		perUser any
 		starts  any
 		expires any
+		seller  any
 	)
+	if c.SellerID != nil {
+		seller = *c.SellerID
+	}
 	if c.MinCartAmount != nil {
 		minCart = *c.MinCartAmount
 	}
@@ -681,14 +734,23 @@ func (s *CheckoutTestSuite) seedCoupon(c couponSeed) uuid.UUID {
 		expires = *c.ExpiresAt
 	}
 
-	_, err := s.db.ExecContext(context.Background(), `
+	ctx := context.Background()
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO coupons (
 			id, code, discount_type, discount_value, min_cart_amount,
-			usage_limit, per_user_limit, starts_at, expires_at, status
+			usage_limit, per_user_limit, starts_at, expires_at, status, seller_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-	`, id, c.Code, c.DiscountType, c.DiscountValue, minCart, usage, perUser, starts, expires, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`, id, c.Code, c.DiscountType, c.DiscountValue, minCart, usage, perUser, starts, expires, status, seller)
 	s.Require().NoError(err)
+
+	for _, categoryID := range c.CategoryIDs {
+		_, err = s.db.ExecContext(ctx, `
+			INSERT INTO coupon_categories (coupon_id, category_id)
+			VALUES ($1, $2)
+		`, id, categoryID)
+		s.Require().NoError(err)
+	}
 
 	return id
 }
@@ -2201,6 +2263,221 @@ func (s *CheckoutTestSuite) TestCheckout_CouponTimeBoundaries() {
 			s.Equal(0, s.countOrdersForUser(userID))
 		})
 	}
+}
+
+// TestCheckout_Red_CategoryRestrictedCoupon_WrongCategory proves a coupon
+// scoped to category A is rejected when the cart holds only category B.
+func (s *CheckoutTestSuite) TestCheckout_Red_CategoryRestrictedCoupon_WrongCategory() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	variantB := s.seedCategoryVariant(categoryB, nil, 10000)
+	s.addToCart(userID, variantB, 1)
+
+	code := "CATWRONG-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "percentage", DiscountValue: 10,
+		CategoryIDs: []uuid.UUID{categoryA},
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal(errcode.CodeCouponNotApplicable, s.decodeError(w).Code)
+	s.Equal(0, s.countOrdersForUser(userID))
+}
+
+// TestCheckout_Success_CategoryRestrictedCoupon_OnlyEligibleCategory verifies
+// that both the preview and the placed order discount only category A lines.
+func (s *CheckoutTestSuite) TestCheckout_Success_CategoryRestrictedCoupon_OnlyEligibleCategory() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	variantA := s.seedCategoryVariant(categoryA, nil, 10000)
+	variantB := s.seedCategoryVariant(categoryB, nil, 20000)
+	s.addToCart(userID, variantA, 1)
+	s.addToCart(userID, variantB, 1)
+
+	code := "CATMIX-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "percentage", DiscountValue: 10,
+		CategoryIDs: []uuid.UUID{categoryA},
+	})
+
+	w := s.postApplyCoupon(sessionID, checkout.ApplyCouponRequest{Code: code})
+	s.Require().Equal(http.StatusOK, w.Code)
+	var quote dataEnvelope[checkout.CouponValidationResult]
+	s.decodeSuccess(w, &quote)
+	s.Equal(int64(10000), quote.Data.Subtotal)
+	s.Equal(int64(1000), quote.Data.DiscountAmount)
+
+	w = s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	// 10000 (A) + 20000 (B) - 1000 (10% of A only) = 29000, free shipping.
+	o := s.fetchOrder(orderID)
+	s.Equal(int64(1000), o.DiscountAmount)
+	s.Equal(int64(0), o.ShippingAmount)
+	s.Equal(int64(29000), o.TotalAmount)
+}
+
+// TestCheckout_Red_CategoryRestrictedCoupon_MinCartUsesEligibleSubtotal proves
+// unrelated category B items cannot satisfy a category A minimum.
+func (s *CheckoutTestSuite) TestCheckout_Red_CategoryRestrictedCoupon_MinCartUsesEligibleSubtotal() {
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	variantA := s.seedCategoryVariant(categoryA, nil, 10000)
+	variantB := s.seedCategoryVariant(categoryB, nil, 20000)
+	s.addToCart(userID, variantA, 1)
+	s.addToCart(userID, variantB, 1)
+
+	minCart := int64(15000)
+	code := "CATMIN-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "percentage", DiscountValue: 10,
+		MinCartAmount: &minCart,
+		CategoryIDs:   []uuid.UUID{categoryA},
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal(errcode.CodeCouponMinCartNotMet, s.decodeError(w).Code)
+	s.Equal(0, s.countOrdersForUser(userID))
+}
+
+// TestCheckout_Success_SellerAndCategoryRestrictedCoupon proves the two
+// restrictions are AND-combined: only the seller's category A line is discounted.
+func (s *CheckoutTestSuite) TestCheckout_Success_SellerAndCategoryRestrictedCoupon() {
+	sellerID := s.seedSellerProfile("active")
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	eligible := s.seedCategoryVariant(categoryA, &sellerID, 10000)
+	wrongCategory := s.seedCategoryVariant(categoryB, &sellerID, 20000)
+	wrongSeller := s.seedCategoryVariant(categoryA, nil, 5000)
+
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	s.addToCart(userID, eligible, 1)
+	s.addToCart(userID, wrongCategory, 1)
+	s.addToCart(userID, wrongSeller, 1)
+
+	code := "BOTHSCOPE-" + uuid.NewString()[:8]
+	couponID := s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "percentage", DiscountValue: 10,
+		SellerID: &sellerID, CategoryIDs: []uuid.UUID{categoryA},
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusOK, w.Code)
+	var resp dataEnvelope[checkout.CheckoutResponse]
+	s.decodeSuccess(w, &resp)
+	orderID, err := uuid.Parse(resp.Data.OrderID)
+	s.Require().NoError(err)
+
+	o := s.fetchOrder(orderID)
+	s.Equal(int64(1000), o.DiscountAmount)
+
+	var discount int64
+	err = s.db.QueryRowContext(context.Background(), `
+		SELECT discount_amount FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2
+	`, couponID, userID).Scan(&discount)
+	s.Require().NoError(err)
+	s.Equal(int64(1000), discount)
+}
+
+// TestCheckout_Red_SellerAndCategoryRestrictedCoupon_NoMatchingLine rejects a
+// cart where each line satisfies only one of the two restrictions.
+func (s *CheckoutTestSuite) TestCheckout_Red_SellerAndCategoryRestrictedCoupon_NoMatchingLine() {
+	sellerID := s.seedSellerProfile("active")
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	wrongCategory := s.seedCategoryVariant(categoryB, &sellerID, 10000)
+	wrongSeller := s.seedCategoryVariant(categoryA, nil, 10000)
+
+	userID, sessionID := s.seedUser()
+	addressID := s.seedAddress(userID)
+	s.addToCart(userID, wrongCategory, 1)
+	s.addToCart(userID, wrongSeller, 1)
+
+	code := "BOTHMISS-" + uuid.NewString()[:8]
+	s.seedCoupon(couponSeed{
+		Code: code, DiscountType: "percentage", DiscountValue: 10,
+		SellerID: &sellerID, CategoryIDs: []uuid.UUID{categoryA},
+	})
+
+	w := s.postCheckout(sessionID, checkout.CheckoutRequest{
+		ShippingAddressID: addressID,
+		CouponCode:        &code,
+	})
+	s.Require().Equal(http.StatusBadRequest, w.Code)
+	s.Equal(errcode.CodeCouponNotApplicable, s.decodeError(w).Code)
+	s.Equal(0, s.countOrdersForUser(userID))
+}
+
+// TestCouponRestrictions_RepositoryHydration covers category persistence across
+// create, single reads, locked reads, list, and the restrictions accessor.
+func (s *CheckoutTestSuite) TestCouponRestrictions_RepositoryHydration() {
+	ctx := context.Background()
+	categoryA, categoryB := uuid.New(), uuid.New()
+	s.seedCategory(categoryA)
+	s.seedCategory(categoryB)
+	want := []uuid.UUID{categoryA, categoryB}
+	code := "CATHYDRATE-" + uuid.NewString()[:8]
+
+	created, err := s.couponService.CreateCoupon(ctx, coupon.CreateCouponInput{
+		Code:          code,
+		DiscountType:  model.CouponDiscountTypePercentage,
+		DiscountValue: 10,
+		CategoryIDs:   want,
+	})
+	s.Require().NoError(err)
+	s.ElementsMatch(want, created.CategoryIDs)
+
+	byID, err := s.couponService.GetByID(ctx, created.ID)
+	s.Require().NoError(err)
+	s.ElementsMatch(want, byID.CategoryIDs)
+
+	byCode, err := s.couponService.GetByCode(ctx, code)
+	s.Require().NoError(err)
+	s.ElementsMatch(want, byCode.CategoryIDs)
+
+	sellerID, categoryIDs, err := s.couponService.GetRestrictionsByCode(ctx, code)
+	s.Require().NoError(err)
+	s.Nil(sellerID)
+	s.ElementsMatch(want, categoryIDs)
+
+	list, _, err := s.couponService.ListCoupons(ctx, coupon.ListCouponFilter{Search: &code}, 10, nil)
+	s.Require().NoError(err)
+	s.Require().Len(list, 1)
+	s.ElementsMatch(want, list[0].CategoryIDs)
+
+	applied, err := s.couponService.ApplyByCode(ctx, code, 20000, nil)
+	s.Require().NoError(err)
+	s.Equal(int64(2000), applied.DiscountAmount)
 }
 
 func TestCheckoutTestSuite(t *testing.T) {

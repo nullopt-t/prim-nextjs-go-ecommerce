@@ -6951,6 +6951,13 @@ const docTemplatepublic = `{
         "Coupon": {
             "type": "object",
             "properties": {
+                "categoryIds": {
+                    "description": "CategoryIDs scopes the coupon to these product categories. Empty means\nall categories are eligible.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "code": {
                     "type": "string"
                 },

@@ -29,6 +29,8 @@ type CreateCouponInput struct {
 	Status        model.CouponStatus
 	// SellerID scopes the coupon to one merchant's products. Nil = platform coupon.
 	SellerID *uuid.UUID
+	// CategoryIDs scopes the coupon to these product categories. Empty = all categories.
+	CategoryIDs []uuid.UUID
 }
 
 // AppliedCoupon is the result of applying a coupon to a cart.
@@ -237,6 +239,7 @@ func (s *CouponService) CreateCoupon(ctx context.Context, in CreateCouponInput) 
 		ExpiresAt:     in.ExpiresAt,
 		Status:        status,
 		SellerID:      in.SellerID,
+		CategoryIDs:   in.CategoryIDs,
 	}
 
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
@@ -318,15 +321,15 @@ func (s *CouponService) DeleteSellerCoupon(ctx context.Context, sellerID, coupon
 	return s.Delete(ctx, couponID)
 }
 
-// GetSellerIDByCode returns the owning merchant for a coupon code, or nil
-// for platform coupons. Checkout uses it to price the discount against the
-// seller's eligible subtotal instead of the whole cart.
-func (s *CouponService) GetSellerIDByCode(ctx context.Context, code string) (*uuid.UUID, error) {
+// GetRestrictionsByCode returns the seller and category scopes of a coupon.
+// A nil seller or empty category list means that dimension is unrestricted;
+// checkout AND-combines both when pricing the eligible cart subtotal.
+func (s *CouponService) GetRestrictionsByCode(ctx context.Context, code string) (*uuid.UUID, []uuid.UUID, error) {
 	c, err := s.GetByCode(ctx, code)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return c.SellerID, nil
+	return c.SellerID, c.CategoryIDs, nil
 }
 
 // ListRedemptions returns the usage log for a coupon, newest first. The coupon

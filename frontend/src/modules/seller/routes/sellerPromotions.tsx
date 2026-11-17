@@ -235,6 +235,11 @@ export function SellerPromotions() {
 										{" · "}
 										{t("promotions.usageCount", { count: promotion.usageCount })}
 									</p>
+									{promotion.categoryIds && promotion.categoryIds.length > 0 && (
+										<span className="mt-1 inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+											{t("promotions.scope.specificCategories")}: {t("promotions.scope.selectedCount", { count: promotion.categoryIds.length })}
+										</span>
+									)}
 								</div>
 								<StatusPill tone={statusTone(promotion.status)}>
 									{promotion.status === "active" ? t("promotions.active") : t("promotions.disabled")}

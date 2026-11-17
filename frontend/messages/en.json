@@ -1066,6 +1066,15 @@
       "colStatus": "Status",
       "colUsage": "Usage",
       "colValidity": "Validity",
+      "colScope": "Scope",
+      "scope": {
+        "allCategories": "All categories",
+        "categoryScope": "Category scope",
+        "noCategories": "No categories available.",
+        "selectCategories": "Select categories",
+        "selectedCount": "{count} selected",
+        "specificCategories": "Specific categories"
+      },
       "confirmDelete": "Delete promo code?",
       "create": "Create Coupon Code",
       "expires": "Expires: {date}",
@@ -3030,7 +3039,11 @@
       "created": "Coupon created",
       "deleted": "Coupon deleted",
       "statusUpdated": "Coupon updated",
-      "loadFailed": "Promotions could not be loaded."
+      "loadFailed": "Promotions could not be loaded.",
+      "scope": {
+        "specificCategories": "Specific categories",
+        "selectedCount": "{count} selected"
+      }
     },
     "bundles": {
       "title": "Product bundles",

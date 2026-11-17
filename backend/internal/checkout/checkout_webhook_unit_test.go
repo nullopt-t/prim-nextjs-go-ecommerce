@@ -210,8 +210,8 @@ func (stubAddressReader) GetByIDAndUser(context.Context, uuid.UUID, uuid.UUID) (
 type stubCouponService struct{}
 
 func (stubCouponService) GetCodeByID(context.Context, uuid.UUID) (string, error) { return "", nil }
-func (stubCouponService) GetSellerIDByCode(context.Context, string) (*uuid.UUID, error) {
-	return nil, nil
+func (stubCouponService) GetRestrictionsByCode(context.Context, string) (*uuid.UUID, []uuid.UUID, error) {
+	return nil, nil, nil
 }
 func (stubCouponService) ApplyByCode(context.Context, string, int64, *uuid.UUID) (*coupon.AppliedCoupon, error) {
 	return nil, nil

@@ -48,4 +48,14 @@ describe("buildPromotionPayload", () => {
 		expect(p?.startsAt).toBeUndefined();
 		expect(p?.expiresAt).toBeUndefined();
 	});
+
+	it("passes categoryIds through when provided", () => {
+		const p = buildPromotionPayload({ ...base, categoryIds: ["cat-1", "cat-2"] });
+		expect(p?.categoryIds).toEqual(["cat-1", "cat-2"]);
+	});
+
+	it("omits categoryIds when empty or undefined", () => {
+		expect(buildPromotionPayload(base)?.categoryIds).toBeUndefined();
+		expect(buildPromotionPayload({ ...base, categoryIds: [] })?.categoryIds).toBeUndefined();
+	});
 });

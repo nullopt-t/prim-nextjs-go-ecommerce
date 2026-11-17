@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -107,7 +108,7 @@ type AddressReader interface {
 // rules live in one place without opening a second connection.
 type CouponService interface {
 	GetCodeByID(ctx context.Context, id uuid.UUID) (string, error)
-	GetSellerIDByCode(ctx context.Context, code string) (*uuid.UUID, error)
+	GetRestrictionsByCode(ctx context.Context, code string) (*uuid.UUID, []uuid.UUID, error)
 	ApplyByCode(ctx context.Context, code string, grossTotal int64, userID *uuid.UUID) (*coupon.AppliedCoupon, error)
 	RecordRedemption(ctx context.Context, couponID uuid.UUID, userID uuid.UUID, orderID uuid.UUID, discountAmount int64, currency string) error
 }
@@ -354,13 +355,22 @@ type CheckoutInput struct {
 	PaymentMethod     string
 }
 
+// couponLine is one cart line's contribution to a scoped coupon subtotal.
+type couponLine struct {
+	sellerID   *uuid.UUID
+	categoryID uuid.UUID
+	total      int64
+}
+
 // pricedCart is the authoritative result of re-pricing a cart against live
 // catalog data: order-ready line items and the server-computed gross total.
 type pricedCart struct {
 	items      []order.CreateOrderItemInput
 	grossTotal int64
-	// sellerTotals accumulates line totals per selling seller so merchant
-	// coupons can be priced against the eligible subtotal only.
+	// couponLines keeps each line's seller, category and total so restricted
+	// coupons can be priced against eligible items only.
+	couponLines []couponLine
+	// sellerTotals accumulates line totals per selling seller for shipping.
 	sellerTotals map[uuid.UUID]int64
 	// platformSubtotal holds unattributed lines; sellers holds the full vendor
 	// rows loaded during pricing, including their shipping terms.
@@ -659,6 +669,7 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		sellerTotals:     map[uuid.UUID]int64{},
 		platformSubtotal: 0,
 		sellers:          sellers,
+		couponLines:      make([]couponLine, 0, len(cart.Items)),
 	}
 
 	for _, item := range cart.Items {
@@ -716,6 +727,12 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		if err != nil {
 			return nil, err
 		}
+
+		result.couponLines = append(result.couponLines, couponLine{
+			sellerID:   sellerID,
+			categoryID: product.CategoryID,
+			total:      itemTotal,
+		})
 
 		sellerEarning, commissionAmount := computeSellerSplit(itemTotal, sellerID, commissionBps)
 		if sellerID != nil {
@@ -856,10 +873,10 @@ func buildProductSnapshot(item model.CartItem, variant *model.ProductVariant, pr
 }
 
 // resolveCoupon resolves the requested coupon (by direct code or by coupon id)
-// and validates/prices it against the authoritative gross total. A coupon
-// scoped to a merchant is priced against that merchant's eligible subtotal
-// only, and requires at least one eligible item in the cart. An empty
-// result with no coupon id means "no coupon requested".
+// and validates/prices it against the authoritative gross total. Seller and
+// category restrictions are AND-combined: only matching lines form the eligible
+// subtotal, which must be non-empty. An empty result with no coupon id means
+// "no coupon requested".
 func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, priced *pricedCart) (*appliedCoupon, error) {
 	targetCode := ""
 	if in.CouponCode != nil && strings.TrimSpace(*in.CouponCode) != "" {
@@ -879,20 +896,22 @@ func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, 
 		return &appliedCoupon{}, nil
 	}
 
-	// A merchant coupon discounts only that merchant's items: price it
-	// against the eligible subtotal, never the whole cart.
+	// Restricted coupons price only lines matching every scope; the eligible
+	// subtotal also drives min-cart checks inside ApplyByCode.
 	pricedTotal := priced.grossTotal
-	if sellerID, err := s.couponService.GetSellerIDByCode(ctx, targetCode); err != nil {
+	sellerID, categoryIDs, err := s.couponService.GetRestrictionsByCode(ctx, targetCode)
+	if err != nil {
 		var apiErr *apierr.APIError
 		if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
 			return nil, apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 		}
 		return nil, s.handleError(err, "Failed to resolve coupon scope")
-	} else if sellerID != nil {
-		pricedTotal = priced.sellerTotals[*sellerID]
+	}
+	if sellerID != nil || len(categoryIDs) > 0 {
+		pricedTotal = eligibleCouponSubtotal(priced.couponLines, sellerID, categoryIDs)
 		if pricedTotal == 0 {
 			return nil, apierr.BadRequestError("This coupon does not apply to the items in your cart").
-				WithCode(errcode.CodeCouponNotFound)
+				WithCode(errcode.CodeCouponNotApplicable)
 		}
 	}
 
@@ -910,6 +929,22 @@ func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, 
 		currency: applied.Currency,
 		discount: applied.DiscountAmount,
 	}, nil
+}
+
+// eligibleCouponSubtotal sums the lines matching every restriction set on a
+// coupon. A nil seller or empty category list leaves that dimension unrestricted.
+func eligibleCouponSubtotal(lines []couponLine, sellerID *uuid.UUID, categoryIDs []uuid.UUID) int64 {
+	var total int64
+	for _, line := range lines {
+		if sellerID != nil && (line.sellerID == nil || *line.sellerID != *sellerID) {
+			continue
+		}
+		if len(categoryIDs) > 0 && !slices.Contains(categoryIDs, line.categoryID) {
+			continue
+		}
+		total += line.total
+	}
+	return total
 }
 
 // platformShippingFee applies the global store shipping rule to unattributed
@@ -1269,22 +1304,24 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			}
 		}
 
-		// A merchant coupon prices against that merchant's eligible
-		// subtotal, mirroring checkout.
-		if sellerID, err := s.couponService.GetSellerIDByCode(ctx, code); err != nil {
+		// Restricted coupons price against eligible cart lines, mirroring checkout.
+		sellerID, categoryIDs, err := s.couponService.GetRestrictionsByCode(ctx, code)
+		if err != nil {
 			var apiErr *apierr.APIError
 			if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
 				return apierr.BadRequestError("Coupon not found").WithCode(errcode.CodeCouponNotFound)
 			}
 			return err
-		} else if sellerID != nil {
-			eligible, err := s.lenientSellerTotal(ctx, cartData, *sellerID)
+		}
+		if sellerID != nil || len(categoryIDs) > 0 {
+			lines, err := s.lenientCouponLines(ctx, cartData)
 			if err != nil {
 				return err
 			}
+			eligible := eligibleCouponSubtotal(lines, sellerID, categoryIDs)
 			if eligible == 0 {
 				return apierr.BadRequestError("This coupon does not apply to the items in your cart").
-					WithCode(errcode.CodeCouponNotFound)
+					WithCode(errcode.CodeCouponNotApplicable)
 			}
 			grossTotal = eligible
 		}
@@ -1414,39 +1451,41 @@ func (s *CheckoutService) lenientCartTotal(ctx context.Context, cart *model.Cart
 	return grossTotal, nil
 }
 
-// lenientSellerTotal mirrors lenientCartTotal but only sums lines belonging
-// to the given merchant, for pricing seller-scoped coupons in previews.
-func (s *CheckoutService) lenientSellerTotal(ctx context.Context, cart *model.Cart, sellerID uuid.UUID) (int64, error) {
+// lenientCouponLines resolves cart lines for restricted coupon previews. Like
+// lenientCartTotal it skips unavailable items and falls back to snapshot prices,
+// but it also needs the live product for seller and category attribution.
+func (s *CheckoutService) lenientCouponLines(ctx context.Context, cart *model.Cart) ([]couponLine, error) {
 	if cart == nil {
-		return 0, nil
+		return nil, nil
 	}
 
-	var total int64
+	lines := make([]couponLine, 0, len(cart.Items))
 	for _, item := range cart.Items {
 		v, vErr := s.variantReader.GetByID(ctx, item.VariantID)
 		if vErr != nil {
 			if !errors.Is(database.MapError(vErr), database.ErrNotFound) {
-				return 0, s.handleError(vErr, "Failed to load variant price")
+				return nil, s.handleError(vErr, "Failed to load variant price")
 			}
 			continue
 		}
 		product, pErr := s.productReader.GetByID(ctx, v.ProductID)
 		if pErr != nil {
 			if !errors.Is(database.MapError(pErr), database.ErrNotFound) {
-				return 0, s.handleError(pErr, "Failed to load product")
+				return nil, s.handleError(pErr, "Failed to load product")
 			}
 			continue
 		}
-		if product.SellerID == nil || *product.SellerID != sellerID {
-			continue
-		}
+		total := int64(item.Quantity) * item.PriceAtPurchase
 		if v.Price != nil {
-			total += int64(item.Quantity) * *v.Price
-		} else {
-			total += int64(item.Quantity) * item.PriceAtPurchase
+			total = int64(item.Quantity) * *v.Price
 		}
+		lines = append(lines, couponLine{
+			sellerID:   product.SellerID,
+			categoryID: product.CategoryID,
+			total:      total,
+		})
 	}
-	return total, nil
+	return lines, nil
 }
 
 // --- Payment webhook ingestion ---

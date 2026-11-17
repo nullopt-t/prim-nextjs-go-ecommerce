@@ -576,6 +576,12 @@ definitions:
     type: object
   CreateCouponRequest:
     properties:
+      categoryIds:
+        example:
+        - 60000000-0000-0000-0000-000000000002
+        items:
+          type: string
+        type: array
       code:
         example: SUMMER20
         type: string

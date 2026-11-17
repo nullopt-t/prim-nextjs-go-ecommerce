@@ -37,8 +37,9 @@ type CreateCouponRequest struct {
 	UsageLimit    *int    `json:"usageLimit,omitempty" example:"1000"`
 	PerUserLimit  *int    `json:"perUserLimit,omitempty" example:"1"`
 	StartsAt      *string `json:"startsAt,omitempty" example:"2026-06-01T00:00:00Z"`
-	ExpiresAt     *string `json:"expiresAt,omitempty" example:"2026-08-31T23:59:59Z"`
-	Status        string  `json:"status,omitempty" example:"active"`
+	ExpiresAt     *string  `json:"expiresAt,omitempty" example:"2026-08-31T23:59:59Z"`
+	Status        string   `json:"status,omitempty" example:"active"`
+	CategoryIDs   []string `json:"categoryIds,omitempty" example:"60000000-0000-0000-0000-000000000002"`
 }
 
 type UpdateStatusRequest struct {
@@ -56,10 +57,11 @@ type CouponResponse struct {
 	PerUserLimit  *int    `json:"perUserLimit,omitempty" example:"1"`
 	StartsAt      *string `json:"startsAt,omitempty" example:"2026-06-01T00:00:00Z"`
 	ExpiresAt     *string `json:"expiresAt,omitempty" example:"2026-08-31T23:59:59Z"`
-	Status        string  `json:"status" example:"active"`
-	UsageCount    int     `json:"usageCount" example:"42"`
-	CreatedAt     string  `json:"createdAt" example:"2026-06-01T00:00:00Z"`
-	UpdatedAt     string  `json:"updatedAt" example:"2026-06-01T00:00:00Z"`
+	Status        string   `json:"status" example:"active"`
+	UsageCount    int      `json:"usageCount" example:"42"`
+	CategoryIDs   []string `json:"categoryIds,omitempty" example:"60000000-0000-0000-0000-000000000002"`
+	CreatedAt     string   `json:"createdAt" example:"2026-06-01T00:00:00Z"`
+	UpdatedAt     string   `json:"updatedAt" example:"2026-06-01T00:00:00Z"`
 }
 
 func toCouponResponse(c *model.Coupon) CouponResponse {
@@ -86,7 +88,22 @@ func toCouponResponse(c *model.Coupon) CouponResponse {
 		e := c.ExpiresAt.Format(time.RFC3339)
 		resp.ExpiresAt = &e
 	}
+	for _, id := range c.CategoryIDs {
+		resp.CategoryIDs = append(resp.CategoryIDs, id.String())
+	}
 	return resp
+}
+
+func parseCategoryIDs(raw []string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, value := range raw {
+		id, err := uuid.Parse(value)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 // ListCoupons godoc
@@ -175,6 +192,13 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 		_ = c.Error(apierr.BadRequestError("Invalid request body").Wrap(err))
 		return
 	}
+	categoryIDs, err := parseCategoryIDs(req.CategoryIDs)
+	if err != nil {
+		_ = c.Error(apierr.InvalidUUIDError().WithFields(api.FieldError{
+			Field: "categoryIds", Constraint: "uuid", Message: "categoryIds must contain valid UUIDs",
+		}))
+		return
+	}
 
 	in := CreateCouponInput{
 		Code:          req.Code,
@@ -184,6 +208,7 @@ func (h *CouponHandler) CreateCoupon(c *gin.Context) {
 		UsageLimit:    req.UsageLimit,
 		PerUserLimit:  req.PerUserLimit,
 		Status:        model.CouponStatus(req.Status),
+		CategoryIDs:   categoryIDs,
 	}
 	if req.Currency != nil {
 		in.Currency = *req.Currency

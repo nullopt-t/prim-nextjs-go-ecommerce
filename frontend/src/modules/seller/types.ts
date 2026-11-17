@@ -269,6 +269,7 @@ export interface SellerPromotion {
   discountValue: number;
   currency: string;
   minCartAmount?: number;
+  categoryIds?: string[];
   usageLimit?: number;
   perUserLimit?: number;
   startsAt?: string;
@@ -286,6 +287,7 @@ export interface CreateSellerPromotionPayload {
   discountValue: number;
   currency?: string;
   minCartAmount?: number;
+  categoryIds?: string[];
   usageLimit?: number;
   perUserLimit?: number;
   startsAt?: string;

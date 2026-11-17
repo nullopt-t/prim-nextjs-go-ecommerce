@@ -1066,6 +1066,15 @@
       "colStatus": "الحالة",
       "colUsage": "الاستخدام",
       "colValidity": "الصلاحية",
+      "colScope": "النطاق",
+      "scope": {
+        "allCategories": "جميع الفئات",
+        "categoryScope": "نطاق الفئات",
+        "noCategories": "لا توجد فئات متاحة.",
+        "selectCategories": "اختر الفئات",
+        "selectedCount": "{count} مُحددة",
+        "specificCategories": "فئات محددة"
+      },
       "confirmDelete": "حذف كود العرض؟",
       "create": "إنشاء كود قسيمة",
       "expires": "ينتهي: {date}",
@@ -3030,7 +3039,11 @@
       "created": "أُنشئت القسيمة",
       "deleted": "حُذفت القسيمة",
       "statusUpdated": "حُدّثت القسيمة",
-      "loadFailed": "تعذّر تحميل العروض الترويجية."
+      "loadFailed": "تعذّر تحميل العروض الترويجية.",
+      "scope": {
+        "specificCategories": "فئات محددة",
+        "selectedCount": "{count} مُحددة"
+      }
     },
     "bundles": {
       "title": "حزم المنتجات",
