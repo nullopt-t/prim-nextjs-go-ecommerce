@@ -1,0 +1,10 @@
+# DOMAIN comes from backend/.env (defaults to localhost for local testing).
+{$DOMAIN:localhost} {
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

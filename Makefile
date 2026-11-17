@@ -6,6 +6,7 @@ CLOUD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-
 	logs logs-api logs-worker logs-frontend \
 	migrate-up migrate-down migrate-drop migrate-reset seed \
 	prod-up prod-down prod-logs prod-ps prod-migrate prod-seed \
+	prod-backup prod-restore prod-check \
 	cloud-up cloud-down cloud-logs cloud-ps cloud-migrate
 
 ## ─── Full Stack ──────────────────────────────────────────
@@ -103,6 +104,15 @@ prod-ps:
 
 prod-migrate:
 	$(PROD_COMPOSE) run --rm migrate
+
+prod-backup:
+	@bash scripts/backup.sh
+
+prod-restore:
+	@bash scripts/restore.sh $(FILE)
+
+prod-check:
+	@bash scripts/prod-check.sh
 
 ## ─── Cloud-Managed Primitives (AWS / Cloudflare / Neon / MSK) ───
 
