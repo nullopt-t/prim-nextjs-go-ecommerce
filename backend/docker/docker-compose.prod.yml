@@ -98,6 +98,7 @@ services:
 
   floci:
     image: floci/floci:latest
+    restart: unless-stopped
     ports:
       - "4566:4566"
     volumes:
