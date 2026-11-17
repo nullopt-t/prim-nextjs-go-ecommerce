@@ -4598,9 +4598,10 @@ const docTemplatepublic = `{
                         "SessionAuth": []
                     }
                 ],
-                "description": "Binds an existing storage object to one KYC document type for the authenticated seller. One document per type is allowed.",
+                "description": "Accepts either multipart/form-data (file + documentType, strict PDF/JPEG/PNG/WebP allowlist, 10 MB cap) or JSON objectId binding. A pending/rejected document of the same type is replaced; an approved one is locked.",
                 "consumes": [
-                    "application/json"
+                    "application/json",
+                    "multipart/form-data"
                 ],
                 "produces": [
                     "application/json"
@@ -4611,10 +4612,9 @@ const docTemplatepublic = `{
                 "summary": "Submit a verification document",
                 "parameters": [
                     {
-                        "description": "Document payload",
+                        "description": "JSON document payload",
                         "name": "request",
                         "in": "body",
-                        "required": true,
                         "schema": {
                             "$ref": "#/definitions/CreateSellerDocumentRequest"
                         }
@@ -4646,7 +4646,7 @@ const docTemplatepublic = `{
                         }
                     },
                     "409": {
-                        "description": "Document type already submitted",
+                        "description": "Approved document is locked",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
                         }

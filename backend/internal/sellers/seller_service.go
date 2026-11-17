@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -49,12 +50,14 @@ type SellerOrderReader interface {
 	FulfillSellerOrderItems(ctx context.Context, sellerID, orderID uuid.UUID, itemIDs []uuid.UUID, trackingNumber, carrier string) (*model.Order, error)
 }
 
-// ObjectReader is the subset of object persistence needed to resolve seller
-// asset URLs. Storage object UUIDs never cross the seller API boundary:
-// clients send public URLs and the object domain resolves them.
-type ObjectReader interface {
+// ObjectStore is the consumer-owned slice of the object domain the seller
+// portal needs: resolve URLs, upload KYC evidence, and clean up replaced blobs.
+// Storage object UUIDs never cross the seller API boundary except for binding.
+type ObjectStore interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Object, error)
 	ResolvePublicURL(ctx context.Context, rawURL string) (*model.Object, error)
+	UploadObject(ctx context.Context, contentType string, size int64, bucket string, file io.Reader) (*model.Object, error)
+	DeleteObjectByID(ctx context.Context, id uuid.UUID) error
 }
 
 // CommissionDefaults supplies the platform-wide default commission rate used
@@ -68,7 +71,7 @@ type CommissionDefaults interface {
 type Service struct {
 	repo       *SellerRepository
 	userReader UserReader
-	objects    ObjectReader
+	objects    ObjectStore
 	settlement SettlementReader
 	orders     SellerOrderReader
 	products   ProductCatalog
@@ -92,7 +95,7 @@ type UserReader interface {
 func NewService(
 	repo *SellerRepository,
 	userReader UserReader,
-	objects ObjectReader,
+	objects ObjectStore,
 	settlement SettlementReader,
 	orders SellerOrderReader,
 	products ProductCatalog,

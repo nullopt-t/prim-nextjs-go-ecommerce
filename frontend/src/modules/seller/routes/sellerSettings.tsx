@@ -12,6 +12,7 @@ import { StatusPill, statusTone } from "@/shared/ui/statusPill";
 import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { normalizeSlug, validateSlug } from "@/modules/seller/lib/slug";
+import { KYC_FILE_EXTENSIONS, validateKycFile } from "@/modules/seller/lib/kycFileValidation";
 import { useTranslations, useLocale } from "next-intl";
 import { useSellerContext } from "./sellerContext";
 
@@ -81,6 +82,11 @@ export function SellerSettings() {
 
 	const handleDocumentUpload = async (type: SellerDocumentType, file?: File) => {
 		if (!file) return;
+		const fileError = validateKycFile(file);
+		if (fileError) {
+			notify.error(t(`settings.kyc.${fileError}`));
+			return;
+		}
 		const formData = new FormData();
 		formData.append("documentType", type);
 		formData.append("file", file);
@@ -384,12 +390,25 @@ export function SellerSettings() {
 											) : (
 												<p className="text-xs text-muted-foreground">{t("settings.kyc.notUploaded")}</p>
 											)}
-											{doc?.status === "rejected" && doc.rejectionReason ? (
-												<p className="mt-1 text-xs text-destructive">{doc.rejectionReason}</p>
+											{doc?.status === "rejected" ? (
+												<div className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
+													<p className="flex items-center gap-1 text-xs font-medium text-destructive">
+														<XCircle className="size-3.5" />
+														{t("settings.kyc.rejectionReason")}
+													</p>
+													<p className="mt-1 text-sm text-destructive">
+														{doc.rejectionReason || t("settings.kyc.noReason")}
+													</p>
+												</div>
 											) : null}
 										</div>
 										<div className="flex items-center gap-2">
-											{doc ? (
+											{doc?.status === "approved" ? (
+												<span className="inline-flex items-center gap-1 rounded-md border border-emerald-600/20 bg-emerald-600/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+													<CheckCircle2 className="size-3.5" />
+													{t("settings.kyc.verified")}
+												</span>
+											) : doc ? (
 												<StatusPill tone={statusTone(doc.status)}>
 													{t(`settings.kyc.status.${doc.status}`)}
 												</StatusPill>
@@ -405,25 +424,27 @@ export function SellerSettings() {
 													<FileText className="size-4" />
 												</a>
 											) : null}
-											<label className="inline-flex cursor-pointer items-center rounded-md border border-border p-2 text-muted-foreground hover:text-foreground">
-												{uploadingType === type ? (
-													<Loader2 className="size-4 animate-spin" />
-												) : (
-													<Upload className="size-4" />
-												)}
-												<span className="sr-only">{t("settings.kyc.upload")}</span>
-												<input
-													type="file"
-													accept=".pdf,image/*"
-													className="sr-only"
-													disabled={uploadingType === type}
-													onChange={(event) => {
-														void handleDocumentUpload(type, event.target.files?.[0]);
-														event.target.value = "";
-													}}
-												/>
-											</label>
-											{doc ? (
+											{doc?.status !== "approved" ? (
+												<label className="inline-flex cursor-pointer items-center rounded-md border border-border p-2 text-muted-foreground hover:text-foreground">
+													{uploadingType === type ? (
+														<Loader2 className="size-4 animate-spin" />
+													) : (
+														<Upload className="size-4" />
+													)}
+													<span className="sr-only">{t("settings.kyc.upload")}</span>
+													<input
+														type="file"
+														accept={KYC_FILE_EXTENSIONS.join(",")}
+														className="sr-only"
+														disabled={uploadingType === type}
+														onChange={(event) => {
+															void handleDocumentUpload(type, event.target.files?.[0]);
+															event.target.value = "";
+														}}
+													/>
+												</label>
+											) : null}
+											{doc && doc.status !== "approved" ? (
 												<button
 													type="button"
 													onClick={() => void handleDocumentDelete(doc.id)}

@@ -2,6 +2,7 @@ package sellers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
 	"github.com/nullopt-t/prim-backend/pkg/api"
 	"github.com/nullopt-t/prim-backend/pkg/api/apierr"
+	fileutil "github.com/nullopt-t/prim-backend/pkg/file"
 )
 
 // CreateSellerDocumentRequest binds an uploaded storage object to a KYC type.
@@ -100,16 +102,68 @@ func (h *Handler) ListMyDocuments(c *gin.Context) {
 	c.JSON(http.StatusOK, api.DataResponse{Data: toSellerDocumentResponses(docs)})
 }
 
+// createDocumentFromMultipart stores a streamed KYC file under the strict MIME
+// and size allowlist, then routes it through the shared document upsert.
+func (h *Handler) createDocumentFromMultipart(c *gin.Context, userID uuid.UUID) {
+	// Cap the body before parsing so oversized uploads are not buffered whole.
+	// Headroom covers multipart boundaries; the exact file size is checked next.
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxKYCDocumentBytes+(1<<20))
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("file is required").WithCode(apierr.CodeInvalidInput))
+		return
+	}
+	if err := validateKYCUploadSize(file.Size); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		_ = c.Error(apierr.InternalServerError("Failed to read uploaded file").Wrap(err))
+		return
+	}
+	defer func() { _ = src.Close() }()
+
+	// Sniff the bytes rather than trusting the client's Content-Type header.
+	detected, err := fileutil.DetectContentType(src)
+	if err != nil {
+		_ = c.Error(apierr.BadRequestError("Failed to inspect uploaded file").
+			WithCode(apierr.CodeInvalidInput).Wrap(err))
+		return
+	}
+	if !isAllowedKYCDocumentMIME(detected) {
+		_ = c.Error(apierr.BadRequestError("Unsupported file type; upload a PDF, JPEG, PNG or WebP file").
+			WithCode(apierr.CodeInvalidInput))
+		return
+	}
+
+	doc, err := h.service.UploadDocument(c.Request.Context(), userID, UploadDocumentInput{
+		DocumentType: model.SellerDocumentType(c.PostForm("documentType")),
+		FileName:     file.Filename,
+		ContentType:  detected,
+		Size:         file.Size,
+		File:         src,
+	})
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.JSON(http.StatusCreated, api.DataResponse{Data: toSellerDocumentResponse(doc)})
+}
+
 // CreateDocument godoc
 // @Summary      Submit a verification document
-// @Description  Binds an existing storage object to one KYC document type for the authenticated seller. One document per type is allowed.
+// @Description  Accepts either multipart/form-data (file + documentType, strict PDF/JPEG/PNG/WebP allowlist, 10 MB cap) or JSON objectId binding. A pending/rejected document of the same type is replaced; an approved one is locked.
 // @Tags         Seller
 // @Accept       json
+// @Accept       multipart/form-data
 // @Produce      json
-// @Param        request body CreateSellerDocumentRequest true "Document payload"
+// @Param        request body CreateSellerDocumentRequest false "JSON document payload"
 // @Success      201 {object} api.DataResponse{data=sellers.SellerDocumentResponse}
 // @Failure      400 {object} api.ErrorResponse "Validation failed"
-// @Failure      409 {object} api.ErrorResponse "Document type already submitted"
+// @Failure      409 {object} api.ErrorResponse "Approved document is locked"
 // @Router       /sellers/me/documents [post]
 // @Security     SessionAuth
 func (h *Handler) CreateDocument(c *gin.Context) {
@@ -118,6 +172,11 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 		_ = c.Error(apierr.UnauthorizedError("Authentication required"))
 		return
 	}
+	if strings.HasPrefix(strings.ToLower(c.ContentType()), "multipart/form-data") {
+		h.createDocumentFromMultipart(c, userID)
+		return
+	}
+
 	var req CreateSellerDocumentRequest
 	if !bindSellerJSON(c, &req) {
 		return
@@ -196,7 +255,7 @@ func (h *Handler) AdminListSellerDocuments(c *gin.Context) {
 type AdminReviewDocumentRequest struct {
 	// New review status.
 	Status model.SellerDocumentStatus `json:"status" binding:"required,oneof=approved rejected" enums:"approved,rejected"`
-	// Optional explanation for a rejection.
+	// Mandatory when status is rejected; ignored for approvals.
 	RejectionReason string `json:"rejectionReason" binding:"max=1000" example:"Document is illegible"`
 }
 

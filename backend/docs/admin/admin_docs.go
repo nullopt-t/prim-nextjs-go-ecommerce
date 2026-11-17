@@ -5058,7 +5058,7 @@ const docTemplateadmin = `{
             ],
             "properties": {
                 "rejectionReason": {
-                    "description": "Optional explanation for a rejection.",
+                    "description": "Mandatory when status is rejected; ignored for approvals.",
                     "type": "string",
                     "maxLength": 1000,
                     "example": "Document is illegible"

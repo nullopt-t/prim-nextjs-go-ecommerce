@@ -5948,13 +5948,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: Binds an existing storage object to one KYC document type for the
-        authenticated seller. One document per type is allowed.
+      - multipart/form-data
+      description: Accepts either multipart/form-data (file + documentType, strict
+        PDF/JPEG/PNG/WebP allowlist, 10 MB cap) or JSON objectId binding. A pending/rejected
+        document of the same type is replaced; an approved one is locked.
       parameters:
-      - description: Document payload
+      - description: JSON document payload
         in: body
         name: request
-        required: true
         schema:
           $ref: '#/definitions/CreateSellerDocumentRequest'
       produces:
@@ -5974,7 +5975,7 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
         "409":
-          description: Document type already submitted
+          description: Approved document is locked
           schema:
             $ref: '#/definitions/ErrorResponse'
       security:

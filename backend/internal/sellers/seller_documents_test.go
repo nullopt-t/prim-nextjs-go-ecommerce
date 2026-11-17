@@ -1,6 +1,10 @@
 package sellers_test
 
 import (
+	"bytes"
+	"mime/multipart"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -8,6 +12,8 @@ import (
 	"github.com/nullopt-t/prim-backend/internal/model"
 	"github.com/nullopt-t/prim-backend/internal/sellers"
 	"github.com/nullopt-t/prim-backend/internal/shared/errcode"
+	"github.com/nullopt-t/prim-backend/internal/shared/middleware"
+	"github.com/nullopt-t/prim-backend/pkg/log"
 )
 
 func TestSellerDocumentRoutesAreRegistered(t *testing.T) {
@@ -78,19 +84,69 @@ func (s *SellerServiceSuite) TestCreateDocumentBindsObjectAndListsWithPublicURL(
 	s.Equal(doc.PublicURL, listed[0].PublicURL)
 }
 
-func (s *SellerServiceSuite) TestCreateDocumentRejectsDuplicateTypeForSameSeller() {
+func (s *SellerServiceSuite) TestCreateDocumentReplacesPendingAndRejected() {
 	s.clearDocuments()
-	s.createDocument(model.SellerDocumentTypeTaxCard, "first.pdf")
+	first := s.createDocument(model.SellerDocumentTypeTaxCard, "first.pdf")
+	firstObjectID := first.StorageObjectID
 
-	_, err := s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
+	replacement, err := s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
 		DocumentType: model.SellerDocumentTypeTaxCard,
 		ObjectID:     s.seedDocumentObject(),
 		FileName:     "second.pdf",
 	})
+	s.Require().NoError(err)
+	s.Equal(first.ID, replacement.ID, "replacement must reuse the document row")
+	s.NotEqual(firstObjectID, replacement.StorageObjectID, "replacement must bind the new object")
+	s.Equal("second.pdf", replacement.FileName)
+	s.Equal(model.SellerDocumentStatusPending, replacement.Status)
+
+	_, err = s.service.AdminReviewDocument(s.ctx, s.sellerID, replacement.ID, s.sellerUID, model.SellerDocumentStatusRejected, "illegible")
+	s.Require().NoError(err)
+
+	secondReplacement, err := s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
+		DocumentType: model.SellerDocumentTypeTaxCard,
+		ObjectID:     s.seedDocumentObject(),
+		FileName:     "third.pdf",
+	})
+	s.Require().NoError(err)
+	s.Equal(replacement.ID, secondReplacement.ID)
+	s.Equal(model.SellerDocumentStatusPending, secondReplacement.Status)
+	s.Nil(secondReplacement.RejectionReason, "rejection reason must be cleared on replacement")
+	s.Nil(secondReplacement.ReviewedBy, "review metadata must be cleared on replacement")
+	s.Nil(secondReplacement.ReviewedAt, "review metadata must be cleared on replacement")
+
+	listed, err := s.service.ListMyDocuments(s.ctx, s.sellerUID)
+	s.Require().NoError(err)
+	s.Require().Len(listed, 1, "replacement must not create a second document")
+}
+
+func (s *SellerServiceSuite) TestCreateDocumentRefusesToReplaceApproved() {
+	s.clearDocuments()
+	approved := s.createDocument(model.SellerDocumentTypeCommercialRegister, "register.pdf")
+	_, err := s.service.AdminReviewDocument(s.ctx, s.sellerID, approved.ID, s.sellerUID, model.SellerDocumentStatusApproved, "")
+	s.Require().NoError(err)
+
+	_, err = s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
+		DocumentType: model.SellerDocumentTypeCommercialRegister,
+		ObjectID:     s.seedDocumentObject(),
+		FileName:     "register-v2.pdf",
+	})
 
 	apiErr := s.assertAPIError(err)
-	s.Equal(409, apiErr.Status)
-	s.Equal(errcode.CodeSellerDocumentAlreadyExists, apiErr.Code)
+	s.Equal(http.StatusConflict, apiErr.Status)
+	s.Equal(errcode.CodeSellerDocumentConflict, apiErr.Code)
+	s.Contains(apiErr.Message, "Approved documents are locked for compliance")
+}
+
+func (s *SellerServiceSuite) TestAdminReviewRequiresRejectionReason() {
+	s.clearDocuments()
+	doc := s.createDocument(model.SellerDocumentTypeNationalID, "national-id.pdf")
+
+	_, err := s.service.AdminReviewDocument(s.ctx, s.sellerID, doc.ID, s.sellerUID, model.SellerDocumentStatusRejected, "   ")
+
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
+	s.Equal("rejectionReason", apiErr.Fields[0].Field)
 }
 
 func (s *SellerServiceSuite) TestAdminReviewApprovesAndRejectsDocuments() {
@@ -140,6 +196,89 @@ func (s *SellerServiceSuite) TestDeleteMyDocumentOnlyAllowsPendingOrRejected() {
 	apiErr := s.assertAPIError(err)
 	s.Equal(409, apiErr.Status)
 	s.Equal(errcode.CodeSellerDocumentConflict, apiErr.Code)
+}
+
+func (s *SellerServiceSuite) documentEngine() (*gin.Engine, *http.Cookie) {
+	gin.SetMode(gin.TestMode)
+	engine := gin.New()
+	engine.Use(middleware.ErrorHandler(log.NewNoopLogger()))
+	sellers.NewRouter(sellers.NewHandler(s.service, stubMediaUploader{}), staticSessionStore{
+		session: &model.UserSession{
+			ID:       "doc-session",
+			UserID:   s.sellerUID,
+			UserRole: model.CustomerRole,
+			Type:     model.SessionTypeAuthenticated,
+		},
+	}).MapRoutes(engine.Group("/api/v1"))
+	return engine, &http.Cookie{Name: middleware.SessionCookieName, Value: "doc-session"}
+}
+
+func (s *SellerServiceSuite) multipartDocumentRequest(docType, filename string, content []byte) (*bytes.Buffer, string) {
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	s.Require().NoError(writer.WriteField("documentType", docType))
+	part, err := writer.CreateFormFile("file", filename)
+	s.Require().NoError(err)
+	_, err = part.Write(content)
+	s.Require().NoError(err)
+	s.Require().NoError(writer.Close())
+	return &body, writer.FormDataContentType()
+}
+
+func (s *SellerServiceSuite) postDocument(engine *gin.Engine, cookie *http.Cookie, body *bytes.Buffer, contentType string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/sellers/me/documents", body)
+	req.Header.Set("Content-Type", contentType)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	engine.ServeHTTP(rec, req)
+	return rec
+}
+
+func (s *SellerServiceSuite) TestMultipartUploadAcceptsPDFAndSanitizesFileName() {
+	s.clearDocuments()
+	engine, cookie := s.documentEngine()
+	body, contentType := s.multipartDocumentRequest("tax_card", "../../commercial.pdf", []byte("%PDF-1.4\n%prim\n"))
+
+	rec := s.postDocument(engine, cookie, body, contentType)
+
+	s.Require().Equal(http.StatusCreated, rec.Code, rec.Body.String())
+	docs, err := s.service.ListMyDocuments(s.ctx, s.sellerUID)
+	s.Require().NoError(err)
+	s.Require().Len(docs, 1)
+	s.Equal("commercial.pdf", docs[0].FileName)
+	s.Equal("application/pdf", docs[0].ContentType)
+	s.Equal(model.SellerDocumentStatusPending, docs[0].Status)
+}
+
+func (s *SellerServiceSuite) TestMultipartUploadRejectsUnsupportedMIME() {
+	s.clearDocuments()
+	engine, cookie := s.documentEngine()
+	body, contentType := s.multipartDocumentRequest("tax_card", "photo.gif", []byte("GIF89a\x01\x00\x01\x00"))
+
+	rec := s.postDocument(engine, cookie, body, contentType)
+
+	s.Require().Equal(http.StatusBadRequest, rec.Code, rec.Body.String())
+	docs, err := s.service.ListMyDocuments(s.ctx, s.sellerUID)
+	s.Require().NoError(err)
+	s.Empty(docs)
+}
+
+func (s *SellerServiceSuite) TestMultipartUploadRejectsEmptyAndOversizedFiles() {
+	s.clearDocuments()
+	engine, cookie := s.documentEngine()
+
+	emptyBody, emptyType := s.multipartDocumentRequest("tax_card", "empty.pdf", nil)
+	emptyRec := s.postDocument(engine, cookie, emptyBody, emptyType)
+	s.Require().Equal(http.StatusBadRequest, emptyRec.Code, emptyRec.Body.String())
+
+	big := bytes.Repeat([]byte("%PDF-1.4\n"), int(sellers.MaxKYCDocumentBytes)/9+2)
+	bigBody, bigType := s.multipartDocumentRequest("national_id", "large.pdf", big)
+	bigRec := s.postDocument(engine, cookie, bigBody, bigType)
+	s.Require().Equal(http.StatusBadRequest, bigRec.Code, bigRec.Body.String())
+
+	docs, err := s.service.ListMyDocuments(s.ctx, s.sellerUID)
+	s.Require().NoError(err)
+	s.Empty(docs)
 }
 
 func (s *SellerServiceSuite) TestUpdateMyProfilePersistsKYCLegalFields() {
