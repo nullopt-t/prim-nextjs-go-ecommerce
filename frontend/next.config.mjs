@@ -87,6 +87,17 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   poweredByHeader: false,
+  // Disables lazy compilation in dev mode: keeps compiled pages in memory and disables on-demand proxy compilation
+  onDemandEntries: {
+    maxInactiveAge: 24 * 60 * 60 * 1000,
+    pagesBufferLength: 250,
+  },
+  webpack(config, { dev }) {
+    if (dev && config.experiments) {
+      config.experiments.lazyCompilation = false;
+    }
+    return config;
+  },
   headers() {
     return [
       {

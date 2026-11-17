@@ -1929,7 +1929,9 @@
     "INVALID_ORDER_STATUS": "The requested order status transition is invalid.",
     "COUPON_NOT_FOUND": "The specified coupon code was not found or is expired.",
     "UNAUTHORIZED": "You are not authorized to perform this action. Please sign in.",
-    "INVALID_CREDENTIALS": "The email or password you entered is incorrect."
+    "INVALID_CREDENTIALS": "The email or password you entered is incorrect.",
+    "RATE_LIMIT_EXCEEDED": "Too many attempts. Please wait a moment and try again.",
+    "COUPON_NOT_APPLICABLE": "This coupon does not apply to the items in your cart."
   },
   "home": {
     "categories": {

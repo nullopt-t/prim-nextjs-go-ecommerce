@@ -20,6 +20,7 @@ export function VerifyView() {
   const [email, setEmail] = useState<string>("");
   const [mergeCart, setMergeCart] = useState(true);
   const [profileRequired, setProfileRequired] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -53,6 +54,7 @@ export function VerifyView() {
     _type: string,
     payload: { code: string; fullName?: string },
   ) => {
+    setErrorMsg(null);
     const { isValid, error } = validateOtpCode(payload.code);
     if (!isValid && error) {
       notify.error(error);
@@ -98,10 +100,14 @@ export function VerifyView() {
             return;
           }
         }
-        notify.error(apiErrorMessage(res, t("verify.invalidCode")));
+        const err = apiErrorMessage(res, t("verify.invalidCode"));
+        setErrorMsg(err);
+        notify.error(err);
       }
     } catch {
-      notify.error(t("verify.verifyFailed"));
+      const err = t("verify.verifyFailed");
+      setErrorMsg(err);
+      notify.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -147,6 +153,8 @@ export function VerifyView() {
           onResendOtp={handleResendOtp}
           onEditEmail={handleEditEmail}
           profileRequired={profileRequired}
+          errorMessage={errorMsg}
+          onErrorClear={() => setErrorMsg(null)}
         />
       </div>
 

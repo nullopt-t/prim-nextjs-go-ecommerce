@@ -22,6 +22,7 @@ export function LoginView() {
   const [mergeCart, setMergeCart] = useState(true);
   const [passkeySupported, setPasskeySupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     isPasskeySupported().then(setPasskeySupported).catch(() => setPasskeySupported(false));
@@ -52,11 +53,14 @@ export function LoginView() {
   };
 
   const handleEmailSubmit = async (email: string) => {
+    setErrorMsg(null);
     try {
       setIsLoading(true);
       const res = await startChallenge({ email: email.trim() });
       if (!res.success) {
-        notify.error(apiErrorMessage(res, t("sign.sendFailed")));
+        const err = apiErrorMessage(res, t("sign.sendFailed"));
+        setErrorMsg(err);
+        notify.error(err);
         return;
       }
       // Store identifier in sessionStorage for pre-filling on return
@@ -71,7 +75,9 @@ export function LoginView() {
       notify.success(t("sign.codeSent"));
       router.push(targetUrl);
     } catch {
-      notify.error(t("sign.sendFailed"));
+      const err = t("sign.sendFailed");
+      setErrorMsg(err);
+      notify.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -139,6 +145,8 @@ export function LoginView() {
         <LoginEmailForm
           onSubmit={handleEmailSubmit}
           isLoading={isLoading}
+          errorMessage={errorMsg}
+          onErrorClear={() => setErrorMsg(null)}
         />
 
         {passkeySupported && (

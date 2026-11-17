@@ -672,11 +672,17 @@ func (app *App) Run() error {
 	router.Use(gin.Recovery())
 	router.Use(gin.Logger())
 
-	// Trust no proxies by default: c.ClientIP() then falls back to RemoteAddr,
-	// so client-supplied X-Forwarded-For/X-Real-IP cannot spoof rate limits.
-	// If the deployment sits behind known reverse proxies, replace nil with
-	// their CIDRs here: router.SetTrustedProxies([]string{"..."}).
-	if err := router.SetTrustedProxies(nil); err != nil {
+	// Trust loopback and private/docker networks so c.ClientIP() recovers the
+	// browser IP from X-Forwarded-For when requests pass through the Next.js
+	// API proxy container. Public upstreams stay untrusted to limit spoofing.
+	trustCIDRs := []string{
+		"127.0.0.1/32",
+		"::1/128",
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+	}
+	if err := router.SetTrustedProxies(trustCIDRs); err != nil {
 		app.logger.Warn("failed to configure trusted proxies", log.Meta{"Error": err})
 	}
 

@@ -6,7 +6,9 @@ export type CanonicalErrorCode =
   | "INVALID_ORDER_STATUS"
   | "COUPON_NOT_FOUND"
   | "UNAUTHORIZED"
-  | "INVALID_CREDENTIALS";
+  | "INVALID_CREDENTIALS"
+  | "RATE_LIMIT_EXCEEDED"
+  | "COUPON_NOT_APPLICABLE";
 
 export const ERROR_MESSAGES: Record<"en" | "ar", Record<string, string>> = {
   en: enMessages.errors,

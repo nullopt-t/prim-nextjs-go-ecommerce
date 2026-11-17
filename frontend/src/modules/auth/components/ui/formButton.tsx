@@ -5,8 +5,6 @@ import { Loader2 } from "lucide-react";
 
 interface FormButtonProps {
   type: string;
-  payload: Record<string, unknown>;
-  handle: (type: string, payload: unknown) => void;
   isLoading?: boolean;
   disabled?: boolean;
   label?: string;
@@ -14,8 +12,6 @@ interface FormButtonProps {
 
 export default function FormButton({
   type,
-  payload,
-  handle,
   isLoading = false,
   disabled = false,
   label,
@@ -34,12 +30,6 @@ export default function FormButton({
       type="submit"
       disabled={isLoading || disabled}
       className="w-full h-11 rounded-md bg-primary text-primary-foreground font-medium text-sm transition-colors hover:bg-primary/90 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-      onClick={(e) => {
-        e.preventDefault();
-        if (!isLoading && !disabled) {
-          handle(type, payload);
-        }
-      }}
     >
       {isLoading && <Loader2 className="size-4 animate-spin" />}
       <span>{buttonTxt}</span>

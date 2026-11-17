@@ -8,7 +8,7 @@ import FormInput from "@/modules/auth/components/ui/formInput";
 import OtpInput from "@/modules/auth/components/ui/OtpInput";
 import { useTranslations } from "next-intl";
 import { AuthFormType } from "@/modules/auth/types";
-import { RotateCw } from "lucide-react";
+import { AlertCircle, RotateCw } from "lucide-react";
 
 interface FormProps {
   formType: AuthFormType;
@@ -18,6 +18,8 @@ interface FormProps {
   onResendOtp?: () => Promise<void> | void;
   onEditEmail?: () => void;
   profileRequired?: boolean;
+  errorMessage?: string | null;
+  onErrorClear?: () => void;
 }
 
 export default function Form({
@@ -28,6 +30,8 @@ export default function Form({
   onResendOtp,
   onEditEmail,
   profileRequired = false,
+  errorMessage,
+  onErrorClear,
 }: FormProps) {
   const t = useTranslations("auth");
 
@@ -58,14 +62,17 @@ export default function Form({
 
   const handleEmail = (emailValue: string) => {
     setInputs((prev) => ({ ...prev, email: emailValue }));
+    onErrorClear?.();
   };
 
   const handleCode = (codeValue: string) => {
     setInputs((prev) => ({ ...prev, code: codeValue }));
+    onErrorClear?.();
   };
 
   const handleFullName = (fullNameValue: string) => {
     setInputs((prev) => ({ ...prev, fullName: fullNameValue }));
+    onErrorClear?.();
   };
 
   const handleResend = async () => {
@@ -101,9 +108,17 @@ export default function Form({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
+          if (isLoading) return;
           handleSubmit(formType, inputs);
         }}
       >
+        {errorMessage && (
+          <div role="alert" aria-live="assertive" className="flex items-center gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-destructive">
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
         {/* Email input for login */}
         {(formType === "login" || formType === "register") && (
           <div className="flex flex-col gap-1.5">
@@ -178,8 +193,6 @@ export default function Form({
         <div className="pt-1">
           <FormButton
             type={formType}
-            payload={inputs}
-            handle={handleSubmit as (type: string, payload: unknown) => void}
             isLoading={isLoading}
             label={profileRequired ? t("verify.createAccount") : undefined}
             disabled={
