@@ -2,6 +2,84 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/shared/i18n/request.ts");
 
+const configuredRemotePatterns = [
+  {
+    protocol: "http",
+    hostname: "localhost",
+    port: "9000",
+    pathname: "/**",
+  },
+  {
+    protocol: "http",
+    hostname: "127.0.0.1",
+    port: "9000",
+    pathname: "/**",
+  },
+  {
+    protocol: "http",
+    hostname: "localhost",
+    port: "4566",
+    pathname: "/**",
+  },
+  {
+    protocol: "http",
+    hostname: "127.0.0.1",
+    port: "4566",
+    pathname: "/**",
+  },
+  {
+    protocol: "http",
+    hostname: "192.168.1.16",
+    port: "9000",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "**.amazonaws.com",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "**.r2.cloudflarestorage.com",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "storage.googleapis.com",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "images.unsplash.com",
+    pathname: "/**",
+  },
+  {
+    protocol: "https",
+    hostname: "ui-avatars.com",
+    pathname: "/**",
+  },
+];
+
+// Automatically register custom CDN / S3 origins from environment variables without code modifications
+for (const envKey of ["NEXT_PUBLIC_MEDIA_BASE_URL", "S3_PUBLIC_URL", "MINIO_PUBLIC_URL"]) {
+  const envVal = process.env[envKey]?.trim();
+  if (envVal) {
+    try {
+      const parsed = new URL(envVal.startsWith("http") ? envVal : `https://${envVal}`);
+      if (parsed.hostname && !configuredRemotePatterns.some(p => p.hostname === parsed.hostname && p.port === (parsed.port || undefined))) {
+        configuredRemotePatterns.push({
+          protocol: parsed.protocol.replace(":", "") || "https",
+          hostname: parsed.hostname,
+          port: parsed.port || undefined,
+          pathname: "/**",
+        });
+      }
+    } catch {
+      // Ignore unparseable values
+    }
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   allowedDevOrigins: ["192.168.1.16"],
@@ -15,63 +93,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "9000",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-        port: "9000",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "4566",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-        port: "4566",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "192.168.1.16",
-        port: "9000",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "**.amazonaws.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "**.r2.cloudflarestorage.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "storage.googleapis.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "ui-avatars.com",
-        pathname: "/**",
-      },
-    ],
+    remotePatterns: configuredRemotePatterns,
   },
 };
 

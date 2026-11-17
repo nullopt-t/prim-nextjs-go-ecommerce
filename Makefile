@@ -1,10 +1,12 @@
 COMPOSE = docker compose -f docker-compose.dev.yml
 PROD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-compose.prod.yml
+CLOUD_COMPOSE = docker compose --env-file backend/.env -f backend/docker/docker-compose.cloud.yml
 
 .PHONY: up up-build up-d down clean clean-dev clean-prod clean-volumes-dev clean-volumes-prod \
 	logs logs-api logs-worker logs-frontend \
 	migrate-up migrate-down migrate-drop migrate-reset seed \
-	prod-up prod-down prod-logs prod-ps prod-migrate prod-seed
+	prod-up prod-down prod-logs prod-ps prod-migrate prod-seed \
+	cloud-up cloud-down cloud-logs cloud-ps cloud-migrate
 
 ## ─── Full Stack ──────────────────────────────────────────
 
@@ -101,3 +103,22 @@ prod-ps:
 
 prod-migrate:
 	$(PROD_COMPOSE) run --rm migrate
+
+## ─── Cloud-Managed Primitives (AWS / Cloudflare / Neon / MSK) ───
+
+# Runs migrations and boots only the application containers (api, worker, frontend)
+# connecting directly to managed cloud services defined in backend/.env.
+cloud-up: build-backend-binaries
+	$(CLOUD_COMPOSE) up -d --build
+
+cloud-down:
+	$(CLOUD_COMPOSE) down
+
+cloud-logs:
+	$(CLOUD_COMPOSE) logs -f
+
+cloud-ps:
+	$(CLOUD_COMPOSE) ps
+
+cloud-migrate:
+	$(CLOUD_COMPOSE) run --rm migrate

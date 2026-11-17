@@ -148,6 +148,14 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # ─── Mailpit (Local SMTP Server & Web Mailbox) ─────────
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:

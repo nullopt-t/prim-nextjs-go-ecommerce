@@ -1,0 +1,69 @@
+# ─────────────────────────────────────────────────────────────
+# PRIM Production Cloud Stack (Managed Cloud Primitives)
+#
+# Use this compose file when connecting directly to managed
+# cloud infrastructure (e.g. AWS RDS / Neon for PostgreSQL,
+# AWS ElastiCache / Upstash for Redis, AWS MSK / Confluent for Kafka,
+# and AWS S3 / Cloudflare R2 for object storage).
+#
+# Usage:
+#   docker compose --env-file backend/.env -f backend/docker/docker-compose.cloud.yml up -d --build
+# ─────────────────────────────────────────────────────────────
+
+services:
+  migrate:
+    image: migrate/migrate
+    env_file:
+      - ../.env
+    volumes:
+      - ../migrations:/migrations:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: ['exec migrate -path /migrations -database "$${DATABASE_URL}" up']
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+    env_file:
+      - ../.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.prod
+    command: ./worker
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL must be set in backend/.env}
+        NEXT_PUBLIC_MEDIA_BASE_URL: ${NEXT_PUBLIC_MEDIA_BASE_URL:-https://media.prim.com}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      API_URL: "http://api:8080"
+      NEXT_PUBLIC_MEDIA_BASE_URL: ${NEXT_PUBLIC_MEDIA_BASE_URL:-https://media.prim.com}
+    env_file:
+      - ../.env
+    depends_on:
+      api:
+        condition: service_started
