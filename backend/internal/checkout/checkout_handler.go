@@ -34,6 +34,8 @@ type CheckoutResponse struct {
 	Status        string `json:"status"`
 	PaymentStatus string `json:"paymentStatus,omitempty"`
 	ClientSecret  string `json:"clientSecret,omitempty"`
+	// Per-vendor and platform shipping quotes that make up the order total.
+	ShippingBreakdown []ShippingBreakdown `json:"shippingBreakdown,omitempty"`
 }
 
 type CheckoutHandler struct {
@@ -89,9 +91,10 @@ func (h *CheckoutHandler) Checkout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.DataResponse{
 		Data: CheckoutResponse{
-			OrderID:      out.Order.ID.String(),
-			Status:       string(out.Order.Status),
-			ClientSecret: out.ClientSecret,
+			OrderID:           out.Order.ID.String(),
+			Status:            string(out.Order.Status),
+			ClientSecret:      out.ClientSecret,
+			ShippingBreakdown: out.ShippingBreakdown,
 		},
 	})
 }

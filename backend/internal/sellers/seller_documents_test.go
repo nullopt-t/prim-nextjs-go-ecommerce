@@ -40,11 +40,15 @@ func TestSellerDocumentRoutesAreRegistered(t *testing.T) {
 // seedDocumentObject inserts the storage object a KYC document binds to and
 // returns its id. The Noop provider gives every object a deterministic URL.
 func (s *SellerServiceSuite) seedDocumentObject() uuid.UUID {
+	return s.seedDocumentObjectWith("application/pdf", 2048)
+}
+
+func (s *SellerServiceSuite) seedDocumentObjectWith(contentType string, size int64) uuid.UUID {
 	objectID := uuid.New()
 	_, err := s.db.ExecContext(s.ctx, `
 		INSERT INTO storage_objects (id, bucket, object_key, content_type, file_size, status)
-		VALUES ($1, 'seller-documents', $2, 'application/pdf', 2048, 'uploaded')
-	`, objectID, uuid.New().String())
+		VALUES ($1, 'seller-documents', $2, $3, $4, 'uploaded')
+	`, objectID, uuid.New().String(), contentType, size)
 	s.Require().NoError(err)
 	return objectID
 }
@@ -136,6 +140,27 @@ func (s *SellerServiceSuite) TestCreateDocumentRefusesToReplaceApproved() {
 	s.Equal(http.StatusConflict, apiErr.Status)
 	s.Equal(errcode.CodeSellerDocumentConflict, apiErr.Code)
 	s.Contains(apiErr.Message, "Approved documents are locked for compliance")
+}
+
+func (s *SellerServiceSuite) TestCreateDocumentRejectsDisallowedBoundObject() {
+	s.clearDocuments()
+	_, err := s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
+		DocumentType: model.SellerDocumentTypeTaxCard,
+		ObjectID:     s.seedDocumentObjectWith("image/gif", 2048),
+		FileName:     "photo.gif",
+	})
+	apiErr := s.assertAPIError(err)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
+	s.Equal("mime", apiErr.Fields[0].Constraint)
+
+	_, err = s.service.CreateDocument(s.ctx, s.sellerUID, sellers.CreateDocumentInput{
+		DocumentType: model.SellerDocumentTypeNationalID,
+		ObjectID:     s.seedDocumentObjectWith("application/pdf", 0),
+		FileName:     "empty.pdf",
+	})
+	apiErr = s.assertAPIError(err)
+	s.Equal(http.StatusBadRequest, apiErr.Status)
+	s.Equal("size", apiErr.Fields[0].Constraint)
 }
 
 func (s *SellerServiceSuite) TestAdminReviewRequiresRejectionReason() {

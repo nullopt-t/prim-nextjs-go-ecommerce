@@ -6808,6 +6808,10 @@ const docTemplateadmin = `{
                     "type": "string",
                     "example": "Electronics and accessories"
                 },
+                "freeShippingThreshold": {
+                    "type": "integer",
+                    "example": 20000
+                },
                 "id": {
                     "description": "Seller profile id.",
                     "type": "string",
@@ -6828,6 +6832,15 @@ const docTemplateadmin = `{
                 "reviewedBy": {
                     "description": "Administrator who made the latest lifecycle decision.",
                     "type": "string"
+                },
+                "shippingFee": {
+                    "description": "Per-vendor shipping terms used by checkout for this seller's lines.",
+                    "type": "integer",
+                    "example": 2500
+                },
+                "shippingLeadTimeDays": {
+                    "type": "integer",
+                    "example": 3
                 },
                 "slug": {
                     "description": "URL-safe unique store identifier.",

@@ -1561,6 +1561,9 @@ definitions:
         description: Optional storefront description.
         example: Electronics and accessories
         type: string
+      freeShippingThreshold:
+        example: 20000
+        type: integer
       id:
         description: Seller profile id.
         example: 50000000-0000-0000-0000-000000000001
@@ -1577,6 +1580,14 @@ definitions:
       reviewedBy:
         description: Administrator who made the latest lifecycle decision.
         type: string
+      shippingFee:
+        description: Per-vendor shipping terms used by checkout for this seller's
+          lines.
+        example: 2500
+        type: integer
+      shippingLeadTimeDays:
+        example: 3
+        type: integer
       slug:
         description: URL-safe unique store identifier.
         example: amrs-gadgets

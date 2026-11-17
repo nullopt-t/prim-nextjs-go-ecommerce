@@ -6909,6 +6909,13 @@ const docTemplatepublic = `{
                 "paymentStatus": {
                     "type": "string"
                 },
+                "shippingBreakdown": {
+                    "description": "Per-vendor and platform shipping quotes that make up the order total.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ShippingBreakdown"
+                    }
+                },
                 "status": {
                     "type": "string"
                 }
@@ -9472,6 +9479,10 @@ const docTemplatepublic = `{
                     "type": "string",
                     "example": "Electronics and accessories"
                 },
+                "freeShippingThreshold": {
+                    "type": "integer",
+                    "example": 20000
+                },
                 "id": {
                     "description": "Seller profile id.",
                     "type": "string",
@@ -9492,6 +9503,15 @@ const docTemplatepublic = `{
                 "reviewedBy": {
                     "description": "Administrator who made the latest lifecycle decision.",
                     "type": "string"
+                },
+                "shippingFee": {
+                    "description": "Per-vendor shipping terms used by checkout for this seller's lines.",
+                    "type": "integer",
+                    "example": 2500
+                },
+                "shippingLeadTimeDays": {
+                    "type": "integer",
+                    "example": 3
                 },
                 "slug": {
                     "description": "URL-safe unique store identifier.",
@@ -9740,6 +9760,29 @@ const docTemplatepublic = `{
                 "SessionTypeAuthenticated"
             ]
         },
+        "ShippingBreakdown": {
+            "type": "object",
+            "properties": {
+                "isFree": {
+                    "type": "boolean"
+                },
+                "leadTimeDays": {
+                    "type": "integer"
+                },
+                "sellerId": {
+                    "type": "string"
+                },
+                "sellerName": {
+                    "type": "string"
+                },
+                "shippingFee": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                }
+            }
+        },
         "SlugAvailability": {
             "type": "object",
             "properties": {
@@ -9962,6 +10005,11 @@ const docTemplatepublic = `{
                     "maxLength": 2000,
                     "example": "Electronics and accessories"
                 },
+                "freeShippingThreshold": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 20000
+                },
                 "legalName": {
                     "type": "string",
                     "maxLength": 255,
@@ -9969,6 +10017,18 @@ const docTemplatepublic = `{
                 },
                 "logoObjectId": {
                     "type": "string"
+                },
+                "shippingFee": {
+                    "description": "Per-vendor shipping settings; omitted fields are unchanged.",
+                    "type": "integer",
+                    "minimum": 0,
+                    "example": 2500
+                },
+                "shippingLeadTimeDays": {
+                    "type": "integer",
+                    "maximum": 30,
+                    "minimum": 1,
+                    "example": 3
                 },
                 "slug": {
                     "type": "string",

@@ -1739,6 +1739,9 @@
       "applied": "Applied",
       "codFee": "Cash on Delivery Fee",
       "discount": "Discount ({code})",
+      "estDays": "Est. {days} days",
+      "shippingBreakdownTitle": "Shipping by store",
+      "vendorShipping": "{seller}: {fee}",
       "express": "Express",
       "fixedOff": "EGP {amount} OFF",
       "itemCount": "{count, plural, =1 {# item} other {# items}}",
@@ -3339,6 +3342,15 @@
         "uploadFailed": "Could not upload the document.",
         "deleted": "Document removed.",
         "deleteFailed": "Could not remove the document."
+      },
+      "shipping": {
+        "title": "Shipping & Delivery",
+        "shippingFee": "Base Shipping Fee",
+        "freeShippingThreshold": "Free Shipping Threshold",
+        "thresholdHint": "Leave empty to offer no free shipping.",
+        "leadTimeDays": "Estimated Lead Time (days)",
+        "leadTimeHint": "Enter a value between 1 and 30 days.",
+        "invalid": "Check the shipping values: fees must be positive, and lead time must be 1–30 days."
       }
     },
     "wizard": {

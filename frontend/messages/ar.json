@@ -1739,6 +1739,9 @@
       "applied": "مُطبَّق",
       "codFee": "رسوم الدفع عند الاستلام",
       "discount": "الخصم ({code})",
+      "estDays": "تقدير {days} أيام",
+      "shippingBreakdownTitle": "الشحن حسب المتجر",
+      "vendorShipping": "{seller}: {fee}",
       "express": "السريع",
       "fixedOff": "خصم {amount} EGP",
       "itemCount": "{count, plural, =0 {لا توجد عناصر} =1 {عنصر واحد} other {# عناصر}}",
@@ -3339,6 +3342,15 @@
         "uploadFailed": "تعذر رفع المستند.",
         "deleted": "تمت إزالة المستند.",
         "deleteFailed": "تعذرت إزالة المستند."
+      },
+      "shipping": {
+        "title": "الشحن والتوصيل",
+        "shippingFee": "رسوم الشحن الأساسية",
+        "freeShippingThreshold": "حد الشحن المجاني",
+        "thresholdHint": "اتركه فارغًا لعدم تقديم شحن مجاني.",
+        "leadTimeDays": "المدة المتوقعة للتجهيز (أيام)",
+        "leadTimeHint": "أدخل قيمة بين 1 و30 يومًا.",
+        "invalid": "تحقق من قيم الشحن: يجب ألا تكون الرسوم سالبة، ويجب أن تكون المدة بين 1 و30 يومًا."
       }
     },
     "wizard": {

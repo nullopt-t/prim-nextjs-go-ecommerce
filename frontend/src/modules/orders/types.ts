@@ -2,6 +2,8 @@
  * Order domain and response models matching backend OrderResponse.
  */
 
+import type { SellerShippingBreakdown } from "@/modules/checkout/types";
+
 export interface OrderItem {
   id: string;
   variantId: string;
@@ -74,6 +76,7 @@ export interface CheckoutResult {
   status: string;
   paymentStatus?: string;
   clientSecret?: string;
+  shippingBreakdown?: SellerShippingBreakdown[];
 }
 
 export interface UpdateOrderPayload {

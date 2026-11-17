@@ -486,15 +486,18 @@ func (s *Service) GetSellerByUser(ctx context.Context, userID uuid.UUID) (*model
 
 // UpdateSellerInput is the seller-editable profile payload.
 type UpdateSellerInput struct {
-	StoreName          *string
-	Slug               *string
-	Description        *string
-	LogoObjectID       *uuid.UUID
-	BannerObjectID     *uuid.UUID
-	BankAccountInfo    map[string]any
-	LegalName          *string
-	TaxNumber          *string
-	CommercialRegister *string
+	StoreName             *string
+	Slug                  *string
+	Description           *string
+	LogoObjectID          *uuid.UUID
+	BannerObjectID        *uuid.UUID
+	BankAccountInfo       map[string]any
+	LegalName             *string
+	TaxNumber             *string
+	CommercialRegister    *string
+	ShippingFee           *int64
+	FreeShippingThreshold *int64
+	ShippingLeadTimeDays  *int
 }
 
 // UpdateMyProfile edits the caller's own profile. Pending, active, and
@@ -533,6 +536,16 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 		*field.value = &trimmed
 	}
 
+	if in.ShippingFee != nil && *in.ShippingFee < 0 {
+		return nil, validationError("shippingFee", "min", "Shipping fee must be zero or greater")
+	}
+	if in.FreeShippingThreshold != nil && *in.FreeShippingThreshold < 0 {
+		return nil, validationError("freeShippingThreshold", "min", "Free shipping threshold must be zero or greater")
+	}
+	if in.ShippingLeadTimeDays != nil && (*in.ShippingLeadTimeDays < 1 || *in.ShippingLeadTimeDays > 30) {
+		return nil, validationError("shippingLeadTimeDays", "range", "Shipping lead time must be between 1 and 30 days")
+	}
+
 	var normalizedSlug *string
 	if in.Slug != nil {
 		slug, reason := validateSlug(*in.Slug)
@@ -564,15 +577,18 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 		}
 
 		updated, err = s.repo.Update(ctx, existing.ID, UpdateSellerFields{
-			StoreName:          in.StoreName,
-			Slug:               normalizedSlug,
-			Description:        in.Description,
-			LogoObjectID:       in.LogoObjectID,
-			BannerObjectID:     in.BannerObjectID,
-			BankAccountInfo:    in.BankAccountInfo,
-			LegalName:          in.LegalName,
-			TaxNumber:          in.TaxNumber,
-			CommercialRegister: in.CommercialRegister,
+			StoreName:             in.StoreName,
+			Slug:                  normalizedSlug,
+			Description:           in.Description,
+			LogoObjectID:          in.LogoObjectID,
+			BannerObjectID:        in.BannerObjectID,
+			BankAccountInfo:       in.BankAccountInfo,
+			LegalName:             in.LegalName,
+			TaxNumber:             in.TaxNumber,
+			CommercialRegister:    in.CommercialRegister,
+			ShippingFee:           in.ShippingFee,
+			FreeShippingThreshold: in.FreeShippingThreshold,
+			ShippingLeadTimeDays:  in.ShippingLeadTimeDays,
 		})
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrConflict) {

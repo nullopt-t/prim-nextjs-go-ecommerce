@@ -13,6 +13,7 @@ import { apiErrorMessage, notify } from "@/shared/lib/notify";
 import { formatDateTime } from "@/shared/lib/datetime";
 import { normalizeSlug, validateSlug } from "@/modules/seller/lib/slug";
 import { KYC_FILE_EXTENSIONS, validateKycFile } from "@/modules/seller/lib/kycFileValidation";
+import { parseShippingSettings } from "@/modules/seller/lib/shippingSettings";
 import { useTranslations, useLocale } from "next-intl";
 import { useSellerContext } from "./sellerContext";
 
@@ -45,6 +46,9 @@ export function SellerSettings() {
 	const [legalName, setLegalName] = useState("");
 	const [taxNumber, setTaxNumber] = useState("");
 	const [commercialRegister, setCommercialRegister] = useState("");
+	const [shippingFee, setShippingFee] = useState("0");
+	const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
+	const [shippingLeadTimeDays, setShippingLeadTimeDays] = useState("3");
 	const [documents, setDocuments] = useState<SellerDocument[]>([]);
 	const [uploadingType, setUploadingType] = useState<SellerDocumentType | null>(null);
 	const [bankEntries, setBankEntries] = useState<BankEntry[]>([]);
@@ -63,6 +67,13 @@ export function SellerSettings() {
 		setLegalName(seller.legalName ?? "");
 		setTaxNumber(seller.taxNumber ?? "");
 		setCommercialRegister(seller.commercialRegister ?? "");
+		setShippingFee(String(seller.shippingFee ?? 0));
+		setFreeShippingThreshold(
+			seller.freeShippingThreshold === null || seller.freeShippingThreshold === undefined
+				? ""
+				: String(seller.freeShippingThreshold),
+		);
+		setShippingLeadTimeDays(String(seller.shippingLeadTimeDays ?? 3));
 		setBankEntries(toEntries(seller.bankAccountInfo));
 		setInitializedFor(seller.id);
 	}, [seller, initializedFor]);
@@ -197,6 +208,16 @@ export function SellerSettings() {
 			bankInfo[key] = entry.value;
 		}
 
+		const shipping = parseShippingSettings(
+			shippingFee,
+			freeShippingThreshold,
+			shippingLeadTimeDays,
+		);
+		if (!shipping) {
+			notify.error(t("settings.shipping.invalid"));
+			return;
+		}
+
 		setSaving(true);
 		try {
 			const payload: {
@@ -206,6 +227,9 @@ export function SellerSettings() {
 				legalName?: string;
 				taxNumber?: string;
 				commercialRegister?: string;
+				shippingFee?: number;
+				freeShippingThreshold?: number | null;
+				shippingLeadTimeDays?: number;
 				bankAccountInfo?: Record<string, unknown>;
 			} = {};
 			if (storeName.trim() !== seller.storeName) payload.storeName = storeName.trim();
@@ -219,6 +243,15 @@ export function SellerSettings() {
 			if (taxNumber.trim() !== (seller.taxNumber ?? "")) payload.taxNumber = taxNumber.trim();
 			if (commercialRegister.trim() !== (seller.commercialRegister ?? "")) {
 				payload.commercialRegister = commercialRegister.trim();
+			}
+			if (shipping.shippingFee !== (seller.shippingFee ?? 0)) {
+				payload.shippingFee = shipping.shippingFee;
+			}
+			if (shipping.freeShippingThreshold !== (seller.freeShippingThreshold ?? null)) {
+				payload.freeShippingThreshold = shipping.freeShippingThreshold;
+			}
+			if (shipping.shippingLeadTimeDays !== (seller.shippingLeadTimeDays ?? 3)) {
+				payload.shippingLeadTimeDays = shipping.shippingLeadTimeDays;
 			}
 			payload.bankAccountInfo = bankInfo;
 
@@ -458,6 +491,57 @@ export function SellerSettings() {
 									</div>
 								);
 							})}
+						</div>
+					</fieldset>
+
+					<fieldset className="space-y-3 rounded-md border border-border p-4">
+						<legend className="px-1 text-sm font-medium text-foreground">{t("settings.shipping.title")}</legend>
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+							<div className="space-y-1.5">
+								<label htmlFor="seller-shipping-fee" className="text-sm font-medium text-foreground">
+									{t("settings.shipping.shippingFee")}
+								</label>
+								<input
+									id="seller-shipping-fee"
+									type="number"
+									min="0"
+									step="0.01"
+									value={shippingFee}
+									onChange={(event) => setShippingFee(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<label htmlFor="seller-shipping-threshold" className="text-sm font-medium text-foreground">
+									{t("settings.shipping.freeShippingThreshold")}
+								</label>
+								<input
+									id="seller-shipping-threshold"
+									type="number"
+									min="0"
+									step="0.01"
+									value={freeShippingThreshold}
+									onChange={(event) => setFreeShippingThreshold(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+								<p className="text-xs text-muted-foreground">{t("settings.shipping.thresholdHint")}</p>
+							</div>
+							<div className="space-y-1.5">
+								<label htmlFor="seller-shipping-lead-time" className="text-sm font-medium text-foreground">
+									{t("settings.shipping.leadTimeDays")}
+								</label>
+								<input
+									id="seller-shipping-lead-time"
+									type="number"
+									min="1"
+									max="30"
+									step="1"
+									value={shippingLeadTimeDays}
+									onChange={(event) => setShippingLeadTimeDays(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+								<p className="text-xs text-muted-foreground">{t("settings.shipping.leadTimeHint")}</p>
+							</div>
 						</div>
 					</fieldset>
 

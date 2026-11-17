@@ -73,6 +73,10 @@ type SellerResponse struct {
 	LegalName          string `json:"legalName,omitempty"`
 	TaxNumber          string `json:"taxNumber,omitempty"`
 	CommercialRegister string `json:"commercialRegister,omitempty"`
+	// Per-vendor shipping terms used by checkout for this seller's lines.
+	ShippingFee           int64  `json:"shippingFee" example:"2500"`
+	FreeShippingThreshold *int64 `json:"freeShippingThreshold,omitempty" example:"20000"`
+	ShippingLeadTimeDays  int    `json:"shippingLeadTimeDays" example:"3"`
 	// Created timestamp (RFC3339).
 	CreatedAt string `json:"createdAt" example:"2026-11-02T10:00:00Z"`
 	// Updated timestamp (RFC3339).
@@ -105,22 +109,25 @@ type PayoutResponse struct {
 
 func toSellerResponse(v *model.Seller) SellerResponse {
 	res := SellerResponse{
-		ID:                 v.ID,
-		UserID:             v.UserID,
-		StoreName:          v.StoreName,
-		Slug:               v.Slug,
-		Description:        v.Description,
-		LogoURL:            v.LogoURL,
-		BannerURL:          v.BannerURL,
-		CommissionRateBps:  v.CommissionRateBps,
-		Status:             v.Status,
-		StatusReason:       v.StatusReason,
-		ReviewedBy:         v.ReviewedBy,
-		LegalName:          derefString(v.LegalName),
-		TaxNumber:          derefString(v.TaxNumber),
-		CommercialRegister: derefString(v.CommercialRegister),
-		CreatedAt:          v.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:          v.UpdatedAt.Format(time.RFC3339),
+		ID:                    v.ID,
+		UserID:                v.UserID,
+		StoreName:             v.StoreName,
+		Slug:                  v.Slug,
+		Description:           v.Description,
+		LogoURL:               v.LogoURL,
+		BannerURL:             v.BannerURL,
+		CommissionRateBps:     v.CommissionRateBps,
+		Status:                v.Status,
+		StatusReason:          v.StatusReason,
+		ReviewedBy:            v.ReviewedBy,
+		LegalName:             derefString(v.LegalName),
+		TaxNumber:             derefString(v.TaxNumber),
+		CommercialRegister:    derefString(v.CommercialRegister),
+		ShippingFee:           v.ShippingFee,
+		FreeShippingThreshold: v.FreeShippingThreshold,
+		ShippingLeadTimeDays:  v.ShippingLeadTimeDays,
+		CreatedAt:             v.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:             v.UpdatedAt.Format(time.RFC3339),
 	}
 	if v.ReviewedAt != nil {
 		res.ReviewedAt = v.ReviewedAt.Format(time.RFC3339)
@@ -301,6 +308,10 @@ type UpdateMySellerRequest struct {
 	LegalName          string         `json:"legalName" binding:"omitempty,max=255" example:"PRIM Trading LLC"`
 	TaxNumber          string         `json:"taxNumber" binding:"omitempty,max=255" example:"123456789"`
 	CommercialRegister string         `json:"commercialRegister" binding:"omitempty,max=255" example:"CR-1234"`
+	// Per-vendor shipping settings; omitted fields are unchanged.
+	ShippingFee           *int64 `json:"shippingFee,omitempty" binding:"omitempty,min=0" example:"2500"`
+	FreeShippingThreshold *int64 `json:"freeShippingThreshold,omitempty" binding:"omitempty,min=0" example:"20000"`
+	ShippingLeadTimeDays  *int   `json:"shippingLeadTimeDays,omitempty" binding:"omitempty,min=1,max=30" example:"3"`
 }
 
 // UpdateMySeller godoc
@@ -329,7 +340,10 @@ func (h *Handler) UpdateMySeller(c *gin.Context) {
 	}
 
 	in := UpdateSellerInput{
-		BankAccountInfo: req.BankAccountInfo,
+		BankAccountInfo:       req.BankAccountInfo,
+		ShippingFee:           req.ShippingFee,
+		FreeShippingThreshold: req.FreeShippingThreshold,
+		ShippingLeadTimeDays:  req.ShippingLeadTimeDays,
 	}
 	if req.StoreName != "" {
 		in.StoreName = &req.StoreName

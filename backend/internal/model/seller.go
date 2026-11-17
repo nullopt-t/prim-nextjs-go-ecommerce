@@ -72,6 +72,10 @@ type Seller struct {
 	LegalName          *string `db:"legal_name" json:"legalName,omitempty"`
 	TaxNumber          *string `db:"tax_number" json:"taxNumber,omitempty"`
 	CommercialRegister *string `db:"commercial_register" json:"commercialRegister,omitempty"`
+	// Per-vendor shipping terms used by checkout to price this seller's lines.
+	ShippingFee           int64  `db:"shipping_fee" json:"shippingFee"`
+	FreeShippingThreshold *int64 `db:"free_shipping_threshold" json:"freeShippingThreshold,omitempty"`
+	ShippingLeadTimeDays  int    `db:"shipping_lead_time_days" json:"shippingLeadTimeDays"`
 
 	CreatedAt time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time  `db:"updated_at" json:"updatedAt"`

@@ -196,6 +196,14 @@ func (s *Service) CreateDocument(ctx context.Context, userID uuid.UUID, in Creat
 		if obj.DeletedAt != nil || obj.Status == model.ObjectStatusDeleted {
 			return apierr.BadRequestError("Storage object is no longer available").WithCode(apierr.CodeInvalidReference)
 		}
+		// The JSON binding path must obey the same strict allowlist as a direct
+		// upload; otherwise any media object could bypass KYC file-type rules.
+		if !isAllowedKYCDocumentMIME(obj.ContentType) {
+			return validationError("file", "mime", "Unsupported file type; upload a PDF, JPEG, PNG or WebP file")
+		}
+		if err := validateKYCUploadSize(obj.FileSize); err != nil {
+			return err
+		}
 
 		existing, err := s.repo.GetDocumentBySellerAndType(ctx, seller.ID, in.DocumentType)
 		if err != nil && !errors.Is(database.MapError(err), database.ErrNotFound) {

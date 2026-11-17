@@ -20,6 +20,9 @@ export interface Seller {
   legalName?: string;
   taxNumber?: string;
   commercialRegister?: string;
+  shippingFee: number;
+  freeShippingThreshold: number | null;
+  shippingLeadTimeDays: number;
   status: SellerStatus;
   statusReason?: string;
   reviewedBy?: string;
@@ -76,6 +79,9 @@ export interface UpdateSellerPayload {
   legalName?: string;
   taxNumber?: string;
   commercialRegister?: string;
+  shippingFee?: number;
+  freeShippingThreshold?: number | null;
+  shippingLeadTimeDays?: number;
   logoObjectId?: string;
   bannerObjectId?: string;
   bankAccountInfo?: Record<string, unknown>;

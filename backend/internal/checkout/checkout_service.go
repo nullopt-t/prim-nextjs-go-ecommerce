@@ -68,8 +68,20 @@ type PaymentGateway interface {
 
 // CheckoutOutput bundles the committed order snapshot with any payment gateway client token/secret.
 type CheckoutOutput struct {
-	Order        *model.Order
-	ClientSecret string
+	Order             *model.Order
+	ClientSecret      string
+	ShippingBreakdown []ShippingBreakdown
+}
+
+// ShippingBreakdown is one shipping group in a cart: a vendor's lines or the
+// platform's lines. Amounts are in minor currency units.
+type ShippingBreakdown struct {
+	SellerID     *uuid.UUID `json:"sellerId,omitempty"`
+	SellerName   string     `json:"sellerName"`
+	Subtotal     int64      `json:"subtotal"`
+	ShippingFee  int64      `json:"shippingFee"`
+	IsFree       bool       `json:"isFree"`
+	LeadTimeDays int        `json:"leadTimeDays"`
 }
 
 // StockWriter owns stock reservation/commitment invariants and participates in
@@ -350,7 +362,11 @@ type pricedCart struct {
 	// sellerTotals accumulates line totals per selling seller so merchant
 	// coupons can be priced against the eligible subtotal only.
 	sellerTotals map[uuid.UUID]int64
-	currency     string
+	// platformSubtotal holds unattributed lines; sellers holds the full vendor
+	// rows loaded during pricing, including their shipping terms.
+	platformSubtotal int64
+	sellers          map[uuid.UUID]*model.Seller
+	currency         string
 }
 
 // appliedCoupon captures the resolved coupon state checkout needs while the
@@ -387,6 +403,7 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*Che
 	var pendingPayment *model.Payment
 	var clientSecret string
 	var cartID uuid.UUID
+	var breakdown []ShippingBreakdown
 
 	err := s.runner.WithTx(ctx, func(ctx context.Context) error {
 		// 1. Lock and load the cart so concurrent checkouts serialize.
@@ -422,7 +439,12 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*Che
 		}
 
 		// 5. Derive shipping, payment, and tax from the effective store config.
-		shippingCost := s.shippingCost(cfg, priced.grossTotal)
+		// Shipping is priced per cart partition (each vendor plus the platform)
+		// and aggregated into the order's shipping amount.
+		var shippingCost int64
+		breakdown, shippingCost = computeShippingBreakdown(
+			priced.platformSubtotal, priced.sellerTotals, priced.sellers, cfg,
+		)
 		method, err := s.resolvePaymentMethod(cfg, in.PaymentMethod)
 		if err != nil {
 			return err
@@ -553,8 +575,9 @@ func (s *CheckoutService) Checkout(ctx context.Context, in *CheckoutInput) (*Che
 	s.notifyOrderPlaced(ctx, cfg, createdOrder, customerName)
 
 	return &CheckoutOutput{
-		Order:        createdOrder,
-		ClientSecret: clientSecret,
+		Order:             createdOrder,
+		ClientSecret:      clientSecret,
+		ShippingBreakdown: breakdown,
 	}, nil
 }
 
@@ -630,8 +653,13 @@ func (s *CheckoutService) resolveShippingAddress(ctx context.Context, userID uui
 // client subtotal: the gross total is computed here and thumbnails resolve
 // directly from storage (bucket/key), never from SQL.
 func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pricedCart, error) {
-	result := &pricedCart{currency: "EGP", sellerTotals: map[uuid.UUID]int64{}}
 	sellers := make(map[uuid.UUID]*model.Seller)
+	result := &pricedCart{
+		currency:         "EGP",
+		sellerTotals:     map[uuid.UUID]int64{},
+		platformSubtotal: 0,
+		sellers:          sellers,
+	}
 
 	for _, item := range cart.Items {
 		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
@@ -692,6 +720,8 @@ func (s *CheckoutService) priceCart(ctx context.Context, cart *model.Cart) (*pri
 		sellerEarning, commissionAmount := computeSellerSplit(itemTotal, sellerID, commissionBps)
 		if sellerID != nil {
 			result.sellerTotals[*sellerID] += itemTotal
+		} else {
+			result.platformSubtotal += itemTotal
 		}
 		result.items = append(result.items, order.CreateOrderItemInput{
 			VariantID:         item.VariantID,
@@ -882,13 +912,63 @@ func (s *CheckoutService) resolveCoupon(ctx context.Context, in *CheckoutInput, 
 	}, nil
 }
 
-// shippingCost applies the admin-configured shipping rule: free at/above the
-// configured threshold, otherwise the configured flat rate.
-func (s *CheckoutService) shippingCost(cfg setting.Config, grossTotal int64) int64 {
-	if threshold := cfg.FreeShippingThresholdMinorUnits(); grossTotal > 0 && grossTotal < threshold {
+// platformShippingFee applies the global store shipping rule to unattributed
+// (platform) lines: flat rate until the configured free-shipping threshold.
+func platformShippingFee(cfg setting.Config, subtotal int64) int64 {
+	if threshold := cfg.FreeShippingThresholdMinorUnits(); subtotal > 0 && subtotal < threshold {
 		return cfg.ShippingMinorUnits()
 	}
 	return 0
+}
+
+// computeShippingBreakdown partitions a cart into shipping groups and returns
+// each quote plus the total charged on the order. Vendors use their own fee and
+// free-shipping threshold; the platform group uses the global store rule.
+func computeShippingBreakdown(
+	platformSubtotal int64,
+	sellerTotals map[uuid.UUID]int64,
+	sellers map[uuid.UUID]*model.Seller,
+	cfg setting.Config,
+) ([]ShippingBreakdown, int64) {
+	breakdown := make([]ShippingBreakdown, 0, len(sellerTotals)+1)
+	var total int64
+	if platformSubtotal > 0 {
+		fee := platformShippingFee(cfg, platformSubtotal)
+		breakdown = append(breakdown, ShippingBreakdown{
+			SellerName:  cfg.StoreName,
+			Subtotal:    platformSubtotal,
+			ShippingFee: fee,
+			IsFree:      fee == 0,
+		})
+		total += fee
+	}
+
+	// Sorted ids keep the response stable across requests.
+	ids := make([]uuid.UUID, 0, len(sellerTotals))
+	for id, subtotal := range sellerTotals {
+		if subtotal > 0 {
+			ids = append(ids, id)
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	for _, id := range ids {
+		seller := sellers[id]
+		subtotal := sellerTotals[id]
+		fee := seller.ShippingFee
+		if seller.FreeShippingThreshold != nil && subtotal >= *seller.FreeShippingThreshold {
+			fee = 0
+		}
+		breakdown = append(breakdown, ShippingBreakdown{
+			SellerID:     &id,
+			SellerName:   seller.StoreName,
+			Subtotal:     subtotal,
+			ShippingFee:  fee,
+			IsFree:       fee == 0,
+			LeadTimeDays: seller.ShippingLeadTimeDays,
+		})
+		total += fee
+	}
+	return breakdown, total
 }
 
 // resolvePaymentMethod validates the requested payment method against the
@@ -1218,7 +1298,9 @@ func (s *CheckoutService) ValidateCoupon(ctx context.Context, code string, userI
 			return s.handleError(err, "Failed to validate coupon")
 		}
 
-		shipping := s.shippingCost(cfg, grossTotal)
+		// Coupon previews quote shipping from the cart's actual groups, not
+		// from the (possibly merchant-scoped) discounted subtotal.
+		_, shipping := s.lenientShippingBreakdown(ctx, cartData, cfg)
 
 		finalTotal := grossTotal - applied.DiscountAmount + shipping
 		if finalTotal < 0 {
@@ -1269,6 +1351,43 @@ func (s *CheckoutService) loadCartForOwner(ctx context.Context, userID *uuid.UUI
 		return nil, nil
 	}
 	return cartData, nil
+}
+
+// lenientShippingBreakdown mirrors the checkout shipping quote for previews:
+// unavailable lines are skipped instead of failing, but the per-vendor rules
+// are identical. It never opens a second connection (caller's tx context).
+func (s *CheckoutService) lenientShippingBreakdown(ctx context.Context, cart *model.Cart, cfg setting.Config) ([]ShippingBreakdown, int64) {
+	if cart == nil {
+		return nil, 0
+	}
+	var platformSubtotal int64
+	sellerTotals := map[uuid.UUID]int64{}
+	sellers := map[uuid.UUID]*model.Seller{}
+	for _, item := range cart.Items {
+		variant, err := s.variantReader.GetByID(ctx, item.VariantID)
+		if err != nil {
+			continue
+		}
+		lineTotal := int64(item.Quantity) * item.PriceAtPurchase
+		if variant.Price != nil {
+			lineTotal = int64(item.Quantity) * *variant.Price
+		}
+		product, err := s.productReader.GetByID(ctx, variant.ProductID)
+		if err != nil {
+			continue
+		}
+		if product.SellerID == nil {
+			platformSubtotal += lineTotal
+			continue
+		}
+		seller, err := s.sellerReader.GetByID(ctx, *product.SellerID)
+		if err != nil {
+			continue
+		}
+		sellers[*product.SellerID] = seller
+		sellerTotals[*product.SellerID] += lineTotal
+	}
+	return computeShippingBreakdown(platformSubtotal, sellerTotals, sellers, cfg)
 }
 
 // lenientCartTotal prices the cart for display purposes (coupon preview).

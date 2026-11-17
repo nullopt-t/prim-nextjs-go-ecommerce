@@ -235,6 +235,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.ExecContext(ctx, string(kycBytes))
 	require.NoError(s.T(), err)
 
+	shippingBytes, err := os.ReadFile("../../migrations/000005_seller_shipping.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.ExecContext(ctx, string(shippingBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)

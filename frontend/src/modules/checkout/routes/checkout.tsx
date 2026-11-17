@@ -7,6 +7,7 @@ import { formatMoney } from "@/shared/lib/money";
 import { useCheckout } from "@/modules/orders/model/useOrders";
 import { orderService } from "@/modules/orders/api/orderService";
 import type { CheckoutResult } from "@/modules/orders/types";
+import type { SellerShippingBreakdown } from "@/modules/checkout/types";
 import { useAddresses } from "@/modules/account/model/useUserAccount";
 import type { Address } from "@/modules/account/types";
 import { usePathname, useRouter } from "@/shared/i18n/navigation";
@@ -170,6 +171,7 @@ export function Checkout() {
 
 	const [shippingSpeed, setShippingSpeed] = useState("standard"); // 'standard' | 'express'
 	const [deliveryNotes, setDeliveryNotes] = useState("");
+	const [shippingBreakdown, setShippingBreakdown] = useState<SellerShippingBreakdown[]>([]);
 
 	// Card checkout is supported via Stripe PaymentIntents when cards are allowed and key configured.
 	const settingsLoaded = storeSettings !== null;
@@ -485,6 +487,7 @@ export function Checkout() {
 			setOrderError(null);
 			// Checkout returns { data: CheckoutResult }; the mutation wraps it once more.
 			const data = (result.data?.data ?? result.data) as CheckoutResult | undefined;
+			setShippingBreakdown(Array.isArray(data?.shippingBreakdown) ? data.shippingBreakdown : []);
 			const clientSecret = data?.clientSecret;
 			const completedOrderInfo = {
 				id: data?.orderId || "",
@@ -1636,6 +1639,22 @@ export function Checkout() {
 										)}
 									</span>
 								</div>
+
+								{shippingBreakdown.length > 0 && (
+									<div className="space-y-1.5 rounded-xl border border-border bg-secondary/20 p-3">
+										<p className="text-xs font-semibold text-foreground">{t("summary.shippingBreakdownTitle")}</p>
+										{shippingBreakdown.map((line, index) => (
+											<p key={line.sellerId ?? `${line.sellerName}-${index}`} className="text-xs text-muted-foreground">
+												{t("summary.vendorShipping", {
+													seller: line.sellerName,
+													fee: line.isFree
+														? tCart("orderSummary.free")
+														: `${formatMoney(line.shippingFee, currency)}${line.leadTimeDays > 0 ? ` (${t("summary.estDays", { days: line.leadTimeDays })})` : ""}`,
+												})}
+											</p>
+										))}
+									</div>
+								)}
 
 								<div className="flex justify-between text-muted-foreground">
 									<span>{t("summary.taxes")}</span>

@@ -33,15 +33,18 @@ type CreateSellerInput struct {
 
 // UpdateSellerFields carries optional profile mutations.
 type UpdateSellerFields struct {
-	StoreName          *string
-	Slug               *string
-	Description        *string
-	LogoObjectID       *uuid.UUID
-	BannerObjectID     *uuid.UUID
-	BankAccountInfo    map[string]any
-	LegalName          *string
-	TaxNumber          *string
-	CommercialRegister *string
+	StoreName             *string
+	Slug                  *string
+	Description           *string
+	LogoObjectID          *uuid.UUID
+	BannerObjectID        *uuid.UUID
+	BankAccountInfo       map[string]any
+	LegalName             *string
+	TaxNumber             *string
+	CommercialRegister    *string
+	ShippingFee           *int64
+	FreeShippingThreshold *int64
+	ShippingLeadTimeDays  *int
 }
 
 // SellerRepository is the seller domain's own persistence (SQL + row mapping).
@@ -70,6 +73,9 @@ func scanSeller(row pgx.Row) (*model.Seller, error) {
 		&v.LegalName,
 		&v.TaxNumber,
 		&v.CommercialRegister,
+		&v.ShippingFee,
+		&v.FreeShippingThreshold,
+		&v.ShippingLeadTimeDays,
 		&v.CreatedAt,
 		&v.UpdatedAt,
 		&v.DeletedAt,
@@ -97,6 +103,9 @@ const sellerColumns = `
 	legal_name,
 	tax_number,
 	commercial_register,
+	shipping_fee,
+	free_shipping_threshold,
+	shipping_lead_time_days,
 	created_at,
 	updated_at,
 	deleted_at
@@ -141,6 +150,7 @@ func (r *SellerRepository) Create(ctx context.Context, in *CreateSellerInput) (*
 		&v.LogoObjectID, &v.BannerObjectID, &v.CommissionRateBps,
 		&v.Status, &v.StatusReason, &v.ReviewedBy, &v.ReviewedAt,
 		&v.BankAccountInfo, &v.LegalName, &v.TaxNumber, &v.CommercialRegister,
+		&v.ShippingFee, &v.FreeShippingThreshold, &v.ShippingLeadTimeDays,
 		&v.CreatedAt, &v.UpdatedAt, &v.DeletedAt,
 	)
 	if err != nil {
@@ -277,12 +287,16 @@ func (r *SellerRepository) Update(ctx context.Context, sellerID uuid.UUID, field
 			legal_name         = COALESCE($8, legal_name),
 			tax_number         = COALESCE($9, tax_number),
 			commercial_register = COALESCE($10, commercial_register),
+			shipping_fee        = COALESCE($11, shipping_fee),
+			free_shipping_threshold = COALESCE($12, free_shipping_threshold),
+			shipping_lead_time_days = COALESCE($13, shipping_lead_time_days),
 			updated_at         = now()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING `+sellerColumns,
 		sellerID, fields.StoreName, fields.Slug, fields.Description, fields.LogoObjectID,
 		fields.BannerObjectID, bankJSON, fields.LegalName, fields.TaxNumber,
-		fields.CommercialRegister,
+		fields.CommercialRegister, fields.ShippingFee, fields.FreeShippingThreshold,
+		fields.ShippingLeadTimeDays,
 	)
 	return scanSeller(row)
 }
