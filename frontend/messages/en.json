@@ -1461,6 +1461,36 @@
         "cancel": "Cancel",
         "current": "Current review reason",
         "reviewedAt": "Reviewed {date}"
+      },
+      "kyc": {
+        "title": "KYC Documents",
+        "subtitle": "Review the business verification documents submitted by this merchant.",
+        "legalName": "Legal Name",
+        "taxNumber": "Tax ID",
+        "commercialRegister": "Commercial Register",
+        "colType": "Document Type",
+        "colFile": "File",
+        "colStatus": "Status",
+        "colAction": "Action",
+        "types": {
+          "commercial_register": "Commercial Register",
+          "tax_card": "Tax Card",
+          "national_id": "National ID",
+          "other": "Other"
+        },
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "empty": "No verification documents submitted yet.",
+        "approveTitle": "Approve Document",
+        "rejectTitle": "Reject Document",
+        "reviewDescription": "This decision is recorded against the merchant's business verification record.",
+        "reasonLabel": "Reason for rejection",
+        "reasonRequired": "A reason is required when rejecting a document.",
+        "reviewed": "Document review saved.",
+        "reviewFailed": "Could not save the document review."
       }
     }
   },
@@ -3280,7 +3310,30 @@
       "payoutDetailsSaved": "{count, plural, =1 {1 detail saved} other {# details saved}}",
       "payoutDetailsMissing": "Not added yet",
       "commissionNote": "Commission rate and account status cannot be changed here. Changes are reviewed by the marketplace team.",
-      "resubmitNote": "Saving changes returns your application to review."
+      "resubmitNote": "Saving changes returns your application to review.",
+      "kyc": {
+        "title": "Business Verification & KYC",
+        "subtitle": "Provide your legal business details and upload the required documents for review.",
+        "legalName": "Legal Name",
+        "taxNumber": "Tax ID",
+        "commercialRegister": "Commercial Register",
+        "docCommercialRegister": "Commercial Register Document",
+        "docTaxCard": "Tax Card",
+        "docNationalId": "National ID",
+        "notUploaded": "Not uploaded yet",
+        "upload": "Upload document",
+        "view": "View document",
+        "remove": "Remove document",
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "uploaded": "Document uploaded for review.",
+        "uploadFailed": "Could not upload the document.",
+        "deleted": "Document removed.",
+        "deleteFailed": "Could not remove the document."
+      }
     },
     "wizard": {
       "subtitle": "Place your product in four stages. Your answers stay with that stage until you finish.",

@@ -15,6 +15,15 @@ const (
 	// allowing the requested action (e.g. profile edits while suspended).
 	CodeSellerNotAuthorizedForAction = "SELLER_NOT_AUTHORIZED_FOR_ACTION"
 
+	// CodeSellerDocumentNotFound indicates the KYC document does not exist for the seller.
+	CodeSellerDocumentNotFound = "SELLER_DOCUMENT_NOT_FOUND"
+
+	// CodeSellerDocumentAlreadyExists indicates a document of that type was already submitted.
+	CodeSellerDocumentAlreadyExists = "SELLER_DOCUMENT_ALREADY_EXISTS"
+
+	// CodeSellerDocumentConflict indicates a document state that forbids the requested action.
+	CodeSellerDocumentConflict = "SELLER_DOCUMENT_CONFLICT"
+
 	// CodePayoutNotFound indicates the payout record does not exist.
 	CodePayoutNotFound = "PAYOUT_NOT_FOUND"
 

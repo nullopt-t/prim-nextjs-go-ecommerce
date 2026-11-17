@@ -72,6 +72,20 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 		portal.PATCH("/variants/:id", r.handler.UpdateVariant)
 		portal.DELETE("/variants/:id", r.handler.DeleteVariant)
 		portal.POST("/variants/:id/stock", r.handler.AdjustStock)
+
+		// KYC document management alias under /seller/documents
+		portal.GET("/documents", r.handler.ListMyDocuments)
+		portal.POST("/documents", r.handler.CreateDocument)
+		portal.DELETE("/documents/:id", r.handler.DeleteMyDocument)
+	}
+
+	// KYC document management lives under the documented /sellers surface.
+	documents := vgroup.Group("/sellers/me/documents")
+	documents.Use(middleware.Authenticate(r.sessionStore))
+	{
+		documents.GET("", r.handler.ListMyDocuments)
+		documents.POST("", r.handler.CreateDocument)
+		documents.DELETE("/:id", r.handler.DeleteMyDocument)
 	}
 
 	admin := vgroup.Group("/admin/sellers")
@@ -82,6 +96,8 @@ func (r *Router) MapRoutes(vgroup *gin.RouterGroup) {
 	{
 		admin.GET("", r.handler.AdminListSellers)
 		admin.GET("/:id", r.handler.AdminGetSeller)
+		admin.GET("/:id/documents", r.handler.AdminListSellerDocuments)
+		admin.PATCH("/:id/documents/:doc_id/review", r.handler.AdminReviewDocument)
 		admin.PATCH("/:id/status", r.handler.AdminChangeSellerStatus)
 		admin.PATCH("/:id/commission", r.handler.AdminSetCommission)
 		admin.GET("/payouts", r.handler.AdminListPayouts)

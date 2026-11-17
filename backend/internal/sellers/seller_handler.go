@@ -69,6 +69,10 @@ type SellerResponse struct {
 	ReviewedBy *uuid.UUID `json:"reviewedBy,omitempty"`
 	// When the latest lifecycle decision was made (RFC3339).
 	ReviewedAt string `json:"reviewedAt,omitempty"`
+	// KYC legal business details submitted for admin review.
+	LegalName          string `json:"legalName,omitempty"`
+	TaxNumber          string `json:"taxNumber,omitempty"`
+	CommercialRegister string `json:"commercialRegister,omitempty"`
 	// Created timestamp (RFC3339).
 	CreatedAt string `json:"createdAt" example:"2026-11-02T10:00:00Z"`
 	// Updated timestamp (RFC3339).
@@ -101,19 +105,22 @@ type PayoutResponse struct {
 
 func toSellerResponse(v *model.Seller) SellerResponse {
 	res := SellerResponse{
-		ID:                v.ID,
-		UserID:            v.UserID,
-		StoreName:         v.StoreName,
-		Slug:              v.Slug,
-		Description:       v.Description,
-		LogoURL:           v.LogoURL,
-		BannerURL:         v.BannerURL,
-		CommissionRateBps: v.CommissionRateBps,
-		Status:            v.Status,
-		StatusReason:      v.StatusReason,
-		ReviewedBy:        v.ReviewedBy,
-		CreatedAt:         v.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:         v.UpdatedAt.Format(time.RFC3339),
+		ID:                 v.ID,
+		UserID:             v.UserID,
+		StoreName:          v.StoreName,
+		Slug:               v.Slug,
+		Description:        v.Description,
+		LogoURL:            v.LogoURL,
+		BannerURL:          v.BannerURL,
+		CommissionRateBps:  v.CommissionRateBps,
+		Status:             v.Status,
+		StatusReason:       v.StatusReason,
+		ReviewedBy:         v.ReviewedBy,
+		LegalName:          derefString(v.LegalName),
+		TaxNumber:          derefString(v.TaxNumber),
+		CommercialRegister: derefString(v.CommercialRegister),
+		CreatedAt:          v.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:          v.UpdatedAt.Format(time.RFC3339),
 	}
 	if v.ReviewedAt != nil {
 		res.ReviewedAt = v.ReviewedAt.Format(time.RFC3339)
@@ -285,12 +292,15 @@ func (h *Handler) CheckSlugAvailability(c *gin.Context) {
 
 // UpdateMySellerRequest is the profile edit payload; nil fields are unchanged.
 type UpdateMySellerRequest struct {
-	StoreName       string         `json:"storeName" binding:"omitempty,min=2,max=150" example:"Amr's Gadgets"`
-	Slug            string         `json:"slug" binding:"omitempty,max=63" example:"amrs-gadgets"`
-	Description     string         `json:"description" binding:"max=2000" example:"Electronics and accessories"`
-	LogoObjectID    string         `json:"logoObjectId" binding:"omitempty,uuid"`
-	BannerObjectID  string         `json:"bannerObjectId" binding:"omitempty,uuid"`
-	BankAccountInfo map[string]any `json:"bankAccountInfo"`
+	StoreName          string         `json:"storeName" binding:"omitempty,min=2,max=150" example:"Amr's Gadgets"`
+	Slug               string         `json:"slug" binding:"omitempty,max=63" example:"amrs-gadgets"`
+	Description        string         `json:"description" binding:"max=2000" example:"Electronics and accessories"`
+	LogoObjectID       string         `json:"logoObjectId" binding:"omitempty,uuid"`
+	BannerObjectID     string         `json:"bannerObjectId" binding:"omitempty,uuid"`
+	BankAccountInfo    map[string]any `json:"bankAccountInfo"`
+	LegalName          string         `json:"legalName" binding:"omitempty,max=255" example:"PRIM Trading LLC"`
+	TaxNumber          string         `json:"taxNumber" binding:"omitempty,max=255" example:"123456789"`
+	CommercialRegister string         `json:"commercialRegister" binding:"omitempty,max=255" example:"CR-1234"`
 }
 
 // UpdateMySeller godoc
@@ -335,6 +345,15 @@ func (h *Handler) UpdateMySeller(c *gin.Context) {
 	}
 	if req.BannerObjectID != "" {
 		in.BannerObjectID = parseOptionalUUID(req.BannerObjectID)
+	}
+	if req.LegalName != "" {
+		in.LegalName = &req.LegalName
+	}
+	if req.TaxNumber != "" {
+		in.TaxNumber = &req.TaxNumber
+	}
+	if req.CommercialRegister != "" {
+		in.CommercialRegister = &req.CommercialRegister
 	}
 
 	seller, err := h.service.UpdateMyProfile(c.Request.Context(), userID, in)

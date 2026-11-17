@@ -1,5 +1,7 @@
 import type { CursorMeta } from "@/shared/lib/pagination";
 
+export type { SellerDocument, SellerDocumentStatus, SellerDocumentType } from "@/modules/seller/types";
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -193,6 +195,9 @@ export interface AdminSeller {
   logoUrl?: string;
   bannerUrl?: string;
   commissionRateBps: number;
+  legalName?: string;
+  taxNumber?: string;
+  commercialRegister?: string;
   status: "pending" | "active" | "suspended" | "rejected" | string;
   statusReason?: string;
   reviewedBy?: string;

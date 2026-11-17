@@ -17,6 +17,9 @@ export interface Seller {
   logoUrl?: string;
   bannerUrl?: string;
   commissionRateBps: number;
+  legalName?: string;
+  taxNumber?: string;
+  commercialRegister?: string;
   status: SellerStatus;
   statusReason?: string;
   reviewedBy?: string;
@@ -70,9 +73,27 @@ export interface UpdateSellerPayload {
   storeName?: string;
   slug?: string;
   description?: string;
+  legalName?: string;
+  taxNumber?: string;
+  commercialRegister?: string;
   logoObjectId?: string;
   bannerObjectId?: string;
   bankAccountInfo?: Record<string, unknown>;
+}
+
+export type SellerDocumentType = "commercial_register" | "tax_card" | "national_id" | "other";
+export type SellerDocumentStatus = "pending" | "approved" | "rejected";
+
+export interface SellerDocument {
+  id: string;
+  documentType: SellerDocumentType;
+  fileName: string;
+  fileSize: number;
+  contentType: string;
+  status: SellerDocumentStatus;
+  rejectionReason?: string;
+  documentUrl?: string;
+  createdAt: string;
 }
 
 export interface RequestPayoutPayload {

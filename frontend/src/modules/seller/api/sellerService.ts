@@ -13,6 +13,7 @@ import type {
   UpdateSellerVariantPayload,
   Seller,
   SellerDashboard,
+  SellerDocument,
   SellerMediaUpload,
   SellerCustomAttribute,
   CreateSellerAttributePayload,
@@ -65,6 +66,12 @@ export const sellerService = {
 
   getDashboard: () =>
     api.get<ApiResponse<SellerDashboard>>("/api/v1/seller/dashboard"),
+
+  getDocuments: () => api.get<ApiResponse<SellerDocument[]>>("/api/v1/seller/documents"),
+  uploadDocument: (formData: FormData) =>
+    api.upload<ApiResponse<SellerDocument>>("/api/v1/seller/documents", formData),
+  deleteDocument: (id: string) =>
+    api.delete<ApiMessageResponse>(`/api/v1/seller/documents/${encodeURIComponent(id)}`),
 
   getOrders: (params?: { status?: string; page?: number; pageSize?: number }) => {
     const query = new URLSearchParams();
@@ -150,6 +157,7 @@ export type {
   UpdateSellerVariantPayload,
   Seller,
   SellerDashboard,
+  SellerDocument,
   SellerMediaUpload,
   SellerCustomAttribute,
   CreateSellerAttributePayload,

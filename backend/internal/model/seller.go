@@ -68,6 +68,10 @@ type Seller struct {
 	ReviewedAt *time.Time `db:"reviewed_at" json:"reviewedAt,omitempty"`
 	// BankAccountInfo is an opaque payout-details blob; schema-free until a real payout provider is integrated.
 	BankAccountInfo map[string]any `db:"bank_account_info" json:"bankAccountInfo,omitempty"`
+	// KYC legal identity fields, submitted by the seller for admin review.
+	LegalName          *string `db:"legal_name" json:"legalName,omitempty"`
+	TaxNumber          *string `db:"tax_number" json:"taxNumber,omitempty"`
+	CommercialRegister *string `db:"commercial_register" json:"commercialRegister,omitempty"`
 
 	CreatedAt time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time  `db:"updated_at" json:"updatedAt"`
@@ -105,6 +109,45 @@ type SellerPayout struct {
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 	// ProcessedAt is when the payout reached a terminal state.
 	ProcessedAt *time.Time `db:"processed_at" json:"processedAt,omitempty"`
+}
+
+// SellerDocumentType is the kind of KYC evidence a seller submits. The
+// database CHECK constraint mirrors this set; one document per type per seller.
+type SellerDocumentType string
+
+const (
+	SellerDocumentTypeCommercialRegister SellerDocumentType = "commercial_register"
+	SellerDocumentTypeTaxCard            SellerDocumentType = "tax_card"
+	SellerDocumentTypeNationalID         SellerDocumentType = "national_id"
+	SellerDocumentTypeOther              SellerDocumentType = "other"
+)
+
+// SellerDocumentStatus is the admin review state of a KYC document.
+type SellerDocumentStatus string
+
+const (
+	SellerDocumentStatusPending  SellerDocumentStatus = "pending"
+	SellerDocumentStatusApproved SellerDocumentStatus = "approved"
+	SellerDocumentStatusRejected SellerDocumentStatus = "rejected"
+)
+
+// SellerDocument is one verification file bound to a storage object. URL is
+// hydrated from the object's bucket/key at response time, never stored.
+type SellerDocument struct {
+	ID              uuid.UUID            `db:"id" json:"id"`
+	SellerID        uuid.UUID            `db:"seller_id" json:"sellerId"`
+	DocumentType    SellerDocumentType   `db:"document_type" json:"documentType"`
+	StorageObjectID uuid.UUID            `db:"storage_object_id" json:"storageObjectId"`
+	FileName        string               `db:"file_name" json:"fileName"`
+	FileSize        int64                `db:"file_size" json:"fileSize"`
+	ContentType     string               `db:"content_type" json:"contentType"`
+	Status          SellerDocumentStatus `db:"status" json:"status"`
+	RejectionReason *string              `db:"rejection_reason" json:"rejectionReason,omitempty"`
+	CreatedAt       time.Time            `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time            `db:"updated_at" json:"updatedAt"`
+	ReviewedAt      *time.Time           `db:"reviewed_at" json:"reviewedAt,omitempty"`
+	ReviewedBy      *uuid.UUID           `db:"reviewed_by" json:"reviewedBy,omitempty"`
+	PublicURL       string               `db:"-" json:"url,omitempty"`
 }
 
 // SellerSalesStats is the order-domain projection of one seller's sales.

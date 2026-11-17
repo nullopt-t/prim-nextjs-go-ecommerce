@@ -261,6 +261,23 @@ definitions:
         example: Space Black, 18GB RAM, 512GB SSD
         type: string
     type: object
+  AdminReviewDocumentRequest:
+    properties:
+      rejectionReason:
+        description: Optional explanation for a rejection.
+        example: Document is illegible
+        maxLength: 1000
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentStatus'
+        description: New review status.
+        enum:
+        - approved
+        - rejected
+    required:
+    - status
+    type: object
   AdminSetCommissionRequest:
     properties:
       rateBps:
@@ -721,6 +738,22 @@ definitions:
     properties:
       data:
         description: Data holds the response payload.
+    type: object
+  ErrorResponse:
+    properties:
+      code:
+        description: Code is the machine-readable error token ("INTERNAL_ERROR").
+        example: INTERNAL_ERROR
+        type: string
+      details:
+        description: Details contains optional validation details if applicable.
+        items:
+          $ref: '#/definitions/FieldError'
+        type: array
+      message:
+        description: Message describes the error condition.
+        example: An unexpected internal server error occurred
+        type: string
     type: object
   FieldError:
     properties:
@@ -1449,10 +1482,72 @@ definitions:
       revenue:
         type: integer
     type: object
+  SellerDocumentResponse:
+    properties:
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      documentType:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentType'
+        enum:
+        - commercial_register
+        - tax_card
+        - national_id
+        - other
+      fileName:
+        type: string
+      fileSize:
+        type: integer
+      id:
+        type: string
+      rejectionReason:
+        type: string
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentStatus'
+        enum:
+        - pending
+        - approved
+        - rejected
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+  SellerDocumentStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - SellerDocumentStatusPending
+    - SellerDocumentStatusApproved
+    - SellerDocumentStatusRejected
+  SellerDocumentType:
+    enum:
+    - commercial_register
+    - tax_card
+    - national_id
+    - other
+    type: string
+    x-enum-varnames:
+    - SellerDocumentTypeCommercialRegister
+    - SellerDocumentTypeTaxCard
+    - SellerDocumentTypeNationalID
+    - SellerDocumentTypeOther
   SellerResponse:
     properties:
       bannerUrl:
         description: Public banner URL, when set.
+        type: string
+      commercialRegister:
         type: string
       commissionRateBps:
         description: Platform commission in basis points.
@@ -1469,6 +1564,9 @@ definitions:
       id:
         description: Seller profile id.
         example: 50000000-0000-0000-0000-000000000001
+        type: string
+      legalName:
+        description: KYC legal business details submitted for admin review.
         type: string
       logoUrl:
         description: Public logo URL, when set.
@@ -1498,6 +1596,8 @@ definitions:
       storeName:
         description: Customer-facing store display name.
         example: Amr's Gadgets
+        type: string
+      taxNumber:
         type: string
       updatedAt:
         description: Updated timestamp (RFC3339).
@@ -3931,6 +4031,86 @@ paths:
       security:
       - SessionAuth: []
       summary: Set seller commission rate (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/{id}/documents:
+    get:
+      parameters:
+      - description: Seller UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerDocumentResponse'
+                  type: array
+              type: object
+        "404":
+          description: Seller not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List a seller's verification documents (admin)
+      tags:
+      - Admin Sellers
+  /admin/sellers/{id}/documents/{doc_id}/review:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Seller UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Document UUID
+        format: uuid
+        in: path
+        name: doc_id
+        required: true
+        type: string
+      - description: Review decision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AdminReviewDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerDocumentResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Review a seller verification document (admin)
       tags:
       - Admin Sellers
   /admin/sellers/{id}/status:

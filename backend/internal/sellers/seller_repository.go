@@ -19,23 +19,29 @@ import (
 
 // CreateSellerInput carries the columns written on registration.
 type CreateSellerInput struct {
-	UserID            uuid.UUID
-	StoreName         string
-	Slug              string
-	Description       string
-	LogoObjectID      *uuid.UUID
-	BannerObjectID    *uuid.UUID
-	CommissionRateBps int
+	UserID             uuid.UUID
+	StoreName          string
+	Slug               string
+	Description        string
+	LogoObjectID       *uuid.UUID
+	BannerObjectID     *uuid.UUID
+	CommissionRateBps  int
+	LegalName          *string
+	TaxNumber          *string
+	CommercialRegister *string
 }
 
 // UpdateSellerFields carries optional profile mutations.
 type UpdateSellerFields struct {
-	StoreName       *string
-	Slug            *string
-	Description     *string
-	LogoObjectID    *uuid.UUID
-	BannerObjectID  *uuid.UUID
-	BankAccountInfo map[string]any
+	StoreName          *string
+	Slug               *string
+	Description        *string
+	LogoObjectID       *uuid.UUID
+	BannerObjectID     *uuid.UUID
+	BankAccountInfo    map[string]any
+	LegalName          *string
+	TaxNumber          *string
+	CommercialRegister *string
 }
 
 // SellerRepository is the seller domain's own persistence (SQL + row mapping).
@@ -61,6 +67,9 @@ func scanSeller(row pgx.Row) (*model.Seller, error) {
 		&v.ReviewedBy,
 		&v.ReviewedAt,
 		&v.BankAccountInfo,
+		&v.LegalName,
+		&v.TaxNumber,
+		&v.CommercialRegister,
 		&v.CreatedAt,
 		&v.UpdatedAt,
 		&v.DeletedAt,
@@ -85,6 +94,9 @@ const sellerColumns = `
 	reviewed_by,
 	reviewed_at,
 	bank_account_info,
+	legal_name,
+	tax_number,
+	commercial_register,
 	created_at,
 	updated_at,
 	deleted_at
@@ -97,34 +109,39 @@ func (r *SellerRepository) Create(ctx context.Context, in *CreateSellerInput) (*
 	}
 
 	v := &model.Seller{
-		ID:                uuid.New(),
-		UserID:            in.UserID,
-		StoreName:         in.StoreName,
-		Slug:              in.Slug,
-		Description:       in.Description,
-		LogoObjectID:      in.LogoObjectID,
-		BannerObjectID:    in.BannerObjectID,
-		CommissionRateBps: in.CommissionRateBps,
-		Status:            model.SellerStatusPending,
-		BankAccountInfo:   map[string]any{},
+		ID:                 uuid.New(),
+		UserID:             in.UserID,
+		StoreName:          in.StoreName,
+		Slug:               in.Slug,
+		Description:        in.Description,
+		LogoObjectID:       in.LogoObjectID,
+		BannerObjectID:     in.BannerObjectID,
+		CommissionRateBps:  in.CommissionRateBps,
+		Status:             model.SellerStatusPending,
+		BankAccountInfo:    map[string]any{},
+		LegalName:          in.LegalName,
+		TaxNumber:          in.TaxNumber,
+		CommercialRegister: in.CommercialRegister,
 	}
 
 	err = executor.QueryRowContext(ctx, `
 		INSERT INTO sellers (
 			id, user_id, store_name, slug, description,
 			logo_object_id, banner_object_id, commission_rate_bps,
-			status, bank_account_info, created_at, updated_at
+			status, bank_account_info, legal_name, tax_number, commercial_register,
+			created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
 		RETURNING `+sellerColumns,
 		v.ID, v.UserID, v.StoreName, v.Slug, v.Description,
 		v.LogoObjectID, v.BannerObjectID, v.CommissionRateBps,
-		v.Status, []byte(`{}`),
+		v.Status, []byte(`{}`), v.LegalName, v.TaxNumber, v.CommercialRegister,
 	).Scan(
 		&v.ID, &v.UserID, &v.StoreName, &v.Slug, &v.Description,
 		&v.LogoObjectID, &v.BannerObjectID, &v.CommissionRateBps,
 		&v.Status, &v.StatusReason, &v.ReviewedBy, &v.ReviewedAt,
-		&v.BankAccountInfo, &v.CreatedAt, &v.UpdatedAt, &v.DeletedAt,
+		&v.BankAccountInfo, &v.LegalName, &v.TaxNumber, &v.CommercialRegister,
+		&v.CreatedAt, &v.UpdatedAt, &v.DeletedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("create seller: %w", err)
@@ -257,11 +274,15 @@ func (r *SellerRepository) Update(ctx context.Context, sellerID uuid.UUID, field
 			logo_object_id     = COALESCE($5, logo_object_id),
 			banner_object_id   = COALESCE($6, banner_object_id),
 			bank_account_info  = COALESCE($7, bank_account_info),
+			legal_name         = COALESCE($8, legal_name),
+			tax_number         = COALESCE($9, tax_number),
+			commercial_register = COALESCE($10, commercial_register),
 			updated_at         = now()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING `+sellerColumns,
 		sellerID, fields.StoreName, fields.Slug, fields.Description, fields.LogoObjectID,
-		fields.BannerObjectID, bankJSON,
+		fields.BannerObjectID, bankJSON, fields.LegalName, fields.TaxNumber,
+		fields.CommercialRegister,
 	)
 	return scanSeller(row)
 }

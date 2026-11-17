@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Plus, Trash2, XCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { CheckCircle2, FileText, Loader2, Plus, Trash2, Upload, XCircle } from "lucide-react";
 import { sellerService } from "@/modules/seller/api/sellerService";
+import type { SellerDocument, SellerDocumentType } from "@/modules/seller/types";
+import { normalizeMediaUrl } from "@/shared/lib/media";
 import { ApiError } from "@/shared/api/client";
 import { ErrorState } from "@/shared/ui/errorState";
 import { PageHeader } from "@/shared/ui/pageHeader";
@@ -39,6 +41,11 @@ export function SellerSettings() {
 	const [storeName, setStoreName] = useState("");
 	const [slug, setSlug] = useState("");
 	const [description, setDescription] = useState("");
+	const [legalName, setLegalName] = useState("");
+	const [taxNumber, setTaxNumber] = useState("");
+	const [commercialRegister, setCommercialRegister] = useState("");
+	const [documents, setDocuments] = useState<SellerDocument[]>([]);
+	const [uploadingType, setUploadingType] = useState<SellerDocumentType | null>(null);
 	const [bankEntries, setBankEntries] = useState<BankEntry[]>([]);
 	const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
 	const [slugReason, setSlugReason] = useState<string | null>(null);
@@ -52,9 +59,52 @@ export function SellerSettings() {
 		setStoreName(seller.storeName ?? "");
 		setSlug(seller.slug ?? "");
 		setDescription(seller.description ?? "");
+		setLegalName(seller.legalName ?? "");
+		setTaxNumber(seller.taxNumber ?? "");
+		setCommercialRegister(seller.commercialRegister ?? "");
 		setBankEntries(toEntries(seller.bankAccountInfo));
 		setInitializedFor(seller.id);
 	}, [seller, initializedFor]);
+
+	const loadDocuments = useCallback(async () => {
+		try {
+			const response = await sellerService.getDocuments();
+			setDocuments(Array.isArray(response?.data) ? response.data : []);
+		} catch {
+			setDocuments([]);
+		}
+	}, []);
+
+	useEffect(() => {
+		void loadDocuments();
+	}, [loadDocuments]);
+
+	const handleDocumentUpload = async (type: SellerDocumentType, file?: File) => {
+		if (!file) return;
+		const formData = new FormData();
+		formData.append("documentType", type);
+		formData.append("file", file);
+		setUploadingType(type);
+		try {
+			await sellerService.uploadDocument(formData);
+			notify.success(t("settings.kyc.uploaded"));
+			await loadDocuments();
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("settings.kyc.uploadFailed")));
+		} finally {
+			setUploadingType(null);
+		}
+	};
+
+	const handleDocumentDelete = async (id: string) => {
+		try {
+			await sellerService.deleteDocument(id);
+			notify.success(t("settings.kyc.deleted"));
+			await loadDocuments();
+		} catch (error) {
+			notify.error(apiErrorMessage(error, t("settings.kyc.deleteFailed")));
+		}
+	};
 
 	useEffect(() => {
 		if (!slugEditable) return;
@@ -147,6 +197,9 @@ export function SellerSettings() {
 				storeName?: string;
 				slug?: string;
 				description?: string;
+				legalName?: string;
+				taxNumber?: string;
+				commercialRegister?: string;
 				bankAccountInfo?: Record<string, unknown>;
 			} = {};
 			if (storeName.trim() !== seller.storeName) payload.storeName = storeName.trim();
@@ -155,6 +208,11 @@ export function SellerSettings() {
 			}
 			if (description.trim() !== (seller.description ?? "")) {
 				payload.description = description.trim();
+			}
+			if (legalName.trim() !== (seller.legalName ?? "")) payload.legalName = legalName.trim();
+			if (taxNumber.trim() !== (seller.taxNumber ?? "")) payload.taxNumber = taxNumber.trim();
+			if (commercialRegister.trim() !== (seller.commercialRegister ?? "")) {
+				payload.commercialRegister = commercialRegister.trim();
 			}
 			payload.bankAccountInfo = bankInfo;
 
@@ -261,6 +319,126 @@ export function SellerSettings() {
 						/>
 						<p className="text-xs text-muted-foreground">{t("settings.descriptionHint", { count: description.length })}</p>
 					</div>
+
+					<fieldset className="space-y-3 rounded-md border border-border p-4">
+						<legend className="px-1 text-sm font-medium text-foreground">{t("settings.kyc.title")}</legend>
+						<p className="text-xs text-muted-foreground">{t("settings.kyc.subtitle")}</p>
+						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+							<div className="space-y-1.5">
+								<label htmlFor="seller-kyc-legal-name" className="text-sm font-medium text-foreground">
+									{t("settings.kyc.legalName")}
+								</label>
+								<input
+									id="seller-kyc-legal-name"
+									type="text"
+									maxLength={200}
+									value={legalName}
+									onChange={(event) => setLegalName(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<label htmlFor="seller-kyc-tax-number" className="text-sm font-medium text-foreground">
+									{t("settings.kyc.taxNumber")}
+								</label>
+								<input
+									id="seller-kyc-tax-number"
+									type="text"
+									dir="ltr"
+									maxLength={100}
+									value={taxNumber}
+									onChange={(event) => setTaxNumber(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+							</div>
+							<div className="space-y-1.5">
+								<label htmlFor="seller-kyc-commercial-register" className="text-sm font-medium text-foreground">
+									{t("settings.kyc.commercialRegister")}
+								</label>
+								<input
+									id="seller-kyc-commercial-register"
+									type="text"
+									dir="ltr"
+									maxLength={100}
+									value={commercialRegister}
+									onChange={(event) => setCommercialRegister(event.target.value)}
+									className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+								/>
+							</div>
+						</div>
+						<div className="space-y-2">
+							{([
+								{ type: "commercial_register", label: t("settings.kyc.docCommercialRegister") },
+								{ type: "tax_card", label: t("settings.kyc.docTaxCard") },
+								{ type: "national_id", label: t("settings.kyc.docNationalId") },
+							] as const).map(({ type, label }) => {
+								const doc = documents.find((item) => item.documentType === type);
+								return (
+									<div key={type} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+										<div className="min-w-0">
+											<p className="text-sm font-medium text-foreground">{label}</p>
+											{doc ? (
+												<p className="truncate text-xs text-muted-foreground">
+													{doc.fileName} · {Math.round(doc.fileSize / 1024)} KB
+												</p>
+											) : (
+												<p className="text-xs text-muted-foreground">{t("settings.kyc.notUploaded")}</p>
+											)}
+											{doc?.status === "rejected" && doc.rejectionReason ? (
+												<p className="mt-1 text-xs text-destructive">{doc.rejectionReason}</p>
+											) : null}
+										</div>
+										<div className="flex items-center gap-2">
+											{doc ? (
+												<StatusPill tone={statusTone(doc.status)}>
+													{t(`settings.kyc.status.${doc.status}`)}
+												</StatusPill>
+											) : null}
+											{doc?.documentUrl ? (
+												<a
+													href={normalizeMediaUrl(doc.documentUrl)}
+													target="_blank"
+													rel="noopener noreferrer"
+													aria-label={`${t("settings.kyc.view")} ${label}`}
+													className="rounded-md border border-border p-2 text-muted-foreground hover:text-foreground"
+												>
+													<FileText className="size-4" />
+												</a>
+											) : null}
+											<label className="inline-flex cursor-pointer items-center rounded-md border border-border p-2 text-muted-foreground hover:text-foreground">
+												{uploadingType === type ? (
+													<Loader2 className="size-4 animate-spin" />
+												) : (
+													<Upload className="size-4" />
+												)}
+												<span className="sr-only">{t("settings.kyc.upload")}</span>
+												<input
+													type="file"
+													accept=".pdf,image/*"
+													className="sr-only"
+													disabled={uploadingType === type}
+													onChange={(event) => {
+														void handleDocumentUpload(type, event.target.files?.[0]);
+														event.target.value = "";
+													}}
+												/>
+											</label>
+											{doc ? (
+												<button
+													type="button"
+													onClick={() => void handleDocumentDelete(doc.id)}
+													aria-label={t("settings.kyc.remove")}
+													className="rounded-md border border-border p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+												>
+													<Trash2 className="size-4" />
+												</button>
+											) : null}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</fieldset>
 
 					<fieldset className="space-y-3 rounded-md border border-border p-4">
 						<legend className="px-1 text-sm font-medium text-foreground">{t("settings.bankTitle")}</legend>

@@ -4547,6 +4547,163 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "/sellers/me/documents": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns the authenticated seller's KYC documents with public storage URLs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "List my verification documents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerDocumentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication required",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Binds an existing storage object to one KYC document type for the authenticated seller. One document per type is allowed.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Submit a verification document",
+                "parameters": [
+                    {
+                        "description": "Document payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateSellerDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerDocumentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Document type already submitted",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/sellers/me/documents/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Removes a pending or rejected document. Approved evidence is retained for compliance.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seller"
+                ],
+                "summary": "Delete my verification document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Document UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Deleted"
+                    },
+                    "403": {
+                        "description": "Seller not authorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Document already approved",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/settings/currencies": {
             "get": {
                 "description": "Returns supported currencies, their symbols, decimal places, and exchange conversion rates relative to the store base currency.",
@@ -6981,6 +7138,42 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "CreateSellerDocumentRequest": {
+            "type": "object",
+            "required": [
+                "documentType",
+                "fileName",
+                "objectId"
+            ],
+            "properties": {
+                "documentType": {
+                    "description": "One of commercial_register, tax_card, national_id, other.",
+                    "enum": [
+                        "commercial_register",
+                        "tax_card",
+                        "national_id",
+                        "other"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentType"
+                        }
+                    ]
+                },
+                "fileName": {
+                    "description": "Original file name shown to reviewers.",
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "example": "commercial-register.pdf"
+                },
+                "objectId": {
+                    "description": "ID returned by the existing storage-object upload flow.",
+                    "type": "string",
+                    "example": "10000000-0000-0000-0000-00000000000f"
+                }
+            }
+        },
         "CurrencyInfo": {
             "type": "object",
             "properties": {
@@ -8926,6 +9119,94 @@ const docTemplatepublic = `{
                 }
             }
         },
+        "SellerDocumentResponse": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "documentType": {
+                    "enum": [
+                        "commercial_register",
+                        "tax_card",
+                        "national_id",
+                        "other"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentType"
+                        }
+                    ]
+                },
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "pending",
+                        "approved",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentStatus"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "SellerDocumentStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "approved",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "SellerDocumentStatusPending",
+                "SellerDocumentStatusApproved",
+                "SellerDocumentStatusRejected"
+            ]
+        },
+        "SellerDocumentType": {
+            "type": "string",
+            "enum": [
+                "commercial_register",
+                "tax_card",
+                "national_id",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "SellerDocumentTypeCommercialRegister",
+                "SellerDocumentTypeTaxCard",
+                "SellerDocumentTypeNationalID",
+                "SellerDocumentTypeOther"
+            ]
+        },
         "SellerMediaUploadResponse": {
             "type": "object",
             "properties": {
@@ -9173,6 +9454,9 @@ const docTemplatepublic = `{
                     "description": "Public banner URL, when set.",
                     "type": "string"
                 },
+                "commercialRegister": {
+                    "type": "string"
+                },
                 "commissionRateBps": {
                     "description": "Platform commission in basis points.",
                     "type": "integer",
@@ -9192,6 +9476,10 @@ const docTemplatepublic = `{
                     "description": "Seller profile id.",
                     "type": "string",
                     "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "legalName": {
+                    "description": "KYC legal business details submitted for admin review.",
+                    "type": "string"
                 },
                 "logoUrl": {
                     "description": "Public logo URL, when set.",
@@ -9232,6 +9520,9 @@ const docTemplatepublic = `{
                     "description": "Customer-facing store display name.",
                     "type": "string",
                     "example": "Amr's Gadgets"
+                },
+                "taxNumber": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "description": "Updated timestamp (RFC3339).",
@@ -9661,10 +9952,20 @@ const docTemplatepublic = `{
                 "bannerObjectId": {
                     "type": "string"
                 },
+                "commercialRegister": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "CR-1234"
+                },
                 "description": {
                     "type": "string",
                     "maxLength": 2000,
                     "example": "Electronics and accessories"
+                },
+                "legalName": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "PRIM Trading LLC"
                 },
                 "logoObjectId": {
                     "type": "string"
@@ -9679,6 +9980,11 @@ const docTemplatepublic = `{
                     "maxLength": 150,
                     "minLength": 2,
                     "example": "Amr's Gadgets"
+                },
+                "taxNumber": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "123456789"
                 }
             }
         },

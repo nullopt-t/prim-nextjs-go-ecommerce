@@ -475,6 +475,32 @@ definitions:
     - productId
     - rating
     type: object
+  CreateSellerDocumentRequest:
+    properties:
+      documentType:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentType'
+        description: One of commercial_register, tax_card, national_id, other.
+        enum:
+        - commercial_register
+        - tax_card
+        - national_id
+        - other
+      fileName:
+        description: Original file name shown to reviewers.
+        example: commercial-register.pdf
+        maxLength: 255
+        minLength: 1
+        type: string
+      objectId:
+        description: ID returned by the existing storage-object upload flow.
+        example: 10000000-0000-0000-0000-00000000000f
+        type: string
+    required:
+    - documentType
+    - fileName
+    - objectId
+    type: object
   CurrencyInfo:
     properties:
       code:
@@ -1917,6 +1943,66 @@ definitions:
     required:
     - title
     type: object
+  SellerDocumentResponse:
+    properties:
+      contentType:
+        type: string
+      createdAt:
+        type: string
+      documentType:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentType'
+        enum:
+        - commercial_register
+        - tax_card
+        - national_id
+        - other
+      fileName:
+        type: string
+      fileSize:
+        type: integer
+      id:
+        type: string
+      rejectionReason:
+        type: string
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/SellerDocumentStatus'
+        enum:
+        - pending
+        - approved
+        - rejected
+      updatedAt:
+        type: string
+      url:
+        type: string
+    type: object
+  SellerDocumentStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - SellerDocumentStatusPending
+    - SellerDocumentStatusApproved
+    - SellerDocumentStatusRejected
+  SellerDocumentType:
+    enum:
+    - commercial_register
+    - tax_card
+    - national_id
+    - other
+    type: string
+    x-enum-varnames:
+    - SellerDocumentTypeCommercialRegister
+    - SellerDocumentTypeTaxCard
+    - SellerDocumentTypeNationalID
+    - SellerDocumentTypeOther
   SellerMediaUploadResponse:
     properties:
       url:
@@ -2088,6 +2174,8 @@ definitions:
       bannerUrl:
         description: Public banner URL, when set.
         type: string
+      commercialRegister:
+        type: string
       commissionRateBps:
         description: Platform commission in basis points.
         example: 1000
@@ -2103,6 +2191,9 @@ definitions:
       id:
         description: Seller profile id.
         example: 50000000-0000-0000-0000-000000000001
+        type: string
+      legalName:
+        description: KYC legal business details submitted for admin review.
         type: string
       logoUrl:
         description: Public logo URL, when set.
@@ -2132,6 +2223,8 @@ definitions:
       storeName:
         description: Customer-facing store display name.
         example: Amr's Gadgets
+        type: string
+      taxNumber:
         type: string
       updatedAt:
         description: Updated timestamp (RFC3339).
@@ -2440,9 +2533,17 @@ definitions:
         type: object
       bannerObjectId:
         type: string
+      commercialRegister:
+        example: CR-1234
+        maxLength: 255
+        type: string
       description:
         example: Electronics and accessories
         maxLength: 2000
+        type: string
+      legalName:
+        example: PRIM Trading LLC
+        maxLength: 255
         type: string
       logoObjectId:
         type: string
@@ -2454,6 +2555,10 @@ definitions:
         example: Amr's Gadgets
         maxLength: 150
         minLength: 2
+        type: string
+      taxNumber:
+        example: "123456789"
+        maxLength: 255
         type: string
     type: object
   UpdateProfileRequest:
@@ -5811,6 +5916,103 @@ paths:
       security:
       - SessionAuth: []
       summary: Adjust my variant stock
+      tags:
+      - Seller
+  /sellers/me/documents:
+    get:
+      description: Returns the authenticated seller's KYC documents with public storage
+        URLs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/SellerDocumentResponse'
+                  type: array
+              type: object
+        "401":
+          description: Authentication required
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: List my verification documents
+      tags:
+      - Seller
+    post:
+      consumes:
+      - application/json
+      description: Binds an existing storage object to one KYC document type for the
+        authenticated seller. One document per type is allowed.
+      parameters:
+      - description: Document payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateSellerDocumentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/DataResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/SellerDocumentResponse'
+              type: object
+        "400":
+          description: Validation failed
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Document type already submitted
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Submit a verification document
+      tags:
+      - Seller
+  /sellers/me/documents/{id}:
+    delete:
+      description: Removes a pending or rejected document. Approved evidence is retained
+        for compliance.
+      parameters:
+      - description: Document UUID
+        format: uuid
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          description: Seller not authorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Document not found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Document already approved
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - SessionAuth: []
+      summary: Delete my verification document
       tags:
       - Seller
   /settings/currencies:

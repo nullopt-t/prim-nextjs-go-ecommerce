@@ -483,12 +483,15 @@ func (s *Service) GetSellerByUser(ctx context.Context, userID uuid.UUID) (*model
 
 // UpdateSellerInput is the seller-editable profile payload.
 type UpdateSellerInput struct {
-	StoreName       *string
-	Slug            *string
-	Description     *string
-	LogoObjectID    *uuid.UUID
-	BannerObjectID  *uuid.UUID
-	BankAccountInfo map[string]any
+	StoreName          *string
+	Slug               *string
+	Description        *string
+	LogoObjectID       *uuid.UUID
+	BannerObjectID     *uuid.UUID
+	BankAccountInfo    map[string]any
+	LegalName          *string
+	TaxNumber          *string
+	CommercialRegister *string
 }
 
 // UpdateMyProfile edits the caller's own profile. Pending, active, and
@@ -508,6 +511,23 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 			return nil, validationError("description", "max", "Description must be at most 2000 characters")
 		}
 		in.Description = &description
+	}
+	for _, field := range []struct {
+		name  string
+		value **string
+	}{
+		{"legalName", &in.LegalName},
+		{"taxNumber", &in.TaxNumber},
+		{"commercialRegister", &in.CommercialRegister},
+	} {
+		if *field.value == nil {
+			continue
+		}
+		trimmed := strings.TrimSpace(**field.value)
+		if trimmed == "" || len(trimmed) > 255 {
+			return nil, validationError(field.name, "length", "Value must be between 1 and 255 characters")
+		}
+		*field.value = &trimmed
 	}
 
 	var normalizedSlug *string
@@ -541,12 +561,15 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID uuid.UUID, in Upda
 		}
 
 		updated, err = s.repo.Update(ctx, existing.ID, UpdateSellerFields{
-			StoreName:       in.StoreName,
-			Slug:            normalizedSlug,
-			Description:     in.Description,
-			LogoObjectID:    in.LogoObjectID,
-			BannerObjectID:  in.BannerObjectID,
-			BankAccountInfo: in.BankAccountInfo,
+			StoreName:          in.StoreName,
+			Slug:               normalizedSlug,
+			Description:        in.Description,
+			LogoObjectID:       in.LogoObjectID,
+			BannerObjectID:     in.BannerObjectID,
+			BankAccountInfo:    in.BankAccountInfo,
+			LegalName:          in.LegalName,
+			TaxNumber:          in.TaxNumber,
+			CommercialRegister: in.CommercialRegister,
 		})
 		if err != nil {
 			if errors.Is(database.MapError(err), database.ErrConflict) {

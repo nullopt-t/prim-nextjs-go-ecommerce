@@ -11,6 +11,7 @@ import type {
   AdminPayment,
   AdminPayout,
   AdminSeller,
+  SellerDocument,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -22,6 +23,7 @@ export type {
   AdminPayment,
   AdminPayout,
   AdminSeller,
+  SellerDocument,
   InventoryLedger,
   InventoryStock,
 } from "@/modules/admin/types";
@@ -290,6 +292,22 @@ export const adminService = {
   updateSellerCommission: async (id: string, rateBps: number): Promise<ApiResponse<AdminSeller>> => {
     return api.patch<ApiResponse<AdminSeller>>(`/api/v1/admin/sellers/${id}/commission`, { rateBps });
   },
+
+  getSellerDocuments: async (sellerId: string): Promise<ApiResponse<SellerDocument[]>> =>
+    api.get<ApiResponse<SellerDocument[]>>(
+      `/api/v1/admin/sellers/${encodeURIComponent(sellerId)}/documents`,
+    ),
+
+  reviewSellerDocument: async (
+    sellerId: string,
+    docId: string,
+    status: "approved" | "rejected",
+    reason?: string,
+  ): Promise<ApiResponse<SellerDocument>> =>
+    api.patch<ApiResponse<SellerDocument>>(
+      `/api/v1/admin/sellers/${encodeURIComponent(sellerId)}/documents/${encodeURIComponent(docId)}/review`,
+      { status, ...(reason ? { reason } : {}) },
+    ),
 
   getSellerPayouts: async (): Promise<{ data: AdminPayout[] }> => {
     return api.get<{ data: AdminPayout[] }>(`/api/v1/admin/sellers/payouts`);

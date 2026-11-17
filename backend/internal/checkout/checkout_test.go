@@ -230,6 +230,11 @@ func (s *CheckoutTestSuite) SetupSuite() {
 	_, err = db.ExecContext(ctx, string(schemaBytes))
 	require.NoError(s.T(), err)
 
+	kycBytes, err := os.ReadFile("../../migrations/000004_seller_kyc.up.sql")
+	require.NoError(s.T(), err)
+	_, err = db.ExecContext(ctx, string(kycBytes))
+	require.NoError(s.T(), err)
+
 	// ---- Redis (sessions) -------------------------------------------------
 	rContainer, err := redisContainer.Run(ctx, "redis:7-alpine")
 	require.NoError(s.T(), err)

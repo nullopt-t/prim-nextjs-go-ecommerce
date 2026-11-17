@@ -3080,6 +3080,139 @@
                 }
             }
         },
+        "/admin/sellers/{id}/documents": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "List a seller's verification documents (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Seller UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/SellerDocumentResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Seller not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/sellers/{id}/documents/{doc_id}/review": {
+            "patch": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Sellers"
+                ],
+                "summary": "Review a seller verification document (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Seller UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "Document UUID",
+                        "name": "doc_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Review decision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AdminReviewDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/DataResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/SellerDocumentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Document not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/sellers/{id}/status": {
             "patch": {
                 "security": [
@@ -4912,6 +5045,32 @@
                 }
             }
         },
+        "AdminReviewDocumentRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "rejectionReason": {
+                    "description": "Optional explanation for a rejection.",
+                    "type": "string",
+                    "maxLength": 1000,
+                    "example": "Document is illegible"
+                },
+                "status": {
+                    "description": "New review status.",
+                    "enum": [
+                        "approved",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentStatus"
+                        }
+                    ]
+                }
+            }
+        },
         "AdminSetCommissionRequest": {
             "type": "object",
             "required": [
@@ -5537,6 +5696,28 @@
             "properties": {
                 "data": {
                     "description": "Data holds the response payload."
+                }
+            }
+        },
+        "ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Code is the machine-readable error token (\"INTERNAL_ERROR\").",
+                    "type": "string",
+                    "example": "INTERNAL_ERROR"
+                },
+                "details": {
+                    "description": "Details contains optional validation details if applicable.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/FieldError"
+                    }
+                },
+                "message": {
+                    "description": "Message describes the error condition.",
+                    "type": "string",
+                    "example": "An unexpected internal server error occurred"
                 }
             }
         },
@@ -6508,11 +6689,102 @@
                 }
             }
         },
+        "SellerDocumentResponse": {
+            "type": "object",
+            "properties": {
+                "contentType": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "documentType": {
+                    "enum": [
+                        "commercial_register",
+                        "tax_card",
+                        "national_id",
+                        "other"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentType"
+                        }
+                    ]
+                },
+                "fileName": {
+                    "type": "string"
+                },
+                "fileSize": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rejectionReason": {
+                    "type": "string"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "pending",
+                        "approved",
+                        "rejected"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/SellerDocumentStatus"
+                        }
+                    ]
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "SellerDocumentStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "approved",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "SellerDocumentStatusPending",
+                "SellerDocumentStatusApproved",
+                "SellerDocumentStatusRejected"
+            ]
+        },
+        "SellerDocumentType": {
+            "type": "string",
+            "enum": [
+                "commercial_register",
+                "tax_card",
+                "national_id",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "SellerDocumentTypeCommercialRegister",
+                "SellerDocumentTypeTaxCard",
+                "SellerDocumentTypeNationalID",
+                "SellerDocumentTypeOther"
+            ]
+        },
         "SellerResponse": {
             "type": "object",
             "properties": {
                 "bannerUrl": {
                     "description": "Public banner URL, when set.",
+                    "type": "string"
+                },
+                "commercialRegister": {
                     "type": "string"
                 },
                 "commissionRateBps": {
@@ -6534,6 +6806,10 @@
                     "description": "Seller profile id.",
                     "type": "string",
                     "example": "50000000-0000-0000-0000-000000000001"
+                },
+                "legalName": {
+                    "description": "KYC legal business details submitted for admin review.",
+                    "type": "string"
                 },
                 "logoUrl": {
                     "description": "Public logo URL, when set.",
@@ -6574,6 +6850,9 @@
                     "description": "Customer-facing store display name.",
                     "type": "string",
                     "example": "Amr's Gadgets"
+                },
+                "taxNumber": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "description": "Updated timestamp (RFC3339).",
